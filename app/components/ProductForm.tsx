@@ -1,4 +1,5 @@
 import {Link, useNavigate} from 'react-router';
+import {useState} from 'react';
 import {type MappedProductOptions} from '@shopify/hydrogen';
 import type {
   Maybe,
@@ -6,6 +7,7 @@ import type {
 } from '@shopify/hydrogen/storefront-api-types';
 import {AddToCartButton} from './AddToCartButton';
 import {useAside} from './Aside';
+import {Icon} from '~/lib/icons';
 import type {ProductFragment} from 'storefrontapi.generated';
 
 export function ProductForm({
@@ -17,6 +19,7 @@ export function ProductForm({
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
+  const [qty, setQty] = useState(1);
   return (
     <div className="product-form">
       {productOptions.map((option) => {
@@ -24,8 +27,8 @@ export function ProductForm({
         if (option.optionValues.length === 1) return null;
 
         return (
-          <div className="product-options" key={option.name}>
-            <h5>{option.name}</h5>
+          <div className="option-select" key={option.name}>
+            <label>{option.name}</label>
             <div className="product-options-grid">
               {option.optionValues.map((value) => {
                 const {
@@ -54,8 +57,8 @@ export function ProductForm({
                       to={`/products/${handle}?${variantUriQuery}`}
                       style={{
                         border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
+                          ? '1px solid #e30613'
+                          : '1px solid var(--border-strong)',
                         opacity: available ? 1 : 0.3,
                       }}
                     >
@@ -77,8 +80,8 @@ export function ProductForm({
                       key={option.name + name}
                       style={{
                         border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
+                          ? '1px solid #e30613'
+                          : '1px solid var(--border-strong)',
                         opacity: available ? 1 : 0.3,
                       }}
                       disabled={!exists}
@@ -97,29 +100,70 @@ export function ProductForm({
                 }
               })}
             </div>
-            <br />
           </div>
         );
       })}
-      <AddToCartButton
-        disabled={!selectedVariant || !selectedVariant.availableForSale}
-        onClick={() => {
-          open('cart');
-        }}
-        lines={
-          selectedVariant
-            ? [
-                {
-                  merchandiseId: selectedVariant.id,
-                  quantity: 1,
-                  selectedVariant,
-                },
-              ]
-            : []
-        }
-      >
-        {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
-      </AddToCartButton>
+
+      <div className="qty-row">
+        <span style={{fontWeight: 700, fontSize: '.85rem'}}>Cantidad</span>
+        <div className="qty-stepper">
+          <button type="button" aria-label="Restar" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+            <Icon name="minus" />
+          </button>
+          <span>{qty}</span>
+          <button type="button" aria-label="Sumar" onClick={() => setQty((q) => q + 1)}>
+            <Icon name="plus" />
+          </button>
+        </div>
+      </div>
+
+      <p className={`stock-msg ${selectedVariant?.availableForSale ? 'in' : 'out'}`}>
+        <Icon name={selectedVariant?.availableForSale ? 'checkCircle' : 'close'} />
+        <span>{selectedVariant?.availableForSale ? 'En stock' : 'Agotado'}</span>
+      </p>
+
+      <div className="pdp__actions">
+        <AddToCartButton
+          className="btn btn--primary"
+          disabled={!selectedVariant || !selectedVariant.availableForSale}
+          onClick={() => {
+            open('cart');
+          }}
+          lines={
+            selectedVariant
+              ? [
+                  {
+                    merchandiseId: selectedVariant.id,
+                    quantity: qty,
+                    selectedVariant,
+                  },
+                ]
+              : []
+          }
+        >
+          {selectedVariant?.availableForSale ? 'Añadir al carrito' : 'Agotado'}
+        </AddToCartButton>
+        <AddToCartButton
+          className="btn btn--dark"
+          disabled={!selectedVariant || !selectedVariant.availableForSale}
+          onClick={() => {
+            void navigate('/cart');
+          }}
+          lines={
+            selectedVariant
+              ? [
+                  {
+                    merchandiseId: selectedVariant.id,
+                    quantity: qty,
+                    selectedVariant,
+                  },
+                ]
+              : []
+          }
+        >
+          Comprar ahora
+        </AddToCartButton>
+      </div>
     </div>
   );
 }

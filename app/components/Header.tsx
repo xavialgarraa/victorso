@@ -1,12 +1,15 @@
-import {Suspense} from 'react';
-import {Await, NavLink, useAsyncValue} from 'react-router';
-import {
-  type CartViewPayload,
-  useAnalytics,
-  useOptimisticCart,
-} from '@shopify/hydrogen';
+import {Suspense, useState} from 'react';
+import {Await, Link, NavLink, useAsyncValue} from 'react-router';
+import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
+import {Icon} from '~/lib/icons';
+import {ThemeToggle} from '~/components/ThemeToggle';
+import {
+  SEARCH_ENDPOINT,
+  SearchFormPredictive,
+} from '~/components/SearchFormPredictive';
+import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
 
 interface HeaderProps {
   header: HeaderQuery;
@@ -17,26 +20,72 @@ interface HeaderProps {
 
 type Viewport = 'desktop' | 'mobile';
 
-export function Header({
-  header,
-  isLoggedIn,
-  cart,
-  publicStoreDomain,
-}: HeaderProps) {
-  const {shop, menu} = header;
+export function Header({header, isLoggedIn, cart, publicStoreDomain}: HeaderProps) {
+  const {menu, shop} = header;
+
   return (
-    <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
-        <strong>{shop.name}</strong>
-      </NavLink>
-      <HeaderMenu
-        menu={menu}
-        viewport="desktop"
-        primaryDomainUrl={header.shop.primaryDomain.url}
-        publicStoreDomain={publicStoreDomain}
-      />
-      <HeaderCtas isLoggedIn={isLoggedIn} cart={cart} />
-    </header>
+    <>
+      <div className="topbar">
+        <div className="topbar__inner container">
+          <div className="topbar__ship">
+            <Icon name="truck" />
+            <span>
+              Envío gratis Península desde <strong>149€</strong>
+            </span>
+          </div>
+          <div className="topbar__contact">
+            <a href="tel:+34972364114">
+              <Icon name="phone" />
+              972 364 114
+            </a>
+            <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
+              <Icon name="chat" />
+              WhatsApp
+            </a>
+            <Link className="theme-toggle" to="/account" aria-label="Iniciar sesión">
+              <Icon name="user" />
+            </Link>
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+
+      <header className="header">
+        <div className="header__inner container">
+          <HeaderMenuMobileToggle />
+          <Link to="/" className="logo" prefetch="intent">
+            <img
+              className="logo__full"
+              src="https://www.victorso.com/victorso/uploads/imagenes/logos/Logo_WEB_Blanco2.png"
+              alt={shop.name}
+              width={186}
+              height={44}
+            />
+            <img
+              className="logo__compact"
+              src="/assets/logo-icon.png"
+              alt={shop.name}
+              width={36}
+              height={30}
+            />
+          </Link>
+
+          <div className="header__right">
+            <HeaderSearch />
+            <nav className="header__actions">
+              <CartToggle cart={cart} />
+            </nav>
+          </div>
+        </div>
+
+        <HeaderMenu
+          menu={menu}
+          viewport="desktop"
+          primaryDomainUrl={header.shop.primaryDomain.url}
+          publicStoreDomain={publicStoreDomain}
+        />
+      </header>
+    </>
   );
 }
 
@@ -51,66 +100,58 @@ export function HeaderMenu({
   viewport: Viewport;
   publicStoreDomain: HeaderProps['publicStoreDomain'];
 }) {
-  const className = `header-menu-${viewport}`;
   const {close} = useAside();
+  const items = (menu || FALLBACK_HEADER_MENU).items;
 
-  return (
-    <nav className={className} role="navigation">
-      {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
-          Home
+  function itemHref(url: string) {
+    return url.includes('myshopify.com') ||
+      url.includes(publicStoreDomain) ||
+      url.includes(primaryDomainUrl)
+      ? new URL(url).pathname
+      : url;
+  }
+
+  if (viewport === 'mobile') {
+    return (
+      <nav className="mobile-menu" role="navigation">
+        <NavLink end onClick={close} prefetch="intent" to="/" className="mobile-menu__item">
+          Inicio
         </NavLink>
-      )}
-      {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
-        if (!item.url) return null;
+        {items.map(
+          (item) =>
+            item.url && (
+              <NavLink
+                className="mobile-menu__item"
+                end
+                key={item.id}
+                onClick={close}
+                prefetch="intent"
+                to={itemHref(item.url)}
+              >
+                {item.title}
+              </NavLink>
+            ),
+        )}
+      </nav>
+    );
+  }
 
-        // if the url is internal, we strip the domain
-        const url =
-          item.url.includes('myshopify.com') ||
-          item.url.includes(publicStoreDomain) ||
-          item.url.includes(primaryDomainUrl)
-            ? new URL(item.url).pathname
-            : item.url;
-        return (
-          <NavLink
-            className="header-menu-item"
-            end
-            key={item.id}
-            onClick={close}
-            prefetch="intent"
-            style={activeLinkStyle}
-            to={url}
-          >
-            {item.title}
-          </NavLink>
-        );
-      })}
-    </nav>
-  );
-}
-
-function HeaderCtas({
-  isLoggedIn,
-  cart,
-}: Pick<HeaderProps, 'isLoggedIn' | 'cart'>) {
   return (
-    <nav className="header-ctas" role="navigation">
-      <HeaderMenuMobileToggle />
-      <NavLink prefetch="intent" to="/account" style={activeLinkStyle}>
-        <Suspense fallback="Sign in">
-          <Await resolve={isLoggedIn} errorElement="Sign in">
-            {(isLoggedIn) => (isLoggedIn ? 'Account' : 'Sign in')}
-          </Await>
-        </Suspense>
-      </NavLink>
-      <SearchToggle />
-      <CartToggle cart={cart} />
+    <nav className="mainnav" role="navigation">
+      {items.map(
+        (item) =>
+          item.url && (
+            <NavLink
+              className="mainnav__item"
+              end
+              key={item.id}
+              prefetch="intent"
+              to={itemHref(item.url)}
+            >
+              {item.title}
+            </NavLink>
+          ),
+      )}
     </nav>
   );
 }
@@ -118,21 +159,91 @@ function HeaderCtas({
 function HeaderMenuMobileToggle() {
   const {open} = useAside();
   return (
-    <button
-      className="header-menu-mobile-toggle reset"
-      onClick={() => open('mobile')}
-    >
-      <h3>☰</h3>
+    <button className="burger" aria-label="Abrir menú" onClick={() => open('mobile')}>
+      <span></span>
+      <span></span>
+      <span></span>
     </button>
   );
 }
 
-function SearchToggle() {
-  const {open} = useAside();
+function HeaderSearch() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <button className="reset" onClick={() => open('search')}>
-      Search
-    </button>
+    <div className="search-wrap" onBlur={(e) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+    }}>
+      <SearchFormPredictive className="search">
+        {({fetchResults, goToSearch, inputRef}) => (
+          <>
+            <input
+              name="q"
+              type="search"
+              placeholder="Buscar productos, marcas..."
+              aria-label="Buscar"
+              ref={inputRef}
+              onChange={(e) => {
+                setOpen(Boolean(e.target.value));
+                fetchResults(e);
+              }}
+              onFocus={(e) => setOpen(Boolean(e.target.value))}
+            />
+            <button type="submit" aria-label="Buscar" onClick={goToSearch}>
+              <Icon name="search" />
+            </button>
+          </>
+        )}
+      </SearchFormPredictive>
+
+      <div className={`search-suggest${open ? ' open' : ''}`}>
+        <SearchResultsPredictive>
+          {({items, total, term, state, closeSearch}) => {
+            if (!total) {
+              if (state === 'loading' && term.current) {
+                return <div className="search-suggest__empty">Buscando…</div>;
+              }
+              return term.current ? (
+                <div className="search-suggest__empty">Sin resultados</div>
+              ) : null;
+            }
+            return (
+              <>
+                {items.products.slice(0, 6).map((product) => {
+                  const price = product.selectedOrFirstAvailableVariant?.price;
+                  const image = product.selectedOrFirstAvailableVariant?.image;
+                  return (
+                    <Link
+                      key={product.id}
+                      to={`/products/${product.handle}`}
+                      className="search-suggest__item"
+                      onClick={() => {
+                        closeSearch();
+                        setOpen(false);
+                      }}
+                    >
+                      {image && <Image data={image} width={34} height={34} />}
+                      <span className="search-suggest__title">{product.title}</span>
+                      {price && <span className="search-suggest__price"><Money data={price} /></span>}
+                    </Link>
+                  );
+                })}
+                <Link
+                  className="search-suggest__all"
+                  to={`${SEARCH_ENDPOINT}?q=${term.current}`}
+                  onClick={() => {
+                    closeSearch();
+                    setOpen(false);
+                  }}
+                >
+                  Ver todos los resultados
+                </Link>
+              </>
+            );
+          }}
+        </SearchResultsPredictive>
+      </div>
+    </div>
   );
 }
 
@@ -143,6 +254,7 @@ function CartBadge({count}: {count: number}) {
   return (
     <a
       href="/cart"
+      className="cart-btn"
       onClick={(e) => {
         e.preventDefault();
         open('cart');
@@ -154,7 +266,8 @@ function CartBadge({count}: {count: number}) {
         } as CartViewPayload);
       }}
     >
-      Cart <span aria-label={`(items: ${count})`}>{count}</span>
+      <Icon name="cart" />
+      <span className="cart-btn__count">{count}</span>
     </a>
   );
 }
@@ -175,57 +288,29 @@ function CartBanner() {
   return <CartBadge count={cart?.totalQuantity ?? 0} />;
 }
 
-const FALLBACK_HEADER_MENU = {
-  id: 'gid://shopify/Menu/199655587896',
-  items: [
-    {
-      id: 'gid://shopify/MenuItem/461609500728',
-      resourceId: null,
-      tags: [],
-      title: 'Collections',
-      type: 'HTTP',
-      url: '/collections',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609533496',
-      resourceId: null,
-      tags: [],
-      title: 'Blog',
-      type: 'HTTP',
-      url: '/blogs/journal',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609566264',
-      resourceId: null,
-      tags: [],
-      title: 'Policies',
-      type: 'HTTP',
-      url: '/policies',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609599032',
-      resourceId: 'gid://shopify/Page/92591030328',
-      tags: [],
-      title: 'About',
-      type: 'PAGE',
-      url: '/pages/about',
-      items: [],
-    },
-  ],
-};
-
-function activeLinkStyle({
-  isActive,
-  isPending,
-}: {
-  isActive: boolean;
-  isPending: boolean;
-}) {
+function fallbackItem(id: string, url: string, title: string) {
   return {
-    fontWeight: isActive ? 'bold' : undefined,
-    color: isPending ? 'grey' : 'black',
+    id: `gid://shopify/MenuItem/fallback-${id}`,
+    resourceId: null,
+    tags: [],
+    title,
+    type: 'HTTP' as const,
+    url,
+    items: [],
   };
 }
+
+const FALLBACK_HEADER_MENU = {
+  id: 'gid://shopify/Menu/fallback',
+  items: [
+    fallbackItem('flight-cases', '/collections/flight-cases-y-bolsas', 'Flight-Cases y Bolsas'),
+    fallbackItem('pioneer', '/collections/pioneer-dj-alphatheta', 'Pioneer DJ & AlphaTheta'),
+    fallbackItem('dj', '/collections/equipos-dj', 'Equipos DJ'),
+    fallbackItem('sonido', '/collections/sonido', 'Sonido'),
+    fallbackItem('auriculares', '/collections/auriculares', 'Auriculares'),
+    fallbackItem('estudio', '/collections/material-estudio', 'Material Estudio'),
+    fallbackItem('cables', '/collections/cables', 'Cables'),
+    fallbackItem('acustica', '/collections/acustica', 'Acústica'),
+    fallbackItem('outlet', '/collections/outlet', 'Outlet'),
+  ],
+};

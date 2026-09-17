@@ -1,3 +1,38 @@
+// Fragmento compartido para tarjetas de producto (home, colecciones, busqueda).
+export const PRODUCT_CARD_FRAGMENT = `#graphql
+  fragment ProductCardPrice on MoneyV2 {
+    amount
+    currencyCode
+  }
+  fragment ProductCard on Product {
+    id
+    handle
+    title
+    vendor
+    featuredImage {
+      id
+      altText
+      url
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        ...ProductCardPrice
+      }
+    }
+    compareAtPriceRange {
+      minVariantPrice {
+        ...ProductCardPrice
+      }
+    }
+    selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {
+      id
+      availableForSale
+    }
+  }
+` as const;
+
 // NOTE: https://shopify.dev/docs/api/storefront/latest/queries/cart
 export const CART_QUERY_FRAGMENT = `#graphql
   fragment Money on MoneyV2 {

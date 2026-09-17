@@ -19,6 +19,9 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    // TODO: quitar en cuanto el logo se suba a Shopify Files (cdn.shopify.com)
+    // en vez de servirse desde la web antigua de LiveCommerce.
+    imgSrc: ["'self'", 'data:', 'https://cdn.shopify.com', 'https://www.victorso.com'],
   });
 
   const body = await renderToReadableStream(

@@ -1,176 +1,240 @@
-import {Await, useLoaderData, Link} from 'react-router';
+import {useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
-import {Suspense} from 'react';
-import {Image} from '@shopify/hydrogen';
-import type {
-  FeaturedCollectionFragment,
-  RecommendedProductsQuery,
-} from 'storefrontapi.generated';
-import {ProductItem} from '~/components/ProductItem';
-import {MockShopNotice} from '~/components/MockShopNotice';
+import {Money} from '@shopify/hydrogen';
+import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {ProductCard} from '~/components/ProductCard';
+import {StoreHero, type HeroSlide} from '~/components/StoreHero';
+import {Icon, type IconName} from '~/lib/icons';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Hydrogen | Home'}];
+  return [{title: 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales'}];
 };
 
-export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
-
-  return {...deferredData, ...criticalData};
-}
-
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({context}: Route.LoaderArgs) {
-  const [{collections}] = await Promise.all([
-    context.storefront.query(FEATURED_COLLECTION_QUERY),
-    // Add other queries here, so that they are loaded in parallel
+export async function loader({context}: Route.LoaderArgs) {
+  const {storefront} = context;
+  const [{products}, {collections}] = await Promise.all([
+    storefront.query(HOME_PRODUCTS_QUERY),
+    storefront.query(HOME_COLLECTIONS_QUERY),
   ]);
 
-  return {
-    isShopLinked: Boolean(context.env.PUBLIC_STORE_DOMAIN),
-    featuredCollection: collections.nodes[0],
-  };
+  const newest = [...products.nodes].sort((a, b) => (a.handle < b.handle ? 1 : -1)).slice(0, 3);
+  const bestselling = products.nodes[0] ?? null;
+  const offers = products.nodes
+    .filter(
+      (p) =>
+        p.compareAtPriceRange?.minVariantPrice &&
+        parseFloat(p.compareAtPriceRange.minVariantPrice.amount) >
+          parseFloat(p.priceRange.minVariantPrice.amount),
+    )
+    .slice(0, 4);
+  const bestsellers = products.nodes.slice(0, 8);
+  const vendors = [...new Set(products.nodes.map((p) => p.vendor).filter(Boolean))].slice(0, 12);
+
+  return {newest, bestselling, offers, bestsellers, vendors, collections: collections.nodes};
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: Route.LoaderArgs) {
-  const recommendedProducts = context.storefront
-    .query(RECOMMENDED_PRODUCTS_QUERY)
-    .catch((error: Error) => {
-      // Log query errors, but don't throw them so the page can still render
-      console.error(error);
-      return null;
-    });
-
-  return {
-    recommendedProducts,
-  };
+function categoryIcon(title: string): IconName {
+  const t = title.toLowerCase();
+  if (t.includes('dj')) return 'sliders';
+  if (t.includes('sonido') || t.includes('altavo') || t.includes('acúst') || t.includes('acust')) return 'speaker';
+  if (t.includes('auricular')) return 'headphones';
+  if (t.includes('cable')) return 'plug';
+  if (t.includes('estudio') || t.includes('micro')) return 'mic';
+  if (t.includes('flight') || t.includes('case') || t.includes('bolsa') || t.includes('malet')) return 'suitcase';
+  if (t.includes('outlet')) return 'tag';
+  return 'tag';
 }
 
 export default function Homepage() {
-  const data = useLoaderData<typeof loader>();
+  const {newest, bestselling, offers, bestsellers, vendors, collections} =
+    useLoaderData<typeof loader>();
+
+  const leftSlides: HeroSlide[] = newest.map((p) => ({
+    key: `new-${p.id}`,
+    href: `/products/${p.handle}`,
+    image: p.featuredImage?.url ?? '',
+    badge: 'Nuevo',
+    badgeClass: 'storehero__badge--new',
+    eyebrow: p.vendor,
+    title: p.title,
+    cta: 'Descubrir',
+    ctaClass: 'btn--outline',
+  }));
+
+  const rightSlides: HeroSlide[] = [];
+  if (bestselling) {
+    rightSlides.push({
+      key: `best-${bestselling.id}`,
+      href: `/products/${bestselling.handle}`,
+      image: bestselling.featuredImage?.url ?? '',
+      badge: 'Más vendido',
+      badgeClass: 'storehero__badge--offer',
+      eyebrow: bestselling.vendor,
+      title: bestselling.title,
+      priceNode: (
+        <div className="storehero__price">
+          <span className="now">
+            <Money data={bestselling.priceRange.minVariantPrice} />
+          </span>
+        </div>
+      ),
+      cta: 'Ver producto',
+      ctaClass: 'btn--primary',
+    });
+  }
+  rightSlides.push(
+    {
+      key: 'contact',
+      href: 'https://wa.me/34619406443',
+      external: true,
+      image: '/assets/tienda-fachada.jpeg',
+      badge: 'Contacto',
+      badgeClass: 'storehero__badge--brand',
+      eyebrow: '972 364 114',
+      title: 'Escríbenos por WhatsApp',
+      cta: 'Contactar',
+      ctaClass: 'btn--outline',
+    },
+    {
+      key: 'visit',
+      href: '/pages/quienes-somos',
+      image: '/assets/tienda-fachada.jpeg',
+      badge: 'Visítanos',
+      badgeClass: 'storehero__badge--brand',
+      eyebrow: 'Lloret de Mar (Girona)',
+      title: 'Visita nuestra tienda',
+      cta: 'Cómo llegar',
+      ctaClass: 'btn--outline',
+    },
+  );
+
   return (
     <div className="home">
-      {data.isShopLinked ? null : <MockShopNotice />}
-      <FeaturedCollection collection={data.featuredCollection} />
-      <RecommendedProducts products={data.recommendedProducts} />
+      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} vendors={vendors} />
+
+      <section className="section reveal" id="categorySection">
+        <div className="container">
+          <div className="section__head">
+            <h2>Categorías</h2>
+          </div>
+          <div className="catgrid">
+            {collections.map((c) => (
+              <Link key={c.id} className="catcard" to={`/collections/${c.handle}`}>
+                <Icon name={categoryIcon(c.title)} className="catcard__icon" />
+                {c.image && <img src={c.image.url} alt={c.image.altText ?? c.title} loading="lazy" />}
+                <span className="catcard__label">{c.title}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section discover reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>Descubre más</h2>
+          </div>
+          <div className="discover__grid">
+            <Link className="discover__card" to="/pages/instalaciones">
+              <span className="discover__icon"><Icon name="speaker" /></span>
+              <div className="discover__info">
+                <h3>Instalaciones realizadas</h3>
+                <p>Sonorización de espacios públicos, locales y eventos.</p>
+                <span className="discover__link">Ver más <Icon name="arrowRight" /></span>
+              </div>
+            </Link>
+            <a
+              className="discover__card discover__card--solid"
+              href="https://wa.me/34619406443"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="discover__icon"><Icon name="chat" /></span>
+              <div className="discover__info">
+                <h3>Contacta por WhatsApp</h3>
+                <p>Te asesoramos sin compromiso.</p>
+                <span className="discover__link">Escribir <Icon name="arrowRight" /></span>
+              </div>
+            </a>
+            <Link
+              className="discover__card"
+              to="/pages/quienes-somos"
+              style={{backgroundImage: "url('/assets/tienda-fachada.jpeg')"}}
+            >
+              <span className="discover__icon"><Icon name="shield" /></span>
+              <div className="discover__info">
+                <h3>Quiénes somos</h3>
+                <p>Más de 35 años de experiencia en sonido y DJ.</p>
+                <span className="discover__link">Conócenos <Icon name="arrowRight" /></span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="shipband">
+        <Icon name="truck" />
+        <span>Envío gratis Península desde 149€</span>
+      </div>
+
+      {offers.length > 0 && (
+        <section className="section section--muted reveal">
+          <div className="container">
+            <div className="section__head">
+              <h2>Ofertas</h2>
+              <Link to="/collections/outlet">
+                Ver outlet <Icon name="arrowRight" />
+              </Link>
+            </div>
+            <div className="prodgrid">
+              {offers.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="section reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>Los más vendidos</h2>
+          </div>
+          <div className="prodgrid">
+            {bestsellers.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
-function FeaturedCollection({
-  collection,
-}: {
-  collection: FeaturedCollectionFragment;
-}) {
-  if (!collection) return null;
-  const image = collection?.image;
-  return (
-    <Link
-      className="featured-collection"
-      to={`/collections/${collection.handle}`}
-    >
-      {image && (
-        <div className="featured-collection-image">
-          <Image
-            data={image}
-            sizes="100vw"
-            alt={image.altText || collection.title}
-          />
-        </div>
-      )}
-      <h1>{collection.title}</h1>
-    </Link>
-  );
-}
-
-function RecommendedProducts({
-  products,
-}: {
-  products: Promise<RecommendedProductsQuery | null>;
-}) {
-  return (
-    <section
-      className="recommended-products"
-      aria-labelledby="recommended-products"
-    >
-      <h2 id="recommended-products">Recommended Products</h2>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Await resolve={products}>
-          {(response) => (
-            <div className="recommended-products-grid">
-              {response
-                ? response.products.nodes.map((product) => (
-                    <ProductItem key={product.id} product={product} />
-                  ))
-                : null}
-            </div>
-          )}
-        </Await>
-      </Suspense>
-      <br />
-    </section>
-  );
-}
-
-const FEATURED_COLLECTION_QUERY = `#graphql
-  fragment FeaturedCollection on Collection {
-    id
-    title
-    image {
-      id
-      url
-      altText
-      width
-      height
-    }
-    handle
-  }
-  query FeaturedCollection($country: CountryCode, $language: LanguageCode)
+const HOME_PRODUCTS_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query HomeProducts($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    collections(first: 1, sortKey: UPDATED_AT, reverse: true) {
+    products(first: 16, sortKey: BEST_SELLING) {
       nodes {
-        ...FeaturedCollection
+        ...ProductCard
       }
     }
   }
 ` as const;
 
-const RECOMMENDED_PRODUCTS_QUERY = `#graphql
-  fragment RecommendedProduct on Product {
-    id
-    title
-    handle
-    priceRange {
-      minVariantPrice {
-        amount
-        currencyCode
-      }
-    }
-    featuredImage {
-      id
-      url
-      altText
-      width
-      height
-    }
-  }
-  query RecommendedProducts ($country: CountryCode, $language: LanguageCode)
+const HOME_COLLECTIONS_QUERY = `#graphql
+  query HomeCollections($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    products(first: 4, sortKey: UPDATED_AT, reverse: true) {
+    collections(first: 9, sortKey: TITLE) {
       nodes {
-        ...RecommendedProduct
+        id
+        handle
+        title
+        image {
+          url
+          altText
+        }
       }
     }
   }

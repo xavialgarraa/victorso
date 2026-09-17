@@ -105,9 +105,14 @@ export default function Cart() {
   const cart = useLoaderData<typeof loader>();
 
   return (
-    <div className="cart">
-      <h1>Cart</h1>
-      <CartMain layout="page" cart={cart} />
+    <div className="section">
+      <div className="breadcrumb container">
+        <a href="/">Inicio</a> / Carrito
+      </div>
+      <div className="container">
+        <h1 className="section-title-lg">Carrito</h1>
+        <CartMain layout="page" cart={cart} />
+      </div>
     </div>
   );
 }

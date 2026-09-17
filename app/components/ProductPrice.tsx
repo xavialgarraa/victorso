@@ -8,20 +8,23 @@ export function ProductPrice({
   price?: MoneyV2;
   compareAtPrice?: MoneyV2 | null;
 }) {
+  const hasOffer =
+    compareAtPrice && price && parseFloat(compareAtPrice.amount) > parseFloat(price.amount);
+  const pct = hasOffer
+    ? Math.round((1 - parseFloat(price!.amount) / parseFloat(compareAtPrice!.amount)) * 100)
+    : 0;
+
   return (
-    <div aria-label="Price" className="product-price" role="group">
-      {compareAtPrice ? (
-        <div className="product-price-on-sale">
-          {price ? <Money data={price} /> : null}
-          <s>
-            <Money data={compareAtPrice} />
-          </s>
-        </div>
-      ) : price ? (
-        <Money data={price} />
-      ) : (
-        <span>&nbsp;</span>
+    <>
+      <span className="now">{price ? <Money data={price} /> : <>&nbsp;</>}</span>
+      {hasOffer && (
+        <>
+          <span className="was">
+            <Money data={compareAtPrice!} />
+          </span>
+          <span className="badge badge--offer">-{pct}%</span>
+        </>
       )}
-    </div>
+    </>
   );
 }

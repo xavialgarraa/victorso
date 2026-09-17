@@ -1,4 +1,5 @@
-import {redirect, useLoaderData} from 'react-router';
+import {redirect, useLoaderData, Link, Await} from 'react-router';
+import {Suspense} from 'react';
 import type {Route} from './+types/products.$handle';
 import {
   getSelectedProductOptions,
@@ -9,13 +10,16 @@ import {
   useSelectedOptionInUrlParam,
 } from '@shopify/hydrogen';
 import {ProductPrice} from '~/components/ProductPrice';
-import {ProductImage} from '~/components/ProductImage';
+import {ProductGallery} from '~/components/ProductGallery';
 import {ProductForm} from '~/components/ProductForm';
+import {ProductCard} from '~/components/ProductCard';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {Icon} from '~/lib/icons';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [
-    {title: `Hydrogen | ${data?.product.title ?? ''}`},
+    {title: `${data?.product.title ?? ''} — Victor So Professional`},
     {
       rel: 'canonical',
       href: `/products/${data?.product.handle}`,
@@ -24,19 +28,11 @@ export const meta: Route.MetaFunction = ({data}) => {
 };
 
 export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
   const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-
   return {...deferredData, ...criticalData};
 }
 
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
 async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   const {handle} = params;
   const {storefront} = context;
@@ -49,77 +45,123 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     storefront.query(PRODUCT_QUERY, {
       variables: {handle, selectedOptions: getSelectedProductOptions(request)},
     }),
-    // Add other queries here, so that they are loaded in parallel
   ]);
 
   if (!product?.id) {
     throw new Response(null, {status: 404});
   }
 
-  // The API handle might be localized, so redirect to the localized handle
   redirectIfHandleIsLocalized(request, {handle, data: product});
 
-  return {
-    product,
-  };
+  return {product};
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context, params}: Route.LoaderArgs) {
-  // Put any API calls that is not critical to be available on first page render
-  // For example: product reviews, product recommendations, social feeds.
+function loadDeferredData({context}: Route.LoaderArgs) {
+  const {storefront} = context;
+  // Nota: idealmente séria "mismo vendor/categoria", pero eso obligaria a
+  // esperar a loadCriticalData (perder el fetch en paralelo). Se muestra
+  // una seleccion generica de mas vendidos en su lugar.
+  const related = storefront.query(RELATED_PRODUCTS_QUERY).catch(() => null);
 
-  return {};
+  return {related};
 }
 
 export default function Product() {
-  const {product} = useLoaderData<typeof loader>();
+  const {product, related} = useLoaderData<typeof loader>();
 
-  // Optimistically selects a variant with given available variant information
   const selectedVariant = useOptimisticVariant(
     product.selectedOrFirstAvailableVariant,
     getAdjacentAndFirstAvailableVariants(product),
   );
 
-  // Sets the search param to the selected variant without navigation
-  // only when no search params are set in the url
   useSelectedOptionInUrlParam(selectedVariant.selectedOptions);
 
-  // Get the product options array
   const productOptions = getProductOptions({
     ...product,
     selectedOrFirstAvailableVariant: selectedVariant,
   });
 
-  const {title, descriptionHtml} = product;
+  const {title, vendor, descriptionHtml} = product;
+  const images = product.images.nodes;
 
   return (
-    <div className="product">
-      <ProductImage image={selectedVariant?.image} />
-      <div className="product-main">
-        <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
-        <br />
-        <ProductForm
-          productOptions={productOptions}
-          selectedVariant={selectedVariant}
-        />
-        <br />
-        <br />
-        <p>
-          <strong>Description</strong>
-        </p>
-        <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
-        <br />
+    <div>
+      <div className="breadcrumb container">
+        <Link to="/">Inicio</Link> / {title}
       </div>
+      <div className="pdp">
+        <ProductGallery images={images} selectedVariantImage={selectedVariant?.image} />
+
+        <div className="pdp__info">
+          {vendor && <div className="pdp__vendor">{vendor}</div>}
+          <h1 className="pdp__title">{title}</h1>
+
+          <div className="pdp__price" id="pdpPrice">
+            <ProductPrice
+              price={selectedVariant?.price}
+              compareAtPrice={selectedVariant?.compareAtPrice}
+            />
+          </div>
+
+          <ProductForm productOptions={productOptions} selectedVariant={selectedVariant} />
+
+          <div className="pdp__perks">
+            <div>
+              <Icon name="truck" />
+              <span>Envío gratis en pedidos +149€ a Península</span>
+            </div>
+            <div>
+              <Icon name="shield" />
+              <span>Garantía oficial del fabricante</span>
+            </div>
+            <div>
+              <Icon name="returnArrow" />
+              <span>Devolución gratuita en 30 días</span>
+            </div>
+            <div>
+              <Icon name="card" />
+              <span>Pago 100% seguro</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="pdp__tabs">
+          <div className="tabs__nav">
+            <button className="active" type="button">
+              Descripción
+            </button>
+          </div>
+          <div className="tabs__panel active">
+            {descriptionHtml ? (
+              <div className="pdp__desc" dangerouslySetInnerHTML={{__html: descriptionHtml}} />
+            ) : (
+              <p className="pdp__desc">Sin descripción disponible.</p>
+            )}
+          </div>
+        </div>
+
+        <Suspense fallback={null}>
+          <Await resolve={related}>
+            {(data) => {
+              const items = data?.products.nodes.filter((p) => p.id !== product.id).slice(0, 4) ?? [];
+              if (!items.length) return null;
+              return (
+                <div className="related">
+                  <div className="section__head">
+                    <h2>También te puede interesar</h2>
+                  </div>
+                  <div className="prodgrid">
+                    {items.map((p) => (
+                      <ProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                </div>
+              );
+            }}
+          </Await>
+        </Suspense>
+      </div>
+
       <Analytics.ProductView
         data={{
           products: [
@@ -186,6 +228,15 @@ const PRODUCT_FRAGMENT = `#graphql
     description
     encodedVariantExistence
     encodedVariantAvailability
+    images(first: 8) {
+      nodes {
+        id
+        url
+        altText
+        width
+        height
+      }
+    }
     options {
       name
       optionValues {
@@ -229,4 +280,16 @@ const PRODUCT_QUERY = `#graphql
     }
   }
   ${PRODUCT_FRAGMENT}
+` as const;
+
+const RELATED_PRODUCTS_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query RelatedProducts($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    products(first: 5, sortKey: BEST_SELLING) {
+      nodes {
+        ...ProductCard
+      }
+    }
+  }
 ` as const;

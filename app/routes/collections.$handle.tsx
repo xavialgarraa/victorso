@@ -1,89 +1,106 @@
 import {redirect, useLoaderData} from 'react-router';
 import type {Route} from './+types/collections.$handle';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
-import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
+import type {ProductFilter} from '@shopify/hydrogen/storefront-api-types';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
-import {ProductItem} from '~/components/ProductItem';
-import type {ProductItemFragment} from 'storefrontapi.generated';
+import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.collection.title ?? ''} Collection`}];
+  return [{title: `${data?.collection.title ?? ''} — Victor So Professional`}];
 };
 
+const SORT_OPTIONS = [
+  {value: 'relevance', label: 'Relevancia', sortKey: 'COLLECTION_DEFAULT', reverse: false},
+  {value: 'price-asc', label: 'Precio: menor a mayor', sortKey: 'PRICE', reverse: false},
+  {value: 'price-desc', label: 'Precio: mayor a menor', sortKey: 'PRICE', reverse: true},
+  {value: 'newest', label: 'Novedades', sortKey: 'CREATED', reverse: true},
+  {value: 'title', label: 'Nombre A-Z', sortKey: 'TITLE', reverse: false},
+] as const;
+
 export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-
-  return {...deferredData, ...criticalData};
+  return {...criticalData};
 }
 
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
 async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   const {handle} = params;
   const {storefront} = context;
-  const paginationVariables = getPaginationVariables(request, {
-    pageBy: 8,
-  });
+  const url = new URL(request.url);
+
+  const perPage = [12, 24, 48].includes(Number(url.searchParams.get('perPage')))
+    ? Number(url.searchParams.get('perPage'))
+    : 12;
+  const paginationVariables = getPaginationVariables(request, {pageBy: perPage});
+
+  const sortParam = url.searchParams.get('sort') || 'relevance';
+  const sortConfig = SORT_OPTIONS.find((s) => s.value === sortParam) ?? SORT_OPTIONS[0];
+
+  const filters: ProductFilter[] = url.searchParams
+    .getAll('filter')
+    .map((f) => {
+      try {
+        return JSON.parse(f) as ProductFilter;
+      } catch {
+        return null;
+      }
+    })
+    .filter((f): f is ProductFilter => f !== null);
 
   if (!handle) {
     throw redirect('/collections');
   }
 
-  const [{collection}] = await Promise.all([
-    storefront.query(COLLECTION_QUERY, {
-      variables: {handle, ...paginationVariables},
-      // Add other queries here, so that they are loaded in parallel
-    }),
-  ]);
+  const {collection} = await storefront.query(COLLECTION_QUERY, {
+    variables: {
+      handle,
+      filters,
+      sortKey: sortConfig.sortKey,
+      reverse: sortConfig.reverse,
+      ...paginationVariables,
+    },
+  });
 
   if (!collection) {
-    throw new Response(`Collection ${handle} not found`, {
-      status: 404,
-    });
+    throw new Response(`Collection ${handle} not found`, {status: 404});
   }
 
-  // The API handle might be localized, so redirect to the localized handle
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
-  return {
-    collection,
-  };
-}
-
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: Route.LoaderArgs) {
-  return {};
+  return {collection};
 }
 
 export default function Collection() {
   const {collection} = useLoaderData<typeof loader>();
 
+  const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
+    id: f.id,
+    label: f.label,
+    values: f.values.map((v) => ({
+      id: v.id,
+      label: v.label,
+      count: v.count,
+      input: String(v.input),
+    })),
+  }));
+
   return (
     <div className="collection">
-      <h1>{collection.title}</h1>
-      <p className="collection-description">{collection.description}</p>
-      <PaginatedResourceSection<ProductItemFragment>
-        connection={collection.products}
-        resourcesClassName="products-grid"
-      >
-        {({node: product, index}) => (
-          <ProductItem
-            key={product.id}
-            product={product}
-            loading={index < 8 ? 'eager' : undefined}
-          />
-        )}
-      </PaginatedResourceSection>
+      <div className="breadcrumb container">
+        <a href="/">Inicio</a> / {collection.title}
+      </div>
+      <ProductListing
+        title={collection.title}
+        products={collection.products}
+        filters={listingFilters}
+        sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
+        resultCount={collection.products.nodes.length}
+      />
+      {collection.description && (
+        <div className="container">
+          <p className="collection-description">{collection.description}</p>
+        </div>
+      )}
       <Analytics.CollectionView
         data={{
           collection: {
@@ -96,36 +113,8 @@ export default function Collection() {
   );
 }
 
-const PRODUCT_ITEM_FRAGMENT = `#graphql
-  fragment MoneyProductItem on MoneyV2 {
-    amount
-    currencyCode
-  }
-  fragment ProductItem on Product {
-    id
-    handle
-    title
-    featuredImage {
-      id
-      altText
-      url
-      width
-      height
-    }
-    priceRange {
-      minVariantPrice {
-        ...MoneyProductItem
-      }
-      maxVariantPrice {
-        ...MoneyProductItem
-      }
-    }
-  }
-` as const;
-
-// NOTE: https://shopify.dev/docs/api/storefront/2022-04/objects/collection
 const COLLECTION_QUERY = `#graphql
-  ${PRODUCT_ITEM_FRAGMENT}
+  ${PRODUCT_CARD_FRAGMENT}
   query Collection(
     $handle: String!
     $country: CountryCode
@@ -134,6 +123,9 @@ const COLLECTION_QUERY = `#graphql
     $last: Int
     $startCursor: String
     $endCursor: String
+    $filters: [ProductFilter!]
+    $sortKey: ProductCollectionSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
     collection(handle: $handle) {
       id
@@ -144,10 +136,24 @@ const COLLECTION_QUERY = `#graphql
         first: $first,
         last: $last,
         before: $startCursor,
-        after: $endCursor
+        after: $endCursor,
+        filters: $filters,
+        sortKey: $sortKey,
+        reverse: $reverse
       ) {
+        filters {
+          id
+          label
+          type
+          values {
+            id
+            label
+            count
+            input
+          }
+        }
         nodes {
-          ...ProductItem
+          ...ProductCard
         }
         pageInfo {
           hasPreviousPage

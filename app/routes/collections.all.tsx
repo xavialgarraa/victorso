@@ -1,103 +1,70 @@
 import type {Route} from './+types/collections.all';
 import {useLoaderData} from 'react-router';
-import {getPaginationVariables, Image, Money} from '@shopify/hydrogen';
-import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
-import {ProductItem} from '~/components/ProductItem';
-import type {CollectionItemFragment} from 'storefrontapi.generated';
+import {getPaginationVariables} from '@shopify/hydrogen';
+import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Hydrogen | Products`}];
+  return [{title: `Todos los productos — Victor So Professional`}];
 };
 
-export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
+const SORT_OPTIONS = [
+  {value: 'relevance', label: 'Relevancia', sortKey: 'BEST_SELLING', reverse: false},
+  {value: 'price-asc', label: 'Precio: menor a mayor', sortKey: 'PRICE', reverse: false},
+  {value: 'price-desc', label: 'Precio: mayor a menor', sortKey: 'PRICE', reverse: true},
+  {value: 'newest', label: 'Novedades', sortKey: 'CREATED_AT', reverse: true},
+  {value: 'title', label: 'Nombre A-Z', sortKey: 'TITLE', reverse: false},
+] as const;
 
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
-
-  return {...deferredData, ...criticalData};
-}
-
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({context, request}: Route.LoaderArgs) {
+export async function loader({context, request}: Route.LoaderArgs) {
   const {storefront} = context;
-  const paginationVariables = getPaginationVariables(request, {
-    pageBy: 8,
+  const url = new URL(request.url);
+
+  const perPage = [12, 24, 48].includes(Number(url.searchParams.get('perPage')))
+    ? Number(url.searchParams.get('perPage'))
+    : 12;
+  const paginationVariables = getPaginationVariables(request, {pageBy: perPage});
+
+  const sortParam = url.searchParams.get('sort') || 'relevance';
+  const sortConfig = SORT_OPTIONS.find((s) => s.value === sortParam) ?? SORT_OPTIONS[0];
+
+  // Nota: la query raiz `products` no admite el argumento `filters` (los
+  // facets de Shopify solo existen dentro de una coleccion), asi que en
+  // "todos los productos" solo hay orden + paginacion, sin filtro lateral.
+  const {products} = await storefront.query(CATALOG_QUERY, {
+    variables: {
+      sortKey: sortConfig.sortKey,
+      reverse: sortConfig.reverse,
+      ...paginationVariables,
+    },
   });
 
-  const [{products}] = await Promise.all([
-    storefront.query(CATALOG_QUERY, {
-      variables: {...paginationVariables},
-    }),
-    // Add other queries here, so that they are loaded in parallel
-  ]);
   return {products};
-}
-
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: Route.LoaderArgs) {
-  return {};
 }
 
 export default function Collection() {
   const {products} = useLoaderData<typeof loader>();
 
+  const listingFilters: ListingFilter[] = [];
+
   return (
     <div className="collection">
-      <h1>Products</h1>
-      <PaginatedResourceSection<CollectionItemFragment>
-        connection={products}
-        resourcesClassName="products-grid"
-      >
-        {({node: product, index}) => (
-          <ProductItem
-            key={product.id}
-            product={product}
-            loading={index < 8 ? 'eager' : undefined}
-          />
-        )}
-      </PaginatedResourceSection>
+      <div className="breadcrumb container">
+        <a href="/">Inicio</a> / Todos los productos
+      </div>
+      <ProductListing
+        title="Todos los productos"
+        products={products}
+        filters={listingFilters}
+        sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
+        resultCount={products.nodes.length}
+      />
     </div>
   );
 }
 
-const COLLECTION_ITEM_FRAGMENT = `#graphql
-  fragment MoneyCollectionItem on MoneyV2 {
-    amount
-    currencyCode
-  }
-  fragment CollectionItem on Product {
-    id
-    handle
-    title
-    featuredImage {
-      id
-      altText
-      url
-      width
-      height
-    }
-    priceRange {
-      minVariantPrice {
-        ...MoneyCollectionItem
-      }
-      maxVariantPrice {
-        ...MoneyCollectionItem
-      }
-    }
-  }
-` as const;
-
-// NOTE: https://shopify.dev/docs/api/storefront/latest/objects/product
 const CATALOG_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
   query Catalog(
     $country: CountryCode
     $language: LanguageCode
@@ -105,10 +72,19 @@ const CATALOG_QUERY = `#graphql
     $last: Int
     $startCursor: String
     $endCursor: String
+    $sortKey: ProductSortKeys
+    $reverse: Boolean
   ) @inContext(country: $country, language: $language) {
-    products(first: $first, last: $last, before: $startCursor, after: $endCursor) {
+    products(
+      first: $first,
+      last: $last,
+      before: $startCursor,
+      after: $endCursor,
+      sortKey: $sortKey,
+      reverse: $reverse
+    ) {
       nodes {
-        ...CollectionItem
+        ...ProductCard
       }
       pageInfo {
         hasPreviousPage
@@ -118,5 +94,4 @@ const CATALOG_QUERY = `#graphql
       }
     }
   }
-  ${COLLECTION_ITEM_FRAGMENT}
 ` as const;
