@@ -3,7 +3,7 @@ import {Await, Link, NavLink, useAsyncValue} from 'react-router';
 import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
-import {Icon} from '~/lib/icons';
+import {Icon, type IconName} from '~/lib/icons';
 import {ThemeToggle} from '~/components/ThemeToggle';
 import {
   SEARCH_ENDPOINT,
@@ -20,8 +20,8 @@ interface HeaderProps {
 
 type Viewport = 'desktop' | 'mobile';
 
-export function Header({header, isLoggedIn, cart, publicStoreDomain}: HeaderProps) {
-  const {menu, shop} = header;
+export function Header({header, isLoggedIn, cart}: HeaderProps) {
+  const {shop} = header;
 
   return (
     <>
@@ -78,90 +78,41 @@ export function Header({header, isLoggedIn, cart, publicStoreDomain}: HeaderProp
           </div>
         </div>
 
-        <HeaderMenu
-          menu={menu}
-          viewport="desktop"
-          primaryDomainUrl={header.shop.primaryDomain.url}
-          publicStoreDomain={publicStoreDomain}
-        />
+        <HeaderMenu viewport="desktop" />
       </header>
     </>
   );
 }
 
-export function HeaderMenu({
-  menu,
-  primaryDomainUrl,
-  viewport,
-  publicStoreDomain,
-}: {
-  menu: HeaderProps['header']['menu'];
-  primaryDomainUrl: HeaderProps['header']['shop']['primaryDomain']['url'];
-  viewport: Viewport;
-  publicStoreDomain: HeaderProps['publicStoreDomain'];
-}) {
+export function HeaderMenu({viewport}: {viewport: Viewport}) {
   const {close} = useAside();
-  const items = (menu || FALLBACK_HEADER_MENU).items;
-
-  function itemHref(url: string) {
-    return url.includes('myshopify.com') ||
-      url.includes(publicStoreDomain) ||
-      url.includes(primaryDomainUrl)
-      ? new URL(url).pathname
-      : url;
-  }
 
   if (viewport === 'mobile') {
     return (
       <nav className="mobile-menu" role="navigation">
-        <NavLink end onClick={close} prefetch="intent" to="/" className="mobile-menu__item">
-          Inicio
-        </NavLink>
-        <NavLink className="mobile-menu__item" end onClick={close} prefetch="intent" to="/marcas">
-          <span className="mainnav__brands">
-            <Icon name="star" /> Nuestras Marcas
-          </span>
-        </NavLink>
-        {items.map(
-          (item) =>
-            item.url && (
-              <NavLink
-                className="mobile-menu__item"
-                end
-                key={item.id}
-                onClick={close}
-                prefetch="intent"
-                to={itemHref(item.url)}
-              >
-                {item.title}
-              </NavLink>
-            ),
-        )}
+        {NAV_LINKS.map((link) => (
+          <NavLink
+            className={`mobile-menu__item ${link.cls ?? ''}`}
+            end
+            key={link.href}
+            onClick={close}
+            prefetch="intent"
+            to={link.href}
+          >
+            {link.icon && <Icon name={link.icon} />} {link.label}
+          </NavLink>
+        ))}
       </nav>
     );
   }
 
   return (
     <nav className="mainnav" role="navigation">
-      <NavLink className="mainnav__item" end prefetch="intent" to="/marcas">
-        <span className="mainnav__brands">
-          <Icon name="star" /> Nuestras Marcas
-        </span>
-      </NavLink>
-      {items.map(
-        (item) =>
-          item.url && (
-            <NavLink
-              className="mainnav__item"
-              end
-              key={item.id}
-              prefetch="intent"
-              to={itemHref(item.url)}
-            >
-              {item.title}
-            </NavLink>
-          ),
-      )}
+      {NAV_LINKS.map((link) => (
+        <NavLink className={`mainnav__item ${link.cls ?? ''}`} end key={link.href} prefetch="intent" to={link.href}>
+          {link.icon && <Icon name={link.icon} />} {link.label}
+        </NavLink>
+      ))}
     </nav>
   );
 }
@@ -298,29 +249,17 @@ function CartBanner() {
   return <CartBadge count={cart?.totalQuantity ?? 0} />;
 }
 
-function fallbackItem(id: string, url: string, title: string) {
-  return {
-    id: `gid://shopify/MenuItem/fallback-${id}`,
-    resourceId: null,
-    tags: [],
-    title,
-    type: 'HTTP' as const,
-    url,
-    items: [],
-  };
-}
-
-const FALLBACK_HEADER_MENU = {
-  id: 'gid://shopify/Menu/fallback',
-  items: [
-    fallbackItem('flight-cases', '/collections/flight-cases-y-bolsas', 'Flight-Cases y Bolsas'),
-    fallbackItem('pioneer', '/collections/pioneer-dj-alphatheta', 'Pioneer DJ & AlphaTheta'),
-    fallbackItem('dj', '/collections/equipos-dj', 'Equipos DJ'),
-    fallbackItem('sonido', '/collections/sonido', 'Sonido'),
-    fallbackItem('auriculares', '/collections/auriculares', 'Auriculares'),
-    fallbackItem('estudio', '/collections/material-estudio', 'Material Estudio'),
-    fallbackItem('cables', '/collections/cables', 'Cables'),
-    fallbackItem('acustica', '/collections/acustica', 'Acústica'),
-    fallbackItem('outlet', '/collections/outlet', 'Outlet'),
-  ],
-};
+const NAV_LINKS: Array<{href: string; label: string; cls?: string; icon?: IconName}> = [
+  {href: '/', label: 'Inicio'},
+  {href: '/marcas', label: 'Nuestras Marcas', cls: 'mainnav__brands', icon: 'star'},
+  {href: '/collections/flight-cases-y-bolsas', label: 'Flight-Cases y Bolsas'},
+  {href: '/collections/pioneer-dj-alphatheta', label: 'Pioneer DJ & AlphaTheta'},
+  {href: '/collections/equipos-dj', label: 'Equipos DJ'},
+  {href: '/collections/sonido', label: 'Sonido'},
+  {href: '/collections/auriculares', label: 'Auriculares'},
+  {href: '/collections/material-estudio', label: 'Material Estudio'},
+  {href: '/collections/cables', label: 'Cables'},
+  {href: '/collections/acustica', label: 'Acústica'},
+  {href: '/collections/outlet', label: 'Outlet', cls: 'mainnav__outlet'},
+  {href: '/quienes-somos', label: 'Quiénes somos'},
+];
