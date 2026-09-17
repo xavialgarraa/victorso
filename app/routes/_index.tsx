@@ -135,7 +135,11 @@ export default function Homepage() {
             <h2>Descubre más</h2>
           </div>
           <div className="discover__grid">
-            <Link className="discover__card" to="/instalaciones">
+            <Link
+              className="discover__card"
+              to="/instalaciones"
+              style={{backgroundImage: "url('/assets/instalacion-paseo-maritimo.jpeg')"}}
+            >
               <span className="discover__icon"><Icon name="speaker" /></span>
               <div className="discover__info">
                 <h3>Instalaciones realizadas</h3>
