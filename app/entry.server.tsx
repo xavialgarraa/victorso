@@ -21,7 +21,19 @@ export default async function handleRequest(
     },
     // TODO: quitar en cuanto el logo se suba a Shopify Files (cdn.shopify.com)
     // en vez de servirse desde la web antigua de LiveCommerce.
-    imgSrc: ["'self'", 'data:', 'https://cdn.shopify.com', 'https://www.victorso.com'],
+    imgSrc: [
+      "'self'",
+      'data:',
+      'https://cdn.shopify.com',
+      'https://www.victorso.com',
+      'https://*.tiktokcdn.com',
+      'https://*.tiktokcdn-us.com',
+      'https://*.ibyteimg.com',
+    ],
+    // Necesario para el embed de TikTok en /instalaciones (script + iframe).
+    scriptSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://www.tiktok.com'],
+    frameSrc: ["'self'", 'https://www.tiktok.com'],
+    connectSrc: ['https://www.tiktok.com'],
   });
 
   const body = await renderToReadableStream(
