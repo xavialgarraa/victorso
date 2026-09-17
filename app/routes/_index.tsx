@@ -135,7 +135,7 @@ export default function Homepage() {
             <h2>Descubre más</h2>
           </div>
           <div className="discover__grid">
-            <Link className="discover__card" to="/pages/instalaciones">
+            <Link className="discover__card" to="/instalaciones">
               <span className="discover__icon"><Icon name="speaker" /></span>
               <div className="discover__info">
                 <h3>Instalaciones realizadas</h3>

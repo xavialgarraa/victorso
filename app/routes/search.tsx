@@ -3,6 +3,8 @@ import type {Route} from './+types/search';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
 import {SearchForm} from '~/components/SearchForm';
 import {SearchResults} from '~/components/SearchResults';
+import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {Icon} from '~/lib/icons';
 import {
   type RegularSearchReturn,
   type PredictiveSearchReturn,
@@ -41,37 +43,41 @@ export default function SearchPage() {
   if (type === 'predictive') return null;
 
   return (
-    <div className="search">
-      <h1>Search</h1>
-      <SearchForm>
-        {({inputRef}) => (
-          <>
-            <input
-              defaultValue={term}
-              name="q"
-              placeholder="Search…"
-              ref={inputRef}
-              type="search"
-            />
-            &nbsp;
-            <button type="submit">Search</button>
-          </>
-        )}
-      </SearchForm>
-      {error && <p style={{color: 'red'}}>{error}</p>}
-      {!term || !result?.total ? (
-        <SearchResults.Empty />
-      ) : (
-        <SearchResults result={result} term={term}>
-          {({articles, pages, products, term}) => (
-            <div>
-              <SearchResults.Products products={products} term={term} />
-              <SearchResults.Pages pages={pages} term={term} />
-              <SearchResults.Articles articles={articles} term={term} />
-            </div>
+    <div>
+      <div className="breadcrumb container">
+        <a href="/">Inicio</a> / Búsqueda
+      </div>
+      <section className="section listing">
+        <div className="container">
+          <div className="section__head">
+            <h1>{term ? `Resultados para "${term}"` : 'Buscar'}</h1>
+          </div>
+          <SearchForm className="search" style={{maxWidth: 460, marginBottom: 24}}>
+            {({inputRef}) => (
+              <>
+                <input defaultValue={term} name="q" placeholder="Buscar productos, marcas..." ref={inputRef} type="search" />
+                <button type="submit">
+                  <Icon name="search" />
+                </button>
+              </>
+            )}
+          </SearchForm>
+          {error && <p style={{color: 'var(--red)'}}>{error}</p>}
+          {!term || !result?.total ? (
+            <SearchResults.Empty />
+          ) : (
+            <SearchResults result={result} term={term}>
+              {({articles, pages, products, term}) => (
+                <div>
+                  <SearchResults.Products products={products} term={term} />
+                  <SearchResults.Pages pages={pages} term={term} />
+                  <SearchResults.Articles articles={articles} term={term} />
+                </div>
+              )}
+            </SearchResults>
           )}
-        </SearchResults>
-      )}
+        </div>
+      </section>
       <Analytics.SearchView data={{searchTerm: term, searchResults: result}} />
     </div>
   );
@@ -82,43 +88,11 @@ export default function SearchPage() {
  * (adjust as needed)
  */
 const SEARCH_PRODUCT_FRAGMENT = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
   fragment SearchProduct on Product {
     __typename
-    handle
-    id
-    publishedAt
-    title
     trackingParameters
-    vendor
-    selectedOrFirstAvailableVariant(
-      selectedOptions: []
-      ignoreUnknownOptions: true
-      caseInsensitiveMatch: true
-    ) {
-      id
-      image {
-        url
-        altText
-        width
-        height
-      }
-      price {
-        amount
-        currencyCode
-      }
-      compareAtPrice {
-        amount
-        currencyCode
-      }
-      selectedOptions {
-        name
-        value
-      }
-      product {
-        handle
-        title
-      }
-    }
+    ...ProductCard
   }
 ` as const;
 

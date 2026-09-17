@@ -1109,24 +1109,30 @@ export type RelatedProductsQuery = {
   };
 };
 
+export type AboutVendorsQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type AboutVendorsQuery = {
+  products: {nodes: Array<Pick<StorefrontAPI.Product, 'vendor'>>};
+};
+
 export type SearchProductFragment = {__typename: 'Product'} & Pick<
   StorefrontAPI.Product,
-  'handle' | 'id' | 'publishedAt' | 'title' | 'trackingParameters' | 'vendor'
+  'trackingParameters' | 'id' | 'handle' | 'title' | 'vendor'
 > & {
+    featuredImage?: StorefrontAPI.Maybe<
+      Pick<StorefrontAPI.Image, 'id' | 'altText' | 'url' | 'width' | 'height'>
+    >;
+    priceRange: {
+      minVariantPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+    };
+    compareAtPriceRange: {
+      minVariantPrice: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
+    };
     selectedOrFirstAvailableVariant?: StorefrontAPI.Maybe<
-      Pick<StorefrontAPI.ProductVariant, 'id'> & {
-        image?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Image, 'url' | 'altText' | 'width' | 'height'>
-        >;
-        price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-        compareAtPrice?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
-        >;
-        selectedOptions: Array<
-          Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
-        >;
-        product: Pick<StorefrontAPI.Product, 'handle' | 'title'>;
-      }
+      Pick<StorefrontAPI.ProductVariant, 'id' | 'availableForSale'>
     >;
   };
 
@@ -1180,30 +1186,28 @@ export type RegularSearchQuery = {
     nodes: Array<
       {__typename: 'Product'} & Pick<
         StorefrontAPI.Product,
-        | 'handle'
-        | 'id'
-        | 'publishedAt'
-        | 'title'
-        | 'trackingParameters'
-        | 'vendor'
+        'trackingParameters' | 'id' | 'handle' | 'title' | 'vendor'
       > & {
+          featuredImage?: StorefrontAPI.Maybe<
+            Pick<
+              StorefrontAPI.Image,
+              'id' | 'altText' | 'url' | 'width' | 'height'
+            >
+          >;
+          priceRange: {
+            minVariantPrice: Pick<
+              StorefrontAPI.MoneyV2,
+              'amount' | 'currencyCode'
+            >;
+          };
+          compareAtPriceRange: {
+            minVariantPrice: Pick<
+              StorefrontAPI.MoneyV2,
+              'amount' | 'currencyCode'
+            >;
+          };
           selectedOrFirstAvailableVariant?: StorefrontAPI.Maybe<
-            Pick<StorefrontAPI.ProductVariant, 'id'> & {
-              image?: StorefrontAPI.Maybe<
-                Pick<
-                  StorefrontAPI.Image,
-                  'url' | 'altText' | 'width' | 'height'
-                >
-              >;
-              price: Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>;
-              compareAtPrice?: StorefrontAPI.Maybe<
-                Pick<StorefrontAPI.MoneyV2, 'amount' | 'currencyCode'>
-              >;
-              selectedOptions: Array<
-                Pick<StorefrontAPI.SelectedOption, 'name' | 'value'>
-              >;
-              product: Pick<StorefrontAPI.Product, 'handle' | 'title'>;
-            }
+            Pick<StorefrontAPI.ProductVariant, 'id' | 'availableForSale'>
           >;
         }
     >;
@@ -1392,7 +1396,11 @@ interface GeneratedQueryTypes {
     return: RelatedProductsQuery;
     variables: RelatedProductsQueryVariables;
   };
-  '#graphql\n  query RegularSearch(\n    $country: CountryCode\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $term: String!\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    articles: search(\n      query: $term,\n      types: [ARTICLE],\n      first: $first,\n    ) {\n      nodes {\n        ...on Article {\n          ...SearchArticle\n        }\n      }\n    }\n    pages: search(\n      query: $term,\n      types: [PAGE],\n      first: $first,\n    ) {\n      nodes {\n        ...on Page {\n          ...SearchPage\n        }\n      }\n    }\n    products: search(\n      after: $endCursor,\n      before: $startCursor,\n      first: $first,\n      last: $last,\n      query: $term,\n      sortKey: RELEVANCE,\n      types: [PRODUCT],\n      unavailableProducts: HIDE,\n    ) {\n      nodes {\n        ...on Product {\n          ...SearchProduct\n        }\n      }\n      pageInfo {\n        ...PageInfoFragment\n      }\n    }\n  }\n  #graphql\n  fragment SearchProduct on Product {\n    __typename\n    handle\n    id\n    publishedAt\n    title\n    trackingParameters\n    vendor\n    selectedOrFirstAvailableVariant(\n      selectedOptions: []\n      ignoreUnknownOptions: true\n      caseInsensitiveMatch: true\n    ) {\n      id\n      image {\n        url\n        altText\n        width\n        height\n      }\n      price {\n        amount\n        currencyCode\n      }\n      compareAtPrice {\n        amount\n        currencyCode\n      }\n      selectedOptions {\n        name\n        value\n      }\n      product {\n        handle\n        title\n      }\n    }\n  }\n\n  #graphql\n  fragment SearchPage on Page {\n     __typename\n     handle\n    id\n    title\n    trackingParameters\n  }\n\n  #graphql\n  fragment SearchArticle on Article {\n    __typename\n    handle\n    id\n    title\n    trackingParameters\n  }\n\n  #graphql\n  fragment PageInfoFragment on PageInfo {\n    hasNextPage\n    hasPreviousPage\n    startCursor\n    endCursor\n  }\n\n': {
+  '#graphql\n  query AboutVendors($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    products(first: 50) {\n      nodes {\n        vendor\n      }\n    }\n  }\n': {
+    return: AboutVendorsQuery;
+    variables: AboutVendorsQueryVariables;
+  };
+  '#graphql\n  query RegularSearch(\n    $country: CountryCode\n    $endCursor: String\n    $first: Int\n    $language: LanguageCode\n    $last: Int\n    $term: String!\n    $startCursor: String\n  ) @inContext(country: $country, language: $language) {\n    articles: search(\n      query: $term,\n      types: [ARTICLE],\n      first: $first,\n    ) {\n      nodes {\n        ...on Article {\n          ...SearchArticle\n        }\n      }\n    }\n    pages: search(\n      query: $term,\n      types: [PAGE],\n      first: $first,\n    ) {\n      nodes {\n        ...on Page {\n          ...SearchPage\n        }\n      }\n    }\n    products: search(\n      after: $endCursor,\n      before: $startCursor,\n      first: $first,\n      last: $last,\n      query: $term,\n      sortKey: RELEVANCE,\n      types: [PRODUCT],\n      unavailableProducts: HIDE,\n    ) {\n      nodes {\n        ...on Product {\n          ...SearchProduct\n        }\n      }\n      pageInfo {\n        ...PageInfoFragment\n      }\n    }\n  }\n  #graphql\n  #graphql\n  fragment ProductCardPrice on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n      id\n      availableForSale\n    }\n  }\n\n  fragment SearchProduct on Product {\n    __typename\n    trackingParameters\n    ...ProductCard\n  }\n\n  #graphql\n  fragment SearchPage on Page {\n     __typename\n     handle\n    id\n    title\n    trackingParameters\n  }\n\n  #graphql\n  fragment SearchArticle on Article {\n    __typename\n    handle\n    id\n    title\n    trackingParameters\n  }\n\n  #graphql\n  fragment PageInfoFragment on PageInfo {\n    hasNextPage\n    hasPreviousPage\n    startCursor\n    endCursor\n  }\n\n': {
     return: RegularSearchQuery;
     variables: RegularSearchQueryVariables;
   };

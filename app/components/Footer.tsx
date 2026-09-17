@@ -133,6 +133,6 @@ const FALLBACK_FOOTER_MENU = {
     {id: 'gid://shopify/MenuItem/fallback-marcas', url: '/marcas', title: 'Nuestras Marcas'},
     {id: 'gid://shopify/MenuItem/fallback-2', url: '/collections/outlet', title: 'Outlet'},
     {id: 'gid://shopify/MenuItem/fallback-3', url: '/quienes-somos', title: 'Quiénes somos'},
-    {id: 'gid://shopify/MenuItem/fallback-4', url: '/pages/instalaciones', title: 'Instalaciones'},
+    {id: 'gid://shopify/MenuItem/fallback-4', url: '/instalaciones', title: 'Instalaciones'},
   ],
 };
