@@ -303,6 +303,7 @@ function fallbackItem(id: string, url: string, title: string) {
 const FALLBACK_HEADER_MENU = {
   id: 'gid://shopify/Menu/fallback',
   items: [
+    fallbackItem('marcas', '/marcas', 'Nuestras Marcas'),
     fallbackItem('flight-cases', '/collections/flight-cases-y-bolsas', 'Flight-Cases y Bolsas'),
     fallbackItem('pioneer', '/collections/pioneer-dj-alphatheta', 'Pioneer DJ & AlphaTheta'),
     fallbackItem('dj', '/collections/equipos-dj', 'Equipos DJ'),

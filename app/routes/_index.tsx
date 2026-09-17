@@ -97,7 +97,7 @@ export default function Homepage() {
     },
     {
       key: 'visit',
-      href: '/pages/quienes-somos',
+      href: '/quienes-somos',
       image: '/assets/tienda-fachada.jpeg',
       badge: 'Visítanos',
       badgeClass: 'storehero__badge--brand',
@@ -158,7 +158,7 @@ export default function Homepage() {
             </a>
             <Link
               className="discover__card"
-              to="/pages/quienes-somos"
+              to="/quienes-somos"
               style={{backgroundImage: "url('/assets/tienda-fachada.jpeg')"}}
             >
               <span className="discover__icon"><Icon name="shield" /></span>
