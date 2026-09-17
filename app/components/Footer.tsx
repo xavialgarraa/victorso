@@ -44,6 +44,9 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
 
         <div className="footer__col">
           <h4>Tienda</h4>
+          <NavLink to="/collections/all">Todos los productos</NavLink>
+          <NavLink to="/marcas">Nuestras Marcas</NavLink>
+          <NavLink to="/collections/outlet">Outlet</NavLink>
           <Suspense>
             <Await resolve={footerPromise}>
               {(footer) => (
@@ -59,6 +62,8 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
 
         <div className="footer__col">
           <h4>Atención al cliente</h4>
+          <NavLink to="/quienes-somos">Quiénes somos</NavLink>
+          <NavLink to="/instalaciones">Instalaciones</NavLink>
           <NavLink to="/policies/shipping-policy">Envíos y plazos de entrega</NavLink>
           <NavLink to="/policies/refund-policy">Devoluciones y garantía</NavLink>
           <NavLink to="/policies/terms-of-service">Términos de servicio</NavLink>
@@ -99,7 +104,8 @@ function FooterMenu({
   primaryDomainUrl?: string;
   publicStoreDomain: string;
 }) {
-  const items = (menu || FALLBACK_FOOTER_MENU).items;
+  if (!menu) return null;
+  const items = menu.items;
   return (
     <>
       {items.map((item) => {
@@ -125,14 +131,3 @@ function FooterMenu({
     </>
   );
 }
-
-const FALLBACK_FOOTER_MENU = {
-  id: 'gid://shopify/Menu/fallback-footer',
-  items: [
-    {id: 'gid://shopify/MenuItem/fallback-1', url: '/collections/all', title: 'Todos los productos'},
-    {id: 'gid://shopify/MenuItem/fallback-marcas', url: '/marcas', title: 'Nuestras Marcas'},
-    {id: 'gid://shopify/MenuItem/fallback-2', url: '/collections/outlet', title: 'Outlet'},
-    {id: 'gid://shopify/MenuItem/fallback-3', url: '/quienes-somos', title: 'Quiénes somos'},
-    {id: 'gid://shopify/MenuItem/fallback-4', url: '/instalaciones', title: 'Instalaciones'},
-  ],
-};

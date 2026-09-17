@@ -117,6 +117,11 @@ export function HeaderMenu({
         <NavLink end onClick={close} prefetch="intent" to="/" className="mobile-menu__item">
           Inicio
         </NavLink>
+        <NavLink className="mobile-menu__item" end onClick={close} prefetch="intent" to="/marcas">
+          <span className="mainnav__brands">
+            <Icon name="star" /> Nuestras Marcas
+          </span>
+        </NavLink>
         {items.map(
           (item) =>
             item.url && (
@@ -138,6 +143,11 @@ export function HeaderMenu({
 
   return (
     <nav className="mainnav" role="navigation">
+      <NavLink className="mainnav__item" end prefetch="intent" to="/marcas">
+        <span className="mainnav__brands">
+          <Icon name="star" /> Nuestras Marcas
+        </span>
+      </NavLink>
       {items.map(
         (item) =>
           item.url && (
@@ -303,7 +313,6 @@ function fallbackItem(id: string, url: string, title: string) {
 const FALLBACK_HEADER_MENU = {
   id: 'gid://shopify/Menu/fallback',
   items: [
-    fallbackItem('marcas', '/marcas', 'Nuestras Marcas'),
     fallbackItem('flight-cases', '/collections/flight-cases-y-bolsas', 'Flight-Cases y Bolsas'),
     fallbackItem('pioneer', '/collections/pioneer-dj-alphatheta', 'Pioneer DJ & AlphaTheta'),
     fallbackItem('dj', '/collections/equipos-dj', 'Equipos DJ'),
