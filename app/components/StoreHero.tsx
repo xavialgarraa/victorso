@@ -1,6 +1,7 @@
-import {useEffect, useRef, useState} from 'react';
+import {Fragment, useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
 import {Icon} from '~/lib/icons';
+import {BRANDS} from '~/lib/brands';
 
 export type HeroSlide = {
   key: string;
@@ -124,14 +125,14 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
   );
 }
 
+const FEATURED_BRANDS = BRANDS.filter((b) => b.featured);
+
 export function StoreHero({
   leftSlides,
   rightSlides,
-  vendors,
 }: {
   leftSlides: HeroSlide[];
   rightSlides: HeroSlide[];
-  vendors: string[];
 }) {
   const mobileSlides = [...leftSlides, ...rightSlides];
 
@@ -162,20 +163,30 @@ export function StoreHero({
         </button>
       </div>
 
-      {vendors.length > 0 && (
-        <div className="storehero__brands">
-          <span className="storehero__brandsLabel">Marcas destacadas</span>
-          <div className="ticker">
-            <div className="ticker__track">
-              {[...vendors, ...vendors].map((v, i) => (
-                <Link key={`${v}-${i}`} className="ticker__pill" to={`/search?q=${encodeURIComponent(v)}`}>
-                  {v}
+      <div className="storehero__brands">
+        <span className="storehero__brandsLabel">Marcas</span>
+        <div className="ticker">
+          <div className="ticker__track">
+            {[0, 1].map((rep) => (
+              <Fragment key={rep}>
+                {FEATURED_BRANDS.map((b) => (
+                  <Link
+                    key={`${rep}-${b.slug}`}
+                    className="ticker__logo"
+                    to={`/brand/${b.slug}`}
+                    aria-label={b.name}
+                  >
+                    <img src={b.logo} alt={b.name} loading="lazy" />
+                  </Link>
+                ))}
+                <Link className="ticker__logo ticker__logo--all" to="/marcas">
+                  Ver todas las marcas
                 </Link>
-              ))}
-            </div>
+              </Fragment>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
       <div className="storehero__scrollhint">
         <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>

@@ -28,9 +28,8 @@ export async function loader({context}: Route.LoaderArgs) {
     )
     .slice(0, 4);
   const bestsellers = products.nodes.slice(0, 8);
-  const vendors = [...new Set(products.nodes.map((p) => p.vendor).filter(Boolean))].slice(0, 12);
 
-  return {newest, bestselling, offers, bestsellers, vendors, collections: collections.nodes};
+  return {newest, bestselling, offers, bestsellers, collections: collections.nodes};
 }
 
 function categoryIcon(title: string): IconName {
@@ -46,7 +45,7 @@ function categoryIcon(title: string): IconName {
 }
 
 export default function Homepage() {
-  const {newest, bestselling, offers, bestsellers, vendors, collections} =
+  const {newest, bestselling, offers, bestsellers, collections} =
     useLoaderData<typeof loader>();
 
   const leftSlides: HeroSlide[] = newest.map((p) => ({
@@ -110,7 +109,7 @@ export default function Homepage() {
 
   return (
     <div className="home">
-      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} vendors={vendors} />
+      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} />
 
       <section className="section reveal" id="categorySection">
         <div className="container">
