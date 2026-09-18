@@ -30,9 +30,10 @@ export default async function handleRequest(
       'https://*.tiktokcdn-us.com',
       'https://*.ibyteimg.com',
     ],
-    // Necesario para el embed de TikTok en /instalaciones (script + iframe).
+    // Necesario para el embed de TikTok en /instalaciones (script + iframe)
+    // y el mapa de Google Maps en /quienes-somos (iframe).
     scriptSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://www.tiktok.com'],
-    frameSrc: ["'self'", 'https://www.tiktok.com'],
+    frameSrc: ["'self'", 'https://www.tiktok.com', 'https://www.google.com'],
     connectSrc: ['https://www.tiktok.com'],
   });
 

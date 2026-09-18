@@ -28,8 +28,14 @@ export async function loader({context}: Route.LoaderArgs) {
     )
     .slice(0, 4);
   const bestsellers = products.nodes.slice(0, 8);
+  // "frontpage" es la colección automática de Shopify con todos los
+  // productos; no es una categoría real. Solo mostramos categorías que
+  // ya tienen productos asignados en el catálogo actual.
+  const collectionsWithProducts = collections.nodes
+    .filter((c) => c.handle !== 'frontpage' && c.products.nodes.length > 0)
+    .slice(0, 9);
 
-  return {newest, bestselling, offers, bestsellers, collections: collections.nodes};
+  return {newest, bestselling, offers, bestsellers, collections: collectionsWithProducts};
 }
 
 function categoryIcon(title: string): IconName {
@@ -229,7 +235,7 @@ const HOME_PRODUCTS_QUERY = `#graphql
 const HOME_COLLECTIONS_QUERY = `#graphql
   query HomeCollections($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    collections(first: 9, sortKey: TITLE) {
+    collections(first: 20, sortKey: TITLE) {
       nodes {
         id
         handle
@@ -237,6 +243,11 @@ const HOME_COLLECTIONS_QUERY = `#graphql
         image {
           url
           altText
+        }
+        products(first: 1) {
+          nodes {
+            id
+          }
         }
       }
     }

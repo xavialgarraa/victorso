@@ -78,19 +78,48 @@ export function Header({header, isLoggedIn, cart}: HeaderProps) {
           </div>
         </div>
 
-        <HeaderMenu viewport="desktop" />
+        <HeaderMenu viewport="desktop" collections={header.collections.nodes} />
       </header>
     </>
   );
 }
 
-export function HeaderMenu({viewport}: {viewport: Viewport}) {
+type NavCollection = {
+  id: string;
+  title: string;
+  handle: string;
+  products: {nodes: Array<{id: string}>};
+};
+
+type NavLink = {href: string; label: string; cls?: string; icon?: IconName};
+
+function buildNavLinks(collections: NavCollection[] = []): NavLink[] {
+  const collectionLinks: NavLink[] = collections
+    // "frontpage" es la colección automática de Shopify con todos los
+    // productos; no es una categoría real, ya existe "Todos los productos".
+    .filter((c) => c.handle !== 'frontpage' && c.products.nodes.length > 0)
+    .map((c) => ({
+      href: `/collections/${c.handle}`,
+      label: c.title,
+      cls: c.handle === 'outlet' ? 'mainnav__outlet' : undefined,
+    }));
+
+  return [
+    {href: '/', label: 'Inicio'},
+    {href: '/marcas', label: 'Nuestras Marcas', cls: 'mainnav__brands', icon: 'star'},
+    ...collectionLinks,
+    {href: '/quienes-somos', label: 'Quiénes somos'},
+  ];
+}
+
+export function HeaderMenu({viewport, collections}: {viewport: Viewport; collections?: NavCollection[]}) {
   const {close} = useAside();
+  const navLinks = buildNavLinks(collections);
 
   if (viewport === 'mobile') {
     return (
       <nav className="mobile-menu" role="navigation">
-        {NAV_LINKS.map((link) => (
+        {navLinks.map((link) => (
           <NavLink
             className={`mobile-menu__item ${link.cls ?? ''}`}
             end
@@ -108,7 +137,7 @@ export function HeaderMenu({viewport}: {viewport: Viewport}) {
 
   return (
     <nav className="mainnav" role="navigation">
-      {NAV_LINKS.map((link) => (
+      {navLinks.map((link) => (
         <NavLink className={`mainnav__item ${link.cls ?? ''}`} end key={link.href} prefetch="intent" to={link.href}>
           {link.icon && <Icon name={link.icon} />} {link.label}
         </NavLink>
@@ -248,18 +277,3 @@ function CartBanner() {
   const cart = useOptimisticCart(originalCart);
   return <CartBadge count={cart?.totalQuantity ?? 0} />;
 }
-
-const NAV_LINKS: Array<{href: string; label: string; cls?: string; icon?: IconName}> = [
-  {href: '/', label: 'Inicio'},
-  {href: '/marcas', label: 'Nuestras Marcas', cls: 'mainnav__brands', icon: 'star'},
-  {href: '/collections/flight-cases-y-bolsas', label: 'Flight-Cases y Bolsas'},
-  {href: '/collections/pioneer-dj-alphatheta', label: 'Pioneer DJ & AlphaTheta'},
-  {href: '/collections/equipos-dj', label: 'Equipos DJ'},
-  {href: '/collections/sonido', label: 'Sonido'},
-  {href: '/collections/auriculares', label: 'Auriculares'},
-  {href: '/collections/material-estudio', label: 'Material Estudio'},
-  {href: '/collections/cables', label: 'Cables'},
-  {href: '/collections/acustica', label: 'Acústica'},
-  {href: '/collections/outlet', label: 'Outlet', cls: 'mainnav__outlet'},
-  {href: '/quienes-somos', label: 'Quiénes somos'},
-];

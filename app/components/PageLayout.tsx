@@ -32,7 +32,7 @@ export function PageLayout({
     <Aside.Provider>
       <ScrollReveal />
       <CartAside cart={cart} />
-      <MobileMenuAside />
+      <MobileMenuAside header={header} />
       {header && (
         <Header
           header={header}
@@ -65,10 +65,10 @@ function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
   );
 }
 
-function MobileMenuAside() {
+function MobileMenuAside({header}: {header: PageLayoutProps['header']}) {
   return (
     <Aside type="mobile" heading="Menú">
-      <HeaderMenu viewport="mobile" />
+      <HeaderMenu viewport="mobile" collections={header?.collections?.nodes} />
     </Aside>
   );
 }

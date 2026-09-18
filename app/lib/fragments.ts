@@ -259,6 +259,18 @@ export const HEADER_QUERY = `#graphql
     menu(handle: $headerMenuHandle) {
       ...Menu
     }
+    collections(first: 20, sortKey: TITLE) {
+      nodes {
+        id
+        title
+        handle
+        products(first: 1) {
+          nodes {
+            id
+          }
+        }
+      }
+    }
   }
   ${MENU_FRAGMENT}
 ` as const;

@@ -1,20 +1,13 @@
-import {Link, useLoaderData} from 'react-router';
+import {Link} from 'react-router';
 import type {Route} from './+types/quienes-somos';
 import {Icon} from '~/lib/icons';
+import {BrandsTicker} from '~/components/BrandsTicker';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Quiénes somos — Victor So Professional'}];
 };
 
-export async function loader({context}: Route.LoaderArgs) {
-  const {storefront} = context;
-  const {products} = await storefront.query(VENDORS_QUERY);
-  const vendors = [...new Set(products.nodes.map((p) => p.vendor).filter(Boolean))].slice(0, 16);
-  return {vendors};
-}
-
 export default function AboutPage() {
-  const {vendors} = useLoaderData<typeof loader>();
   return (
     <div>
       <div className="breadcrumb container">
@@ -120,35 +113,14 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {vendors.length > 0 && (
-        <section className="section section--muted reveal">
-          <div className="container">
-            <div className="section__head">
-              <h2>Marcas con las que trabajamos</h2>
-            </div>
-            <div className="ticker">
-              <div className="ticker__track">
-                {[...vendors, ...vendors].map((v, i) => (
-                  <Link key={`${v}-${i}`} className="ticker__pill" to={`/search?q=${encodeURIComponent(v)}`}>
-                    {v}
-                  </Link>
-                ))}
-              </div>
-            </div>
+      <section className="section section--muted reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>Marcas con las que trabajamos</h2>
           </div>
-        </section>
-      )}
+          <BrandsTicker />
+        </div>
+      </section>
     </div>
   );
 }
-
-const VENDORS_QUERY = `#graphql
-  query AboutVendors($country: CountryCode, $language: LanguageCode)
-    @inContext(country: $country, language: $language) {
-    products(first: 50) {
-      nodes {
-        vendor
-      }
-    }
-  }
-` as const;
