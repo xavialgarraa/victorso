@@ -18,8 +18,10 @@ export default function AboutPage() {
         <div className="container">
           <h1 className="section-title-lg">Quiénes somos</h1>
           <p className="visit-text">
-            Desde 1987, tu tienda de confianza en equipos de sonido, DJ e iluminación en la Costa
-            Brava.
+            Desde 1987 acompañamos a DJs, técnicos de sonido y estudios de toda la Costa Brava,
+            ofreciendo el mismo trato cercano y el mismo criterio con el que empezamos: equipo
+            fiable, asesoramiento honesto y servicio técnico propio, tanto si compras en nuestra
+            tienda de Lloret de Mar como si nos escribes desde cualquier punto de España.
           </p>
         </div>
       </section>

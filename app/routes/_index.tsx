@@ -153,12 +153,12 @@ export default function Homepage() {
               </div>
             </Link>
             <a
-              className="discover__card discover__card--solid"
+              className="discover__card discover__card--whatsapp"
               href="https://wa.me/34619406443"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span className="discover__icon"><Icon name="chat" /></span>
+              <span className="discover__icon"><Icon name="whatsapp" /></span>
               <div className="discover__info">
                 <h3>Contacta por WhatsApp</h3>
                 <p>Te asesoramos sin compromiso.</p>

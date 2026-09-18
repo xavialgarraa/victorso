@@ -464,6 +464,11 @@ body.nav-open { overflow: hidden; }
 .discover__card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,12,0) 28%, rgba(10,10,12,.85) 100%); z-index: 1; }
 .discover__card--solid { background: linear-gradient(135deg, var(--red), #7d0410); }
 .discover__card--solid::before { display: none; }
+.discover__card--whatsapp {
+  background: radial-gradient(circle at 85% 15%, rgba(255,255,255,.12), transparent 40%), linear-gradient(135deg, #25d366, #128c4a);
+}
+.discover__card--whatsapp::before { display: none; }
+.discover__card--whatsapp .discover__icon { width: 52px; height: 52px; font-size: 1.6rem; background: rgba(255,255,255,.22); }
 .discover__icon { position: relative; z-index: 2; align-self: flex-start; margin: 16px; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.16); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
 .discover__info { position: relative; z-index: 2; padding: 18px; }
 .discover__info h3 { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 4px; }
