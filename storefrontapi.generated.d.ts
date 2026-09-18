@@ -454,7 +454,15 @@ export type HomeCollectionsQuery = {
         image?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Image, 'url' | 'altText'>
         >;
-        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
+        products: {
+          nodes: Array<
+            Pick<StorefrontAPI.Product, 'id'> & {
+              featuredImage?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Image, 'url' | 'altText'>
+              >;
+            }
+          >;
+        };
       }
     >;
   };
@@ -1343,7 +1351,7 @@ interface GeneratedQueryTypes {
     return: HomeProductsQuery;
     variables: HomeProductsQueryVariables;
   };
-  '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        image {\n          url\n          altText\n        }\n        products(first: 1) {\n          nodes {\n            id\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        image {\n          url\n          altText\n        }\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: HomeCollectionsQuery;
     variables: HomeCollectionsQueryVariables;
   };

@@ -123,13 +123,19 @@ export default function Homepage() {
             <h2>Categorías</h2>
           </div>
           <div className="catgrid">
-            {collections.map((c) => (
-              <Link key={c.id} className="catcard" to={`/collections/${c.handle}`}>
-                <Icon name={categoryIcon(c.title)} className="catcard__icon" />
-                {c.image && <img src={c.image.url} alt={c.image.altText ?? c.title} loading="lazy" />}
-                <span className="catcard__label">{c.title}</span>
-              </Link>
-            ))}
+            {collections.map((c) => {
+              // Usamos la foto de portada de la colección si el admin la ha
+              // subido; si no, la del primer producto real de esa categoría,
+              // para que las categorías nuevas ya se vean bien sin configurar nada.
+              const photo = c.image ?? c.products.nodes[0]?.featuredImage;
+              return (
+                <Link key={c.id} className="catcard" to={`/collections/${c.handle}`}>
+                  <Icon name={categoryIcon(c.title)} className="catcard__icon" />
+                  {photo && <img src={photo.url} alt={photo.altText ?? c.title} loading="lazy" />}
+                  <span className="catcard__label">{c.title}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -247,6 +253,10 @@ const HOME_COLLECTIONS_QUERY = `#graphql
         products(first: 1) {
           nodes {
             id
+            featuredImage {
+              url
+              altText
+            }
           }
         }
       }
