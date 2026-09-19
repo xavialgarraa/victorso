@@ -11,7 +11,6 @@ import {
   useRouteLoaderData,
 } from 'react-router';
 import type {Route} from './+types/root';
-import favicon from '~/assets/favicon.svg';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
@@ -74,7 +73,21 @@ export function links() {
       rel: 'stylesheet',
       href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap',
     },
-    {rel: 'icon', type: 'image/svg+xml', href: favicon},
+    // El favicon (logo pequeño en la pestaña) sigue el modo oscuro/claro
+    // del navegador/SO, igual que en el demo — no el tema que se pueda
+    // cambiar manualmente en la web con el botón de sol/luna.
+    {
+      rel: 'icon',
+      type: 'image/png',
+      media: '(prefers-color-scheme: light)',
+      href: '/assets/favicon-light.png',
+    },
+    {
+      rel: 'icon',
+      type: 'image/png',
+      media: '(prefers-color-scheme: dark)',
+      href: '/assets/favicon-dark.png',
+    },
   ];
 }
 
