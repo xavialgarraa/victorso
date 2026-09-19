@@ -10,6 +10,7 @@ import {Footer} from '~/components/Footer';
 import {Header, HeaderMenu} from '~/components/Header';
 import {CartMain} from '~/components/CartMain';
 import {ScrollReveal} from '~/components/ScrollReveal';
+import {HeaderOffset} from '~/components/HeaderOffset';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -31,6 +32,7 @@ export function PageLayout({
   return (
     <Aside.Provider>
       <ScrollReveal />
+      <HeaderOffset />
       <CartAside cart={cart} />
       <MobileMenuAside header={header} />
       {header && (
