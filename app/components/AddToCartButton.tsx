@@ -27,11 +27,12 @@ export function AddToCartButton({
           />
           <button
             type="submit"
-            className={className}
+            className={`${className ?? ''}${fetcher.state !== 'idle' ? ' is-loading' : ''}`}
             onClick={onClick}
             disabled={disabled ?? fetcher.state !== 'idle'}
           >
-            {children}
+            <span className="addtocart__spinner" aria-hidden="true" />
+            <span className="addtocart__content">{children}</span>
           </button>
         </>
       )}

@@ -1,4 +1,4 @@
-import {Suspense, useState} from 'react';
+import {Suspense, useEffect, useRef, useState} from 'react';
 import {Await, Link, NavLink, useAsyncValue} from 'react-router';
 import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
@@ -240,11 +240,23 @@ function HeaderSearch() {
 function CartBadge({count}: {count: number}) {
   const {open} = useAside();
   const {publish, shop, cart, prevCart} = useAnalytics();
+  const [bump, setBump] = useState(false);
+  const prevCountRef = useRef(count);
+
+  useEffect(() => {
+    if (count > prevCountRef.current) {
+      setBump(true);
+      const timeout = setTimeout(() => setBump(false), 400);
+      prevCountRef.current = count;
+      return () => clearTimeout(timeout);
+    }
+    prevCountRef.current = count;
+  }, [count]);
 
   return (
     <a
       href="/cart"
-      className="cart-btn"
+      className={`cart-btn${bump ? ' bump' : ''}`}
       onClick={(e) => {
         e.preventDefault();
         open('cart');
@@ -257,7 +269,7 @@ function CartBadge({count}: {count: number}) {
       }}
     >
       <Icon name="cart" />
-      <span className="cart-btn__count">{count}</span>
+      <span className={`cart-btn__count${bump ? ' bump' : ''}`}>{count}</span>
     </a>
   );
 }
