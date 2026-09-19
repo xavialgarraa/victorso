@@ -9,6 +9,7 @@ export const PRODUCT_CARD_FRAGMENT = `#graphql
     handle
     title
     vendor
+    description(truncateAt: 110)
     featuredImage {
       id
       altText

@@ -31,19 +31,27 @@ export async function loader({context, request}: Route.LoaderArgs) {
   // Nota: la query raiz `products` no admite el argumento `filters` (los
   // facets de Shopify solo existen dentro de una coleccion), asi que en
   // "todos los productos" solo hay orden + paginacion, sin filtro lateral.
-  const {products} = await storefront.query(CATALOG_QUERY, {
-    variables: {
-      sortKey: sortConfig.sortKey,
-      reverse: sortConfig.reverse,
-      ...paginationVariables,
-    },
-  });
+  // A cambio, ofrecemos un acceso rapido por categoria real del catalogo.
+  const [{products}, {collections}] = await Promise.all([
+    storefront.query(CATALOG_QUERY, {
+      variables: {
+        sortKey: sortConfig.sortKey,
+        reverse: sortConfig.reverse,
+        ...paginationVariables,
+      },
+    }),
+    storefront.query(CATEGORY_LINKS_QUERY),
+  ]);
 
-  return {products};
+  const categoryLinks = collections.nodes
+    .filter((c) => c.handle !== 'frontpage' && c.products.nodes.length > 0)
+    .map((c) => ({handle: c.handle, title: c.title}));
+
+  return {products, categoryLinks};
 }
 
 export default function Collection() {
-  const {products} = useLoaderData<typeof loader>();
+  const {products, categoryLinks} = useLoaderData<typeof loader>();
 
   const listingFilters: ListingFilter[] = [];
 
@@ -56,6 +64,7 @@ export default function Collection() {
         title="Todos los productos"
         products={products}
         filters={listingFilters}
+        categoryLinks={categoryLinks}
         sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
         resultCount={products.nodes.length}
       />
@@ -91,6 +100,23 @@ const CATALOG_QUERY = `#graphql
         hasNextPage
         startCursor
         endCursor
+      }
+    }
+  }
+` as const;
+
+const CATEGORY_LINKS_QUERY = `#graphql
+  query CategoryLinks($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collections(first: 20, sortKey: TITLE) {
+      nodes {
+        handle
+        title
+        products(first: 1) {
+          nodes {
+            id
+          }
+        }
       }
     }
   }

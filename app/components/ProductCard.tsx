@@ -39,10 +39,12 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
         <div className="pcard__body">
           {product.vendor && <div className="pcard__vendor">{product.vendor}</div>}
           <div className="pcard__title">{product.title}</div>
+          {product.description && <p className="pcard__desc">{product.description}</p>}
         </div>
       </Link>
       <div className="pcard__footer">
         <div className="pcard__price">
+          {hasOffer && <span className="badge badge--offer pcard__pricebadge">-{pct}%</span>}
           <span className="now">
             <Money data={price} />
           </span>

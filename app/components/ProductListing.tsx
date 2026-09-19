@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {useSearchParams} from 'react-router';
+import {Link, useSearchParams} from 'react-router';
 import {Pagination} from '@shopify/hydrogen';
 import type {ProductCardFragment} from 'storefrontapi.generated';
 import {ProductCard} from '~/components/ProductCard';
@@ -11,6 +11,8 @@ export type ListingFilter = {
   values: Array<{id: string; label: string; count: number; input: string}>;
 };
 
+export type CategoryLink = {handle: string; title: string};
+
 type PaginationConnection = React.ComponentProps<typeof Pagination<ProductCardFragment>>['connection'];
 
 const PER_PAGE_OPTIONS = [12, 24, 48];
@@ -21,12 +23,14 @@ export function ProductListing({
   filters,
   sortOptions,
   resultCount,
+  categoryLinks,
 }: {
   title: string;
   products: PaginationConnection;
   filters: ListingFilter[];
   sortOptions: Array<{value: string; label: string}>;
   resultCount: number;
+  categoryLinks?: CategoryLink[];
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -116,6 +120,18 @@ export function ProductListing({
                 <Icon name="close" />
               </button>
             </div>
+            {categoryLinks && categoryLinks.length > 0 && (
+              <div className="filter-group">
+                <h4>Categoría</h4>
+                <div className="filter-group__pills">
+                  {categoryLinks.map((c) => (
+                    <Link key={c.handle} className="filter-pill" to={`/collections/${c.handle}`}>
+                      {c.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
             {filters
               .filter((f) => f.values.length > 0)
               .map((f) => (
