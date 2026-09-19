@@ -8,6 +8,7 @@ import {Icon} from '~/lib/icons';
 export type ListingFilter = {
   id: string;
   label: string;
+  type?: string;
   values: Array<{id: string; label: string; count: number; input: string}>;
 };
 
@@ -60,6 +61,19 @@ export function ProductListing({
     }
     setSearchParams(next, {preventScrollReset: true});
   }
+
+  function applyPriceFilter(input: string | null) {
+    const next = new URLSearchParams(searchParams);
+    const current = next.getAll('filter').filter((f) => !f.includes('"price"'));
+    next.delete('filter');
+    current.forEach((f) => next.append('filter', f));
+    if (input) next.append('filter', input);
+    setSearchParams(next, {preventScrollReset: true});
+  }
+
+  const priceFilter = filters.find((f) => f.type === 'PRICE_RANGE');
+  const otherFilters = filters.filter((f) => f.type !== 'PRICE_RANGE' && f.values.length > 0);
+  const selectedPriceInput = [...selectedFilters].find((f) => f.includes('"price"')) ?? null;
 
   return (
     <section className="section listing">
@@ -132,9 +146,14 @@ export function ProductListing({
                 </div>
               </div>
             )}
-            {filters
-              .filter((f) => f.values.length > 0)
-              .map((f) => (
+            {priceFilter && priceFilter.values[0] && (
+              <PriceRangeFilter
+                boundsInput={priceFilter.values[0].input}
+                selectedInput={selectedPriceInput}
+                onApply={applyPriceFilter}
+              />
+            )}
+            {otherFilters.map((f) => (
                 <div className="filter-group" key={f.id}>
                   <h4>{f.label}</h4>
                   {f.values.map((v) => (
@@ -203,5 +222,83 @@ export function ProductListing({
         </div>
       </div>
     </section>
+  );
+}
+
+function parsePriceInput(input: string): {min: number; max: number} | null {
+  try {
+    const parsed = JSON.parse(input) as {price?: {min?: number; max?: number}};
+    if (!parsed.price) return null;
+    return {min: parsed.price.min ?? 0, max: parsed.price.max ?? 0};
+  } catch {
+    return null;
+  }
+}
+
+function PriceRangeFilter({
+  boundsInput,
+  selectedInput,
+  onApply,
+}: {
+  boundsInput: string;
+  selectedInput: string | null;
+  onApply: (input: string | null) => void;
+}) {
+  const bounds = parsePriceInput(boundsInput);
+  const selected = selectedInput ? parsePriceInput(selectedInput) : null;
+  const floor = bounds ? Math.floor(bounds.min) : 0;
+  const ceiling = bounds ? Math.ceil(bounds.max) : 0;
+
+  const [min, setMin] = useState(selected?.min ?? floor);
+  const [max, setMax] = useState(selected?.max ?? ceiling);
+
+  if (!bounds || floor >= ceiling) return null;
+
+  function commit(nextMin: number, nextMax: number) {
+    if (nextMin <= floor && nextMax >= ceiling) {
+      onApply(null);
+    } else {
+      onApply(JSON.stringify({price: {min: nextMin, max: nextMax}}));
+    }
+  }
+
+  return (
+    <div className="filter-group">
+      <h4>Precio</h4>
+      <div className="price-slider">
+        <div className="price-slider__track">
+          <div
+            className="price-slider__range"
+            style={{
+              left: `${((min - floor) / (ceiling - floor)) * 100}%`,
+              right: `${100 - ((max - floor) / (ceiling - floor)) * 100}%`,
+            }}
+          />
+        </div>
+        <input
+          type="range"
+          min={floor}
+          max={ceiling}
+          value={min}
+          onChange={(e) => setMin(Math.min(Number(e.target.value), max))}
+          onMouseUp={() => commit(min, max)}
+          onTouchEnd={() => commit(min, max)}
+        />
+        <input
+          type="range"
+          min={floor}
+          max={ceiling}
+          value={max}
+          onChange={(e) => setMax(Math.max(Number(e.target.value), min))}
+          onMouseUp={() => commit(min, max)}
+          onTouchEnd={() => commit(min, max)}
+        />
+      </div>
+      <div className="price-inputs">
+        <span>{min} €</span>
+        <span>—</span>
+        <span>{max} €</span>
+      </div>
+    </div>
   );
 }

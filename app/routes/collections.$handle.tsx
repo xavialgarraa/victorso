@@ -76,6 +76,7 @@ export default function Collection() {
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
     id: f.id,
     label: f.label,
+    type: f.type,
     values: f.values.map((v) => ({
       id: v.id,
       label: v.label,
