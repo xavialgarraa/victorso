@@ -51,15 +51,23 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     throw redirect('/collections');
   }
 
-  const {collection} = await storefront.query(COLLECTION_QUERY, {
-    variables: {
-      handle,
-      filters,
-      sortKey: sortConfig.sortKey,
-      reverse: sortConfig.reverse,
-      ...paginationVariables,
-    },
-  });
+  const [{collection}, {collection: countData}] = await Promise.all([
+    storefront.query(COLLECTION_QUERY, {
+      variables: {
+        handle,
+        filters,
+        sortKey: sortConfig.sortKey,
+        reverse: sortConfig.reverse,
+        ...paginationVariables,
+      },
+    }),
+    // El conteo real no viene en ningún campo de Shopify (ProductConnection
+    // no tiene totalCount); se calcula pidiendo hasta 250 ids con los mismos
+    // filtros, en paralelo, solo para mostrar un número correcto.
+    storefront.query(COLLECTION_COUNT_QUERY, {
+      variables: {handle, filters},
+    }),
+  ]);
 
   if (!collection) {
     throw new Response(`Collection ${handle} not found`, {status: 404});
@@ -67,11 +75,13 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
 
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
-  return {collection};
+  const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
+
+  return {collection, resultCount};
 }
 
 export default function Collection() {
-  const {collection} = useLoaderData<typeof loader>();
+  const {collection, resultCount} = useLoaderData<typeof loader>();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
     id: f.id,
@@ -95,7 +105,7 @@ export default function Collection() {
         products={collection.products}
         filters={listingFilters}
         sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
-        resultCount={collection.products.nodes.length}
+        resultCount={resultCount}
       />
       {collection.description && (
         <div className="container">
@@ -161,6 +171,23 @@ const COLLECTION_QUERY = `#graphql
           hasNextPage
           endCursor
           startCursor
+        }
+      }
+    }
+  }
+` as const;
+
+const COLLECTION_COUNT_QUERY = `#graphql
+  query CollectionCount(
+    $handle: String!
+    $country: CountryCode
+    $language: LanguageCode
+    $filters: [ProductFilter!]
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: 250, filters: $filters) {
+        nodes {
+          id
         }
       }
     }
