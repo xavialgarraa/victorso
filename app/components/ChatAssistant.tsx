@@ -11,6 +11,16 @@ const GREETING: ChatMessage = {
   content: '¡Hola! Soy el asistente de Victor So Professional. ¿En qué puedo ayudarte?',
 };
 
+const QUICK_REPLIES = ['¿Cuál es vuestro horario?', '¿Tenéis envío gratis?', 'Busco un flight case'];
+
+function Avatar() {
+  return (
+    <span className="chat-avatar" aria-hidden="true">
+      <Icon name="chat" />
+    </span>
+  );
+}
+
 export function ChatAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
@@ -18,6 +28,7 @@ export function ChatAssistant() {
   const fetcher = useFetcher<ChatResponse>();
   const isLoading = fetcher.state !== 'idle';
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (listRef.current) {
@@ -26,15 +37,18 @@ export function ChatAssistant() {
   }, [messages, isLoading]);
 
   useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data) {
       const {reply, error} = fetcher.data;
       setMessages((prev) => [...prev, {role: 'assistant', content: reply || error || ''}]);
     }
   }, [fetcher.state, fetcher.data]);
 
-  function sendMessage(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = input.trim();
+  function submitText(text: string) {
+    const trimmed = text.trim();
     if (!trimmed || isLoading) return;
 
     const nextMessages = [...messages, {role: 'user' as const, content: trimmed}];
@@ -51,7 +65,7 @@ export function ChatAssistant() {
     <>
       <button
         type="button"
-        className="chat-float"
+        className={`chat-float${open ? ' open' : ''}`}
         aria-label={open ? 'Cerrar asistente' : 'Abrir asistente'}
         onClick={() => setOpen((o) => !o)}
       >
@@ -61,7 +75,15 @@ export function ChatAssistant() {
       {open && (
         <div className="chat-panel">
           <div className="chat-panel__head">
-            <span>Asistente Victor So</span>
+            <div className="chat-panel__head-info">
+              <Avatar />
+              <div>
+                <span className="chat-panel__title">Asistente Victor So</span>
+                <span className="chat-panel__status">
+                  <span className="chat-panel__dot" /> En línea
+                </span>
+              </div>
+            </div>
             <button type="button" aria-label="Cerrar" onClick={() => setOpen(false)}>
               <Icon name="close" />
             </button>
@@ -69,15 +91,43 @@ export function ChatAssistant() {
 
           <div className="chat-panel__body" ref={listRef}>
             {messages.map((m, i) => (
-              <div key={i} className={`chat-msg chat-msg--${m.role}`}>
-                {m.role === 'assistant' ? renderChatMarkdown(m.content) : m.content}
+              <div key={i} className={`chat-msg-row chat-msg-row--${m.role}`}>
+                {m.role === 'assistant' && <Avatar />}
+                <div className={`chat-msg chat-msg--${m.role}`}>
+                  {m.role === 'assistant' ? renderChatMarkdown(m.content) : m.content}
+                </div>
               </div>
             ))}
-            {isLoading && <div className="chat-msg chat-msg--assistant chat-msg--typing">Escribiendo…</div>}
+            {isLoading && (
+              <div className="chat-msg-row chat-msg-row--assistant">
+                <Avatar />
+                <div className="chat-msg chat-msg--assistant chat-msg--typing">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+            {messages.length === 1 && !isLoading && (
+              <div className="chat-quick-replies">
+                {QUICK_REPLIES.map((q) => (
+                  <button key={q} type="button" onClick={() => submitText(q)}>
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <form className="chat-panel__form" onSubmit={sendMessage}>
+          <form
+            className="chat-panel__form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitText(input);
+            }}
+          >
             <input
+              ref={inputRef}
               type="text"
               placeholder="Escribe tu pregunta…"
               value={input}
