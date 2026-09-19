@@ -6,27 +6,16 @@ import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.blog.title ?? ''} blog`}];
+  return [{title: `${data?.blog.title ?? 'Blog'} — Victor So Professional`}];
 };
 
 export async function loader(args: Route.LoaderArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-
-  return {...deferredData, ...criticalData};
+  return {...criticalData};
 }
 
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
 async function loadCriticalData({context, request, params}: Route.LoaderArgs) {
-  const paginationVariables = getPaginationVariables(request, {
-    pageBy: 4,
-  });
+  const paginationVariables = getPaginationVariables(request, {pageBy: 12});
 
   if (!params.blogHandle) {
     throw new Response(`blog not found`, {status: 404});
@@ -39,7 +28,6 @@ async function loadCriticalData({context, request, params}: Route.LoaderArgs) {
         ...paginationVariables,
       },
     }),
-    // Add other queries here, so that they are loaded in parallel
   ]);
 
   if (!blog?.articles) {
@@ -51,33 +39,29 @@ async function loadCriticalData({context, request, params}: Route.LoaderArgs) {
   return {blog};
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: Route.LoaderArgs) {
-  return {};
-}
-
 export default function Blog() {
   const {blog} = useLoaderData<typeof loader>();
   const {articles} = blog;
 
   return (
-    <div className="blog">
-      <h1>{blog.title}</h1>
-      <div className="blog-grid">
-        <PaginatedResourceSection<ArticleItemFragment> connection={articles}>
-          {({node: article, index}) => (
-            <ArticleItem
-              article={article}
-              key={article.id}
-              loading={index < 2 ? 'eager' : 'lazy'}
-            />
-          )}
-        </PaginatedResourceSection>
+    <div>
+      <div className="breadcrumb container">
+        <Link to="/">Inicio</Link> / <Link to="/blogs">Blog</Link> / {blog.title}
       </div>
+      <section className="section">
+        <div className="container">
+          <div className="section__head">
+            <h1 className="section-title-lg">{blog.title}</h1>
+          </div>
+          <div className="blog-grid">
+            <PaginatedResourceSection<ArticleItemFragment> connection={articles}>
+              {({node: article, index}) => (
+                <ArticleItem article={article} key={article.id} loading={index < 2 ? 'eager' : 'lazy'} />
+              )}
+            </PaginatedResourceSection>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -89,29 +73,31 @@ function ArticleItem({
   article: ArticleItemFragment;
   loading?: HTMLImageElement['loading'];
 }) {
-  const publishedAt = new Intl.DateTimeFormat('en-US', {
+  const publishedAt = new Intl.DateTimeFormat('es-ES', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   }).format(new Date(article.publishedAt!));
   return (
-    <div className="blog-article" key={article.id}>
-      <Link to={`/blogs/${article.blog.handle}/${article.handle}`}>
-        {article.image && (
-          <div className="blog-article-image">
-            <Image
-              alt={article.image.altText || article.title}
-              aspectRatio="3/2"
-              data={article.image}
-              loading={loading}
-              sizes="(min-width: 768px) 50vw, 100vw"
-            />
-          </div>
+    <Link className="blog-card" to={`/blogs/${article.blog.handle}/${article.handle}`}>
+      <div className="blog-card__imgwrap">
+        {article.image ? (
+          <Image
+            alt={article.image.altText || article.title}
+            aspectRatio="3/2"
+            data={article.image}
+            loading={loading}
+            sizes="(min-width: 768px) 33vw, 100vw"
+          />
+        ) : (
+          <div className="blog-card__imgwrap--empty" />
         )}
+      </div>
+      <div className="blog-card__body">
+        <span className="blog-card__date">{publishedAt}</span>
         <h3>{article.title}</h3>
-        <small>{publishedAt}</small>
-      </Link>
-    </div>
+      </div>
+    </Link>
   );
 }
 
@@ -144,11 +130,9 @@ const BLOGS_QUERY = `#graphql
         pageInfo {
           hasPreviousPage
           hasNextPage
-          hasNextPage
           endCursor
           startCursor
         }
-
       }
     }
   }
