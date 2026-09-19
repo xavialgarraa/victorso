@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {useFetcher} from 'react-router';
 import {Icon} from '~/lib/icons';
+import {renderChatMarkdown} from '~/lib/chatMarkdown';
 
 type ChatMessage = {role: 'user' | 'assistant'; content: string};
 type ChatResponse = {reply?: string; error?: string};
@@ -69,7 +70,7 @@ export function ChatAssistant() {
           <div className="chat-panel__body" ref={listRef}>
             {messages.map((m, i) => (
               <div key={i} className={`chat-msg chat-msg--${m.role}`}>
-                {m.content}
+                {m.role === 'assistant' ? renderChatMarkdown(m.content) : m.content}
               </div>
             ))}
             {isLoading && <div className="chat-msg chat-msg--assistant chat-msg--typing">Escribiendo…</div>}

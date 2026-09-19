@@ -960,6 +960,8 @@ body.nav-open .whatsapp-float { display: none; }
 .chat-msg--user { align-self: flex-end; background: var(--red); color: #fff; border-bottom-right-radius: 4px; }
 .chat-msg--assistant { align-self: flex-start; background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 .chat-msg--typing { color: var(--text-muted); font-style: italic; }
+.chat-msg__link { color: var(--red); font-weight: 700; text-decoration: underline; }
+.chat-msg--assistant .chat-msg__link:hover { color: var(--red-dark); }
 .chat-panel__form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .chat-panel__form input { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: 20px; font-size: .86rem; background: var(--surface); color: var(--text); }
 .chat-panel__form button { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--red); color: #fff; display: flex; align-items: center; justify-content: center; }
