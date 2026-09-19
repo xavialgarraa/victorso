@@ -2,7 +2,8 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import type {CartLayout} from '~/components/CartMain';
 import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
-import {useFetcher} from 'react-router';
+import {Link, useFetcher} from 'react-router';
+import {useAside} from '~/components/Aside';
 
 const FREE_SHIPPING_THRESHOLD = 149;
 
@@ -23,7 +24,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const progressPct = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
   return (
-    <aside className={layout === 'page' ? 'cart-summary' : 'cart-summary cart-summary--aside'}>
+    <div className={layout === 'page' ? 'cart-summary' : 'cart-summary cart-summary--aside'}>
       <h3 className="mt-0">Resumen del pedido</h3>
 
       <div className="shipping-progress">
@@ -64,18 +65,33 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </div>
       )}
 
-      <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} />
-    </aside>
+      <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} layout={layout} />
+    </div>
   );
 }
 
-function CartCheckoutActions({checkoutUrl}: {checkoutUrl?: string}) {
-  if (!checkoutUrl) return null;
+function CartCheckoutActions({
+  checkoutUrl,
+  layout,
+}: {
+  checkoutUrl?: string;
+  layout: CartLayout;
+}) {
+  const {close} = useAside();
 
   return (
-    <a href={checkoutUrl} target="_self" className="btn btn--primary btn--block">
-      Finalizar compra →
-    </a>
+    <div className="cart-summary__actions">
+      {layout === 'aside' && (
+        <Link className="btn btn--outline btn--block" to="/cart" onClick={close}>
+          Ver carrito completo
+        </Link>
+      )}
+      {checkoutUrl && (
+        <a href={checkoutUrl} target="_self" className="btn btn--primary btn--block">
+          Finalizar compra →
+        </a>
+      )}
+    </div>
   );
 }
 

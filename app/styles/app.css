@@ -931,15 +931,24 @@ body.nav-open .whatsapp-float { display: none; }
 @media (max-width: 45em) {
   html:has(.overlay.expanded) { overflow: hidden; }
 }
+/* Por defecto el aside usa el "chrome" oscuro de marca (igual que la
+   topbar/header), pensado para el menú móvil. El carrito (aside.cart)
+   sobreescribe estas variables para seguir el tema claro/oscuro de la
+   página, ya que es contenido transaccional (precios, checkout), no
+   navegación de marca. */
 aside {
-  background: var(--nav-bg); color: var(--nav-text);
+  --aside-bg: var(--nav-bg); --aside-text: var(--nav-text); --aside-border: var(--nav-border);
+  background: var(--aside-bg); color: var(--aside-text);
   box-shadow: var(--shadow-lg); height: 100vh; width: min(var(--aside-width), 100vw);
   position: fixed; right: calc(-1 * var(--aside-width)); top: 0;
   transition: transform .25s var(--ease); z-index: 90; display: flex; flex-direction: column;
 }
-aside header { align-items: center; border-bottom: 1px solid var(--nav-border); display: flex; height: 60px; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+aside.cart {
+  --aside-bg: var(--surface); --aside-text: var(--text); --aside-border: var(--border);
+}
+aside header { align-items: center; border-bottom: 1px solid var(--aside-border); display: flex; height: 60px; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
 aside header h3 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; }
-aside header .close { background: none; border: none; color: var(--nav-text); cursor: pointer; font-size: 1.6rem; line-height: 1; opacity: .75; transition: opacity .2s ease; }
+aside header .close { background: none; border: none; color: var(--aside-text); cursor: pointer; font-size: 1.6rem; line-height: 1; opacity: .75; transition: opacity .2s ease; }
 aside header .close:hover { opacity: 1; }
 aside main { margin: 0; padding: 20px; overflow-y: auto; flex: 1; }
 aside p { margin: 0 0 .25rem; }
@@ -982,9 +991,17 @@ aside li { margin-bottom: .125rem; }
 
 /* ---------- Carrito: drawer lateral y detalles de Hydrogen ---------- */
 .cart-drawer { display: flex; flex-direction: column; gap: 20px; }
-.cart-summary--aside { position: static; top: auto; }
+.cart-summary--aside { position: static; top: auto; animation: cart-panel-in .35s .05s var(--ease) both; }
+.cart-summary__actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .cart-discount-section { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
 .cart-line-children { list-style: none; margin: 8px 0 0 76px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+@keyframes cart-item-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes cart-panel-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.cart-item { animation: cart-item-in .3s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .cart-item, .cart-summary--aside { animation: none; }
+}
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; border-width: 0;
