@@ -47,6 +47,7 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
           <NavLink to="/collections/all">Todos los productos</NavLink>
           <NavLink to="/marcas">Nuestras Marcas</NavLink>
           <NavLink to="/collections/outlet">Outlet</NavLink>
+          <NavLink to="/blogs/noticias">Blog</NavLink>
           <Suspense>
             <Await resolve={footerPromise}>
               {(footer) => (
