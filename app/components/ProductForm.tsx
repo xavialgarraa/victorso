@@ -8,12 +8,15 @@ import type {
 import {AddToCartButton} from './AddToCartButton';
 import {useAside} from './Aside';
 import {Icon} from '~/lib/icons';
+import {NotifyMeForm} from './NotifyMeForm';
 import type {ProductFragment} from 'storefrontapi.generated';
 
 export function ProductForm({
+  productId,
   productOptions,
   selectedVariant,
 }: {
+  productId: string;
   productOptions: MappedProductOptions[];
   selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
 }) {
@@ -164,6 +167,8 @@ export function ProductForm({
           Comprar ahora
         </AddToCartButton>
       </div>
+
+      {!selectedVariant?.availableForSale && <NotifyMeForm productId={productId} />}
     </div>
   );
 }

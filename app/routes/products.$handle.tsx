@@ -103,7 +103,11 @@ export default function Product() {
             />
           </div>
 
-          <ProductForm productOptions={productOptions} selectedVariant={selectedVariant} />
+          <ProductForm
+            productId={product.id}
+            productOptions={productOptions}
+            selectedVariant={selectedVariant}
+          />
 
           <div className="pdp__perks">
             <div>
