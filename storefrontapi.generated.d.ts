@@ -417,7 +417,10 @@ export type ChatProductSearchQueryVariables = StorefrontAPI.Exact<{
 export type ChatProductSearchQuery = {
   search: {
     nodes: Array<
-      Pick<StorefrontAPI.Product, 'title' | 'handle' | 'vendor'> & {
+      Pick<
+        StorefrontAPI.Product,
+        'title' | 'handle' | 'vendor' | 'description'
+      > & {
         priceRange: {
           minVariantPrice: Pick<
             StorefrontAPI.MoneyV2,
@@ -1390,7 +1393,7 @@ interface GeneratedQueryTypes {
     return: FooterQuery;
     variables: FooterQueryVariables;
   };
-  '#graphql\n  query ChatProductSearch($term: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    search(query: $term, types: [PRODUCT], first: $first, unavailableProducts: LAST) {\n      nodes {\n        ... on Product {\n          title\n          handle\n          vendor\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n            availableForSale\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query ChatProductSearch($term: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    search(query: $term, types: [PRODUCT], first: $first, unavailableProducts: LAST) {\n      nodes {\n        ... on Product {\n          title\n          handle\n          vendor\n          description(truncateAt: 300)\n          priceRange {\n            minVariantPrice {\n              amount\n              currencyCode\n            }\n          }\n          selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n            availableForSale\n          }\n        }\n      }\n    }\n  }\n': {
     return: ChatProductSearchQuery;
     variables: ChatProductSearchQueryVariables;
   };

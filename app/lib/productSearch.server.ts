@@ -9,6 +9,7 @@ const SEARCH_QUERY = `#graphql
           title
           handle
           vendor
+          description(truncateAt: 300)
           priceRange {
             minVariantPrice {
               amount
@@ -27,6 +28,7 @@ const SEARCH_QUERY = `#graphql
 export type ProductSearchResult = {
   title: string;
   vendor: string;
+  description: string;
   price: string;
   currency: string;
   available: boolean;
@@ -48,6 +50,7 @@ export async function searchProductsForChat(
     title: string;
     handle: string;
     vendor: string;
+    description: string;
     priceRange: {minVariantPrice: {amount: string; currencyCode: string}};
     selectedOrFirstAvailableVariant: {availableForSale: boolean} | null;
   }>;
@@ -58,9 +61,10 @@ export async function searchProductsForChat(
     );
   }
 
-  return products.slice(0, 5).map((p) => ({
+  return products.slice(0, 6).map((p) => ({
     title: p.title,
     vendor: p.vendor,
+    description: p.description,
     price: p.priceRange.minVariantPrice.amount,
     currency: p.priceRange.minVariantPrice.currencyCode,
     available: p.selectedOrFirstAvailableVariant?.availableForSale ?? true,
