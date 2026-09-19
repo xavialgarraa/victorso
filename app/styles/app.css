@@ -586,6 +586,7 @@ body.nav-open { overflow: hidden; }
 .pagination__nav:disabled { opacity: .4; cursor: default; }
 .pagination__num.active { background: var(--red); border-color: var(--red); color: #fff; box-shadow: 0 3px 10px -3px rgba(227,6,19,.5); }
 .pagination__ellipsis { color: var(--text-soft); padding: 0 2px; }
+.pagination__count { font-size: .82rem; color: var(--text-muted); padding: 0 6px; }
 .per-page { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--text-muted); margin-left: 10px; }
 .per-page select { border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 6px; font-size: .82rem; background: var(--surface); color: var(--text); }
 
@@ -609,6 +610,13 @@ body.nav-open { overflow: hidden; }
 .filter-group label { display: flex; align-items: center; gap: 8px; font-size: .88rem; padding: 6px 4px; margin: 0 -4px; border-radius: 6px; color: var(--text); cursor: pointer; transition: background .15s ease; }
 .filter-group label:hover { background: var(--bg-muted, rgba(255,255,255,.04)); }
 .filter-group input[type=checkbox] { accent-color: var(--red); width: 16px; height: 16px; }
+.filter-group--perpage { border-bottom: none; padding-bottom: 0; margin-bottom: 20px; }
+.filter-select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px;
+  font-size: .88rem; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 16px;
+  color: var(--text); appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.filters__apply { margin-top: 4px; }
 .filter-group__pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-pill { display: inline-flex; padding: 6px 14px; border-radius: 30px; border: 1px solid var(--border-strong); font-size: .8rem; font-weight: 600; color: var(--text-muted); transition: border-color .15s ease, color .15s ease, background .15s ease; }
 .filter-pill:hover, .filter-pill.active { border-color: var(--red); color: var(--red); background: rgba(227,6,19,.08); }
@@ -950,7 +958,8 @@ aside header { align-items: center; border-bottom: 1px solid var(--aside-border)
 aside header h3 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; }
 aside header .close { background: none; border: none; color: var(--aside-text); cursor: pointer; font-size: 1.6rem; line-height: 1; opacity: .75; transition: opacity .2s ease; }
 aside header .close:hover { opacity: 1; }
-aside main { margin: 0; padding: 20px; overflow-y: auto; flex: 1; }
+aside main { margin: 0; padding: 20px; overflow-y: auto; flex: 1; scrollbar-width: none; -ms-overflow-style: none; }
+aside main::-webkit-scrollbar { display: none; }
 aside p { margin: 0 0 .25rem; }
 aside p:last-child { margin: 0; }
 aside li { margin-bottom: .125rem; }

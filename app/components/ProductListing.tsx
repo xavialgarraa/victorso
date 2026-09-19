@@ -16,6 +16,8 @@ export type CategoryLink = {handle: string; title: string};
 
 type PaginationConnection = React.ComponentProps<typeof Pagination<ProductCardFragment>>['connection'];
 
+export type ManualPagination = {page: number; totalPages: number};
+
 const PER_PAGE_OPTIONS = [12, 24, 48];
 
 export function ProductListing({
@@ -25,13 +27,15 @@ export function ProductListing({
   sortOptions,
   resultCount,
   categoryLinks,
+  manualPagination,
 }: {
   title: string;
-  products: PaginationConnection;
+  products: PaginationConnection | ProductCardFragment[];
   filters: ListingFilter[];
   sortOptions: Array<{value: string; label: string}>;
   resultCount: number;
   categoryLinks?: CategoryLink[];
+  manualPagination?: ManualPagination;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -168,9 +172,10 @@ export function ProductListing({
                   ))}
                 </div>
               ))}
-            <div className="filter-group">
+            <div className="filter-group filter-group--perpage">
               <h4>Por página</h4>
               <select
+                className="filter-select"
                 value={perPage}
                 onChange={(e) => updateParam('perPage', e.target.value)}
               >
@@ -183,7 +188,7 @@ export function ProductListing({
             </div>
             <button
               type="button"
-              className="btn btn--primary btn--block"
+              className="btn btn--primary btn--block filters__apply"
               onClick={() => setFiltersOpen(false)}
             >
               Ver resultados
@@ -191,37 +196,101 @@ export function ProductListing({
           </aside>
 
           <div>
-            <Pagination connection={products}>
-              {({nodes, isLoading, PreviousLink, NextLink}) =>
-                nodes.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No se han encontrado productos con estos filtros.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="pagination pagination--top">
-                      <PreviousLink className="pagination__nav">
-                        {isLoading ? '…' : <Icon name="chevronLeft" />}
-                      </PreviousLink>
+            {manualPagination ? (
+              <ManualProductGrid
+                products={products as ProductCardFragment[]}
+                view={view}
+                pagination={manualPagination}
+                onPageChange={(page) => updateParam('page', page > 1 ? String(page) : null)}
+              />
+            ) : (
+              <Pagination connection={products as PaginationConnection}>
+                {({nodes, isLoading, PreviousLink, NextLink}) =>
+                  nodes.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No se han encontrado productos con estos filtros.</p>
                     </div>
-                    <div className={`prodgrid${view === 'list' ? ' prodgrid--list' : ''}`}>
-                      {nodes.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                      ))}
-                    </div>
-                    <div className="pagination">
-                      <NextLink className="pagination__nav">
-                        {isLoading ? 'Cargando…' : <Icon name="chevronRight" />}
-                      </NextLink>
-                    </div>
-                  </>
-                )
-              }
-            </Pagination>
+                  ) : (
+                    <>
+                      <div className="pagination pagination--top">
+                        <PreviousLink className="pagination__nav">
+                          {isLoading ? '…' : <Icon name="chevronLeft" />}
+                        </PreviousLink>
+                      </div>
+                      <div className={`prodgrid${view === 'list' ? ' prodgrid--list' : ''}`}>
+                        {nodes.map((product) => (
+                          <ProductCard key={product.id} product={product} />
+                        ))}
+                      </div>
+                      <div className="pagination">
+                        <NextLink className="pagination__nav">
+                          {isLoading ? 'Cargando…' : <Icon name="chevronRight" />}
+                        </NextLink>
+                      </div>
+                    </>
+                  )
+                }
+              </Pagination>
+            )}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function ManualProductGrid({
+  products,
+  view,
+  pagination,
+  onPageChange,
+}: {
+  products: ProductCardFragment[];
+  view: 'grid' | 'list';
+  pagination: ManualPagination;
+  onPageChange: (page: number) => void;
+}) {
+  if (products.length === 0) {
+    return (
+      <div className="empty-state">
+        <p>No se han encontrado productos con estos filtros.</p>
+      </div>
+    );
+  }
+
+  const {page, totalPages} = pagination;
+
+  return (
+    <>
+      <div className={`prodgrid${view === 'list' ? ' prodgrid--list' : ''}`}>
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            type="button"
+            className="pagination__nav"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            <Icon name="chevronLeft" />
+          </button>
+          <span className="pagination__count">
+            Página {page} de {totalPages}
+          </span>
+          <button
+            type="button"
+            className="pagination__nav"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            <Icon name="chevronRight" />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
