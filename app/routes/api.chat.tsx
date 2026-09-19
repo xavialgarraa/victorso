@@ -1,8 +1,10 @@
 import type {Route} from './+types/api.chat';
+import {searchProductsForChat} from '~/lib/productSearch.server';
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_LENGTH = 1000;
+const MAX_TOOL_ROUNDS = 3;
 
 const SYSTEM_PROMPT = `Eres el asistente virtual de Victor So Professional, una tienda
 online y física de equipos de DJ, sonido profesional, iluminación y material
@@ -19,16 +21,25 @@ Información real de la tienda que puedes usar para responder:
 - También hacen instalaciones de sonido e iluminación para ayuntamientos, discotecas,
   salas de eventos y empresas (más de 35 años de experiencia).
 
+Tienes una herramienta "search_products" para buscar productos REALES del catálogo
+(nombre, marca, precio y disponibilidad actuales). Úsala siempre que el cliente
+pida una recomendación o pregunte por un tipo de producto concreto (ej. "flight
+case", "auriculares para DJ", "cable XLR"), en vez de responder de forma genérica.
+Basa la respuesta únicamente en lo que devuelva la búsqueda:
+- Si hay resultados, recomienda 1-3 como mucho, con su nombre, precio y un enlace
+  [nombre del producto](url) usando la "url" que te da la herramienta EXACTAMENTE
+  tal cual (empieza por "/products/..."), sin anteponerle ningún dominio.
+- Si la búsqueda no devuelve nada, dilo con naturalidad y ofrece el contacto
+  directo (WhatsApp/teléfono) o sugerir un término distinto — nunca inventes un
+  producto que no ha salido en los resultados.
+
 Reglas importantes:
-- Responde SIEMPRE en español, de forma breve, cercana y profesional (2-4 frases,
-  usa listas solo si aporta claridad).
-- NO inventes precios, stock ni características concretas de productos que no
-  conozcas: si preguntan por un producto específico, indícales que lo busquen en la
-  web o contacten por WhatsApp/teléfono para confirmarlo al momento.
+- Responde SIEMPRE en español, de forma breve, cercana y profesional (2-4 frases).
+- NO inventes precios, stock ni productos que no te haya dado la herramienta de
+  búsqueda. Para cualquier otro dato que no tengas con certeza, dilo y ofrece el
+  contacto directo (WhatsApp o teléfono) en vez de inventar.
 - Si preguntan algo que no tiene que ver con la tienda (temas ajenos, código, etc.),
   redirige amablemente la conversación de vuelta a cómo puedes ayudarles con la tienda.
-- Si no sabes algo con certeza, dilo y ofrece el contacto directo (WhatsApp o teléfono)
-  en vez de inventar.
 
 Formato de la respuesta (se renderiza en un chat, no en markdown completo):
 - Puedes usar **negrita** (con doble asterisco) para destacar algo puntual, con
@@ -36,17 +47,63 @@ Formato de la respuesta (se renderiza en un chat, no en markdown completo):
 - No uses ningún otro formato markdown: nada de #, listas numeradas (1. 2. 3.),
   listas con guiones, tablas, etc. Escribe en párrafos normales y breves.
 - Nunca pegues una URL suelta sin envolverla en [texto](url).
-- Para enlaces internos de la propia web usa SIEMPRE una ruta relativa que
-  empiece por "/" (ej. [ver catálogo](/collections/all) o
-  [WhatsApp](https://wa.me/34619406443) para el externo) — nunca inventes un
-  dominio como victorso.com o similar.
-- No conoces las categorías ni productos concretos del catálogo en detalle
-  (aparte de las categorías generales ya listadas arriba), así que para
-  cualquier recomendación de producto enlaza siempre a [todos los
-  productos](/collections/all) o sugiere usar el buscador de la web, en vez de
-  inventar una URL de categoría o producto concreta.`;
+- Para enlaces internos que no vengan de la herramienta de búsqueda, usa SIEMPRE
+  una ruta relativa que empiece por "/" (ej. [ver catálogo](/collections/all)) —
+  nunca inventes un dominio como victorso.com o similar.`;
+
+const TOOLS = [
+  {
+    name: 'search_products',
+    description:
+      'Busca productos reales en el catálogo de la tienda por texto libre, con precio máximo opcional. Devuelve título, marca, precio, disponibilidad y URL de cada resultado.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Términos de búsqueda, ej. "flight case", "auriculares dj", "cable xlr"',
+        },
+        maxPrice: {
+          type: 'number',
+          description: 'Precio máximo en euros, si el cliente lo menciona (opcional)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+];
 
 type ChatMessage = {role: 'user' | 'assistant'; content: string};
+type AnthropicContentBlock =
+  | {type: 'text'; text: string}
+  | {type: 'tool_use'; id: string; name: string; input: {query: string; maxPrice?: number}};
+
+async function callAnthropic(
+  apiKey: string,
+  conversation: unknown[],
+): Promise<{content: AnthropicContentBlock[]; stop_reason: string}> {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 500,
+      system: SYSTEM_PROMPT,
+      tools: TOOLS,
+      messages: conversation,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Anthropic API error ${response.status}: ${await response.text()}`);
+  }
+
+  return (await response.json()) as {content: AnthropicContentBlock[]; stop_reason: string};
+}
 
 export async function action({request, context}: Route.ActionArgs) {
   if (!context.env.ANTHROPIC_API_KEY) {
@@ -75,43 +132,53 @@ export async function action({request, context}: Route.ActionArgs) {
     return Response.json({error: 'Escribe un mensaje.'}, {status: 400});
   }
 
+  const conversation: unknown[] = [...messages];
+
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': context.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 400,
-        system: SYSTEM_PROMPT,
-        messages,
-      }),
-    });
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const data = await callAnthropic(context.env.ANTHROPIC_API_KEY, conversation);
 
-    if (!response.ok) {
-      console.error('[chat] Anthropic API error:', response.status, await response.text());
-      return Response.json(
-        {error: 'No he podido responder ahora mismo. Prueba de nuevo en un momento.'},
-        {status: 200},
+      if (data.stop_reason !== 'tool_use') {
+        const reply = data.content.find((b) => b.type === 'text')?.text?.trim();
+        if (!reply) break;
+        return Response.json({reply});
+      }
+
+      conversation.push({role: 'assistant', content: data.content});
+
+      const toolResults = await Promise.all(
+        data.content
+          .filter((b): b is Extract<AnthropicContentBlock, {type: 'tool_use'}> => b.type === 'tool_use')
+          .map(async (toolUse) => {
+            if (toolUse.name !== 'search_products') {
+              return {type: 'tool_result', tool_use_id: toolUse.id, content: 'Herramienta desconocida.'};
+            }
+            try {
+              const results = await searchProductsForChat(context.storefront, toolUse.input);
+              return {
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: JSON.stringify(results.length > 0 ? results : {message: 'Sin resultados.'}),
+              };
+            } catch (error) {
+              console.error('[chat] search_products error:', error);
+              return {
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: 'Error buscando productos.',
+                is_error: true,
+              };
+            }
+          }),
       );
+
+      conversation.push({role: 'user', content: toolResults});
     }
 
-    const data = (await response.json()) as {
-      content: Array<{type: string; text?: string}>;
-    };
-    const reply = data.content.find((block) => block.type === 'text')?.text?.trim();
-
-    if (!reply) {
-      return Response.json(
-        {error: 'No he podido responder ahora mismo. Prueba de nuevo en un momento.'},
-        {status: 200},
-      );
-    }
-
-    return Response.json({reply});
+    return Response.json(
+      {error: 'No he podido responder ahora mismo. Prueba de nuevo en un momento.'},
+      {status: 200},
+    );
   } catch (error) {
     console.error('[chat]', error);
     return Response.json(
