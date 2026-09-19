@@ -9,8 +9,10 @@ export async function getRestockSubscribers(env: Env, productId: string): Promis
     product: {metafield: {value: string} | null} | null;
   }>(
     env,
-    `#graphql
-    query RestockSubscribers($id: ID!, $namespace: String!, $key: String!) {
+    // Nota: sin el comentario "#graphql" a propósito — esta consulta va
+    // contra el esquema de la Admin API, no el de Storefront, y el
+    // codegen de Hydrogen solo sabe validar/tipar el de Storefront.
+    `query RestockSubscribers($id: ID!, $namespace: String!, $key: String!) {
       product(id: $id) {
         metafield(namespace: $namespace, key: $key) {
           value
@@ -37,8 +39,7 @@ export async function setRestockSubscribers(
 ): Promise<void> {
   await adminQuery(
     env,
-    `#graphql
-    mutation SetRestockSubscribers($metafields: [MetafieldsSetInput!]!) {
+    `mutation SetRestockSubscribers($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
         userErrors { field message }
       }

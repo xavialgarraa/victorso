@@ -20,5 +20,7 @@ declare global {
     // Email transaccional (Resend) para el envío real del aviso de restock.
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
+    // Asistente de chat con IA (API de Anthropic/Claude).
+    ANTHROPIC_API_KEY?: string;
   }
 }

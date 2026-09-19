@@ -11,6 +11,7 @@ import {Header, HeaderMenu} from '~/components/Header';
 import {CartMain} from '~/components/CartMain';
 import {ScrollReveal} from '~/components/ScrollReveal';
 import {HeaderOffset} from '~/components/HeaderOffset';
+import {ChatAssistant} from '~/components/ChatAssistant';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -49,6 +50,7 @@ export function PageLayout({
         header={header}
         publicStoreDomain={publicStoreDomain}
       />
+      <ChatAssistant />
     </Aside.Provider>
   );
 }
