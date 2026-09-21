@@ -2,6 +2,7 @@ import {Suspense} from 'react';
 import {Await, NavLink} from 'react-router';
 import type {FooterQuery, HeaderQuery} from 'storefrontapi.generated';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 interface FooterProps {
   footer: Promise<FooterQuery | null>;
@@ -10,6 +11,7 @@ interface FooterProps {
 }
 
 export function Footer({footer: footerPromise, header, publicStoreDomain}: FooterProps) {
+  const {t} = useI18n();
   return (
     <footer className="footer">
       <div className="container footer__grid">
@@ -43,10 +45,10 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
         </div>
 
         <div className="footer__col">
-          <h4>Tienda</h4>
+          <h4>{t('footerShop')}</h4>
           <NavLink to="/collections/all">Todos los productos</NavLink>
-          <NavLink to="/marcas">Nuestras Marcas</NavLink>
-          <NavLink to="/collections/outlet">Outlet</NavLink>
+          <NavLink to="/marcas">{t('navBrands')}</NavLink>
+          <NavLink to="/collections/outlet">{t('navOutlet')}</NavLink>
           <NavLink to="/blogs/noticias">Blog</NavLink>
           <Suspense>
             <Await resolve={footerPromise}>
@@ -62,17 +64,17 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
         </div>
 
         <div className="footer__col">
-          <h4>Atención al cliente</h4>
-          <NavLink to="/quienes-somos">Quiénes somos</NavLink>
-          <NavLink to="/instalaciones">Instalaciones</NavLink>
-          <NavLink to="/policies/shipping-policy">Envíos y plazos de entrega</NavLink>
-          <NavLink to="/policies/refund-policy">Devoluciones y garantía</NavLink>
+          <h4>{t('footerSupport')}</h4>
+          <NavLink to="/quienes-somos">{t('navAbout')}</NavLink>
+          <NavLink to="/instalaciones">{t('navInstalaciones')}</NavLink>
+          <NavLink to="/policies/shipping-policy">{t('footerShipping')}</NavLink>
+          <NavLink to="/policies/refund-policy">{t('footerReturns')}</NavLink>
           <NavLink to="/policies/terms-of-service">Términos de servicio</NavLink>
           <NavLink to="/policies/privacy-policy">Privacidad</NavLink>
         </div>
 
         <div className="footer__col">
-          <h4>Contacto directo</h4>
+          <h4>{t('footerContact')}</h4>
           <a href="tel:+34972364114">
             <Icon name="phone" />
             972 364 114
@@ -85,12 +87,12 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
             <Icon name="mail" />
             info@victorso.com
           </a>
-          <p className="footer__hours">Lunes a viernes de 9:00 a 13:00 y de 15:00 a 19:00</p>
+          <p className="footer__hours">{t('footerHours')}</p>
         </div>
       </div>
 
       <div className="footer__bottom container">
-        <p>© {new Date().getFullYear()} {header.shop.name}. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} {header.shop.name}. {t('footerRights')}</p>
       </div>
     </footer>
   );

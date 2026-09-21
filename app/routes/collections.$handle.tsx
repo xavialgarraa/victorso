@@ -5,6 +5,7 @@ import type {ProductFilter} from '@shopify/hydrogen/storefront-api-types';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductListing, type ListingFilter} from '~/components/ProductListing';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [{title: `${data?.collection.title ?? ''} — Victor So Professional`}];
@@ -82,6 +83,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
 
 export default function Collection() {
   const {collection, resultCount} = useLoaderData<typeof loader>();
+  const {t} = useI18n();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
     id: f.id,
@@ -98,7 +100,7 @@ export default function Collection() {
   return (
     <div className="collection">
       <div className="breadcrumb container">
-        <a href="/">Inicio</a> / {collection.title}
+        <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
       </div>
       <ProductListing
         title={collection.title}

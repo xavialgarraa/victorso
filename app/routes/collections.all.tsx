@@ -2,6 +2,7 @@ import type {Route} from './+types/collections.all';
 import {useLoaderData} from 'react-router';
 import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductListing, type ListingFilter} from '~/components/ProductListing';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: `Todos los productos — Victor So Professional`}];
@@ -170,14 +171,15 @@ export async function loader({context, request}: Route.LoaderArgs) {
 export default function Collection() {
   const {products, resultCount, manualPagination, categoryLinks, listingFilters} =
     useLoaderData<typeof loader>();
+  const {t} = useI18n();
 
   return (
     <div className="collection">
       <div className="breadcrumb container">
-        <a href="/">Inicio</a> / Todos los productos
+        <a href="/">{t('breadcrumbHome')}</a> / {t('allProducts')}
       </div>
       <ProductListing
-        title="Todos los productos"
+        title={t('allProducts')}
         products={products}
         filters={listingFilters}
         categoryLinks={categoryLinks}

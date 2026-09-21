@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
+import {useI18n} from '~/lib/i18n';
 
 export type HeroSlide = {
   key: string;
@@ -132,6 +133,7 @@ export function StoreHero({
   leftSlides: HeroSlide[];
   rightSlides: HeroSlide[];
 }) {
+  const {t} = useI18n();
   const mobileSlides = [...leftSlides, ...rightSlides];
 
   return (
@@ -146,7 +148,7 @@ export function StoreHero({
 
       <div className="storehero__ctaWrap">
         <Link className="storehero__ctaBtn" to="/collections/all">
-          <span className="storehero__ctaBtn-text">Ver todos los productos</span>
+          <span className="storehero__ctaBtn-text">{t('storeHeroCtaBtn')}</span>
           <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
         </Link>
         <button
@@ -156,19 +158,19 @@ export function StoreHero({
             document.getElementById('categorySection')?.scrollIntoView({behavior: 'smooth', block: 'start'})
           }
         >
-          <span className="storehero__ctaBtn-text">Comprar por categoría</span>
+          <span className="storehero__ctaBtn-text">{t('storeHeroCatBtn')}</span>
           <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
         </button>
       </div>
 
       <div className="storehero__brands">
-        <span className="storehero__brandsLabel">Marcas</span>
+        <span className="storehero__brandsLabel">{t('brandsLabel')}</span>
         <BrandsTicker />
       </div>
 
       <div className="storehero__scrollhint">
         <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>
-        <span className="storehero__scrollhint-text">Sigue bajando</span>
+        <span className="storehero__scrollhint-text">{t('scrollHint')}</span>
       </div>
     </section>
   );

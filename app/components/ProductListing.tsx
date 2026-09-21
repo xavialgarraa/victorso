@@ -4,6 +4,15 @@ import {Pagination} from '@shopify/hydrogen';
 import type {ProductCardFragment} from 'storefrontapi.generated';
 import {ProductCard} from '~/components/ProductCard';
 import {Icon} from '~/lib/icons';
+import {useI18n, type I18nKey} from '~/lib/i18n';
+
+const SORT_LABEL_KEYS: Record<string, I18nKey> = {
+  relevance: 'sortRelevance',
+  'price-asc': 'sortPriceAsc',
+  'price-desc': 'sortPriceDesc',
+  newest: 'sortNewest',
+  title: 'sortTitle',
+};
 
 export type ListingFilter = {
   id: string;
@@ -37,6 +46,7 @@ export function ProductListing({
   categoryLinks?: CategoryLink[];
   manualPagination?: ManualPagination;
 }) {
+  const {t} = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -92,16 +102,14 @@ export function ProductListing({
             onClick={() => setFiltersOpen(true)}
           >
             <Icon name="filter" />
-            <span>Filtros</span>
+            <span>{t('filters')}</span>
           </button>
-          <span className="listing__count">
-            {resultCount} producto{resultCount === 1 ? '' : 's'}
-          </span>
+          <span className="listing__count">{t('results', resultCount)}</span>
           <div className="view-toggle" role="group">
             <button
               type="button"
               className={`view-toggle__btn${view === 'grid' ? ' active' : ''}`}
-              aria-label="Vista cuadrícula"
+              aria-label={t('viewGrid')}
               onClick={() => updateParam('view', null)}
             >
               <Icon name="gridView" />
@@ -109,7 +117,7 @@ export function ProductListing({
             <button
               type="button"
               className={`view-toggle__btn${view === 'list' ? ' active' : ''}`}
-              aria-label="Vista lista"
+              aria-label={t('viewList')}
               onClick={() => updateParam('view', 'list')}
             >
               <Icon name="listView" />
@@ -123,7 +131,7 @@ export function ProductListing({
             >
               {sortOptions.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {SORT_LABEL_KEYS[o.value] ? t(SORT_LABEL_KEYS[o.value]) : o.label}
                 </option>
               ))}
             </select>
@@ -133,14 +141,14 @@ export function ProductListing({
         <div className="listing__body">
           <aside className={`filters${filtersOpen ? ' open' : ''}`}>
             <div className="filters__head">
-              <h3 className="mt-0">Filtros</h3>
+              <h3 className="mt-0">{t('filters')}</h3>
               <button className="filters__close" onClick={() => setFiltersOpen(false)}>
                 <Icon name="close" />
               </button>
             </div>
             {categoryLinks && categoryLinks.length > 0 && (
               <div className="filter-group">
-                <h4>Categoría</h4>
+                <h4>{t('categoryLabel')}</h4>
                 <div className="filter-group__pills">
                   {categoryLinks.map((c) => (
                     <Link key={c.handle} className="filter-pill" to={`/collections/${c.handle}`}>
@@ -173,7 +181,7 @@ export function ProductListing({
                 </div>
               ))}
             <div className="filter-group filter-group--perpage">
-              <h4>Por página</h4>
+              <h4>{t('perPageLabel')}</h4>
               <select
                 className="filter-select"
                 value={perPage}
@@ -191,7 +199,7 @@ export function ProductListing({
               className="btn btn--primary btn--block filters__apply"
               onClick={() => setFiltersOpen(false)}
             >
-              Ver resultados
+              {t('applyFilters')}
             </button>
           </aside>
 
@@ -208,7 +216,7 @@ export function ProductListing({
                 {({nodes, isLoading, PreviousLink, NextLink}) =>
                   nodes.length === 0 ? (
                     <div className="empty-state">
-                      <p>No se han encontrado productos con estos filtros.</p>
+                      <p>{t('noResults')}</p>
                     </div>
                   ) : (
                     <>
@@ -250,10 +258,12 @@ function ManualProductGrid({
   pagination: ManualPagination;
   onPageChange: (page: number) => void;
 }) {
+  const {t} = useI18n();
+
   if (products.length === 0) {
     return (
       <div className="empty-state">
-        <p>No se han encontrado productos con estos filtros.</p>
+        <p>{t('noResults')}</p>
       </div>
     );
   }
@@ -278,7 +288,7 @@ function ManualProductGrid({
             <Icon name="chevronLeft" />
           </button>
           <span className="pagination__count">
-            Página {page} de {totalPages}
+            {page} / {totalPages}
           </span>
           <button
             type="button"
@@ -318,6 +328,7 @@ function PriceRangeFilter({
   const floor = bounds ? Math.floor(bounds.min) : 0;
   const ceiling = bounds ? Math.ceil(bounds.max) : 0;
 
+  const {t} = useI18n();
   const [min, setMin] = useState(selected?.min ?? floor);
   const [max, setMax] = useState(selected?.max ?? ceiling);
 
@@ -333,7 +344,7 @@ function PriceRangeFilter({
 
   return (
     <div className="filter-group">
-      <h4>Precio</h4>
+      <h4>{t('price')}</h4>
       <div className="price-slider">
         <div className="price-slider__track">
           <div

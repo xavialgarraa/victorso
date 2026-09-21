@@ -4,6 +4,7 @@ import {CartForm, Money, type OptimisticCart} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
 import {Link, useFetcher} from 'react-router';
 import {useAside} from '~/components/Aside';
+import {useI18n} from '~/lib/i18n';
 
 const FREE_SHIPPING_THRESHOLD = 149;
 
@@ -13,6 +14,7 @@ type CartSummaryProps = {
 };
 
 export function CartSummary({cart, layout}: CartSummaryProps) {
+  const {t} = useI18n();
   const discountsHeadingId = useId();
   const discountCodeInputId = useId();
   const giftCardHeadingId = useId();
@@ -25,13 +27,13 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
   return (
     <div className={layout === 'page' ? 'cart-summary' : 'cart-summary cart-summary--aside'}>
-      <h3 className="mt-0">Resumen del pedido</h3>
+      <h3 className="mt-0">{t('orderSummary')}</h3>
 
       <div className="shipping-progress">
         <p>
           {remaining > 0
-            ? `Te faltan ${remaining.toFixed(2)} ${currency} para el envío gratis`
-            : '¡Tienes envío gratis!'}
+            ? t('shippingProgress', `${remaining.toFixed(2)} ${currency}`)
+            : t('shippingReached')}
         </p>
         <div className="shipping-progress__bar">
           <div className="shipping-progress__fill" style={{width: `${progressPct}%`}} />
@@ -39,7 +41,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
       </div>
 
       <div className="cart-summary__row">
-        <span>Subtotal</span>
+        <span>{t('subtotal')}</span>
         <span>
           {cart?.cost?.subtotalAmount?.amount ? <Money data={cart.cost.subtotalAmount} /> : '-'}
         </span>
@@ -58,7 +60,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
 
       {cart?.cost?.totalAmount?.amount && (
         <div className="cart-summary__row total">
-          <span>Total</span>
+          <span>{t('total')}</span>
           <span>
             <Money data={cart.cost.totalAmount} />
           </span>
@@ -78,17 +80,18 @@ function CartCheckoutActions({
   layout: CartLayout;
 }) {
   const {close} = useAside();
+  const {t} = useI18n();
 
   return (
     <div className="cart-summary__actions">
       {layout === 'aside' && (
         <Link className="btn btn--outline btn--block" to="/cart" onClick={close}>
-          Ver carrito completo
+          {t('viewFullCart')}
         </Link>
       )}
       {checkoutUrl && (
         <a href={checkoutUrl} target="_self" className="btn btn--primary btn--block">
-          Finalizar compra →
+          {t('checkoutBtn')} →
         </a>
       )}
     </div>
@@ -104,6 +107,7 @@ function CartDiscounts({
   discountsHeadingId: string;
   discountCodeInputId: string;
 }) {
+  const {t} = useI18n();
   const codes: string[] =
     discountCodes?.filter((discount) => discount.applicable)?.map(({code}) => code) || [];
 
@@ -112,9 +116,9 @@ function CartDiscounts({
       {codes.length > 0 && (
         <UpdateDiscountForm>
           <div className="cart-summary__row">
-            <span id={discountsHeadingId}>Código: {codes.join(', ')}</span>
+            <span id={discountsHeadingId}>{t('discountCode')}: {codes.join(', ')}</span>
             <button type="submit" className="cart-item__remove">
-              Quitar
+              {t('remove')}
             </button>
           </div>
         </UpdateDiscountForm>
@@ -122,11 +126,11 @@ function CartDiscounts({
       <UpdateDiscountForm discountCodes={codes}>
         <div className="price-inputs">
           <label htmlFor={discountCodeInputId} className="sr-only">
-            Código de descuento
+            {t('discountCode')}
           </label>
-          <input id={discountCodeInputId} type="text" name="discountCode" placeholder="Código de descuento" />
+          <input id={discountCodeInputId} type="text" name="discountCode" placeholder={t('discountCode')} />
           <button type="submit" className="btn btn--outline">
-            Aplicar
+            {t('apply')}
           </button>
         </div>
       </UpdateDiscountForm>
@@ -161,6 +165,7 @@ function CartGiftCard({
   giftCardHeadingId: string;
   giftCardInputId: string;
 }) {
+  const {t} = useI18n();
   const giftCardCodeInput = useRef<HTMLInputElement>(null);
   const removeButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const previousCardIdsRef = useRef<string[]>([]);
@@ -205,7 +210,7 @@ function CartGiftCard({
       {giftCardCodes && giftCardCodes.length > 0 && (
         <div>
           <span id={giftCardHeadingId} className="sr-only">
-            Tarjetas regalo aplicadas
+            {t('giftCard')}
           </span>
           {giftCardCodes.map((giftCard) => (
             <RemoveGiftCardForm
@@ -231,17 +236,17 @@ function CartGiftCard({
       <AddGiftCardForm fetcherKey="gift-card-add">
         <div className="price-inputs">
           <label htmlFor={giftCardInputId} className="sr-only">
-            Código de tarjeta regalo
+            {t('giftCard')}
           </label>
           <input
             id={giftCardInputId}
             type="text"
             name="giftCardCode"
-            placeholder="Tarjeta regalo"
+            placeholder={t('giftCard')}
             ref={giftCardCodeInput}
           />
           <button type="submit" className="btn btn--outline" disabled={giftCardAddFetcher.state !== 'idle'}>
-            Aplicar
+            {t('apply')}
           </button>
         </div>
       </AddGiftCardForm>
@@ -276,6 +281,7 @@ function RemoveGiftCardForm({
   onRemoveClick?: () => void;
   buttonRef?: (el: HTMLButtonElement | null) => void;
 }) {
+  const {t} = useI18n();
   return (
     <CartForm
       route="/cart"
@@ -286,11 +292,11 @@ function RemoveGiftCardForm({
       <button
         type="submit"
         className="cart-item__remove"
-        aria-label={`Quitar tarjeta terminada en ${lastCharacters}`}
+        aria-label={`${t('remove')} — ***${lastCharacters}`}
         onClick={onRemoveClick}
         ref={buttonRef}
       >
-        Quitar
+        {t('remove')}
       </button>
     </CartForm>
   );

@@ -1,5 +1,5 @@
 import {redirect, useLoaderData, Link, Await} from 'react-router';
-import {Suspense} from 'react';
+import {Suspense, useState} from 'react';
 import type {Route} from './+types/products.$handle';
 import {
   getSelectedProductOptions,
@@ -16,6 +16,9 @@ import {ProductCard} from '~/components/ProductCard';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
+import {getReviews} from '~/lib/productReviews.server';
+import {ProductReviews, ReviewsRatingLine} from '~/components/ProductReviews';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [
@@ -30,7 +33,11 @@ export const meta: Route.MetaFunction = ({data}) => {
 export async function loader(args: Route.LoaderArgs) {
   const deferredData = loadDeferredData(args);
   const criticalData = await loadCriticalData(args);
-  return {...deferredData, ...criticalData};
+  // No se puede pedir por el id del producto hasta tener loadCriticalData,
+  // pero seguimos sin bloquear la respuesta: se pasa como promesa para
+  // <Await>, igual que "related".
+  const reviews = getReviews(args.context.env, criticalData.product.id).catch(() => []);
+  return {...deferredData, ...criticalData, reviews};
 }
 
 async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
@@ -67,7 +74,8 @@ function loadDeferredData({context}: Route.LoaderArgs) {
 }
 
 export default function Product() {
-  const {product, related} = useLoaderData<typeof loader>();
+  const {product, related, reviews} = useLoaderData<typeof loader>();
+  const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
 
   const selectedVariant = useOptimisticVariant(
     product.selectedOrFirstAvailableVariant,
@@ -83,11 +91,12 @@ export default function Product() {
 
   const {title, vendor, descriptionHtml} = product;
   const images = product.images.nodes;
+  const {t} = useI18n();
 
   return (
     <div>
       <div className="breadcrumb container">
-        <Link to="/">Inicio</Link> / {title}
+        <Link to="/">{t('breadcrumbHome')}</Link> / {title}
       </div>
       <div className="pdp">
         <ProductGallery images={images} selectedVariantImage={selectedVariant?.image} />
@@ -95,6 +104,9 @@ export default function Product() {
         <div className="pdp__info">
           {vendor && <div className="pdp__vendor">{vendor}</div>}
           <h1 className="pdp__title">{title}</h1>
+          <Suspense fallback={null}>
+            <Await resolve={reviews}>{(list) => <ReviewsRatingLine reviews={list} />}</Await>
+          </Suspense>
 
           <div className="pdp__price" id="pdpPrice">
             <ProductPrice
@@ -112,35 +124,63 @@ export default function Product() {
           <div className="pdp__perks">
             <div>
               <Icon name="truck" />
-              <span>Envío gratis en pedidos +149€ a Península</span>
+              <span>{t('perkShip')}</span>
             </div>
             <div>
               <Icon name="shield" />
-              <span>Garantía oficial del fabricante</span>
+              <span>{t('perkWarranty')}</span>
             </div>
             <div>
               <Icon name="returnArrow" />
-              <span>Devolución gratuita en 30 días</span>
+              <span>{t('perkReturn')}</span>
             </div>
             <div>
               <Icon name="card" />
-              <span>Pago 100% seguro</span>
+              <span>{t('perkSecure')}</span>
             </div>
           </div>
         </div>
 
         <div className="pdp__tabs">
           <div className="tabs__nav">
-            <button className="active" type="button">
-              Descripción
+            <button
+              className={activeTab === 'description' ? 'active' : ''}
+              type="button"
+              onClick={() => setActiveTab('description')}
+            >
+              {t('tabDescription')}
+            </button>
+            <button
+              className={activeTab === 'reviews' ? 'active' : ''}
+              type="button"
+              onClick={() => setActiveTab('reviews')}
+            >
+              {t('tabReviews')}{' '}
+              <Suspense fallback={null}>
+                <Await resolve={reviews}>{(list) => `(${list.length})`}</Await>
+              </Suspense>
             </button>
           </div>
-          <div className="tabs__panel active">
+          <div className={`tabs__panel${activeTab === 'description' ? ' active' : ''}`}>
             {descriptionHtml ? (
               <div className="pdp__desc" dangerouslySetInnerHTML={{__html: descriptionHtml}} />
             ) : (
-              <p className="pdp__desc">Sin descripción disponible.</p>
+              <p className="pdp__desc">{t('noDescription')}</p>
             )}
+          </div>
+          <div className={`tabs__panel${activeTab === 'reviews' ? ' active' : ''}`}>
+            <Suspense fallback={null}>
+              <Await resolve={reviews}>
+                {(list) => (
+                  <ProductReviews
+                    productId={product.id}
+                    productHandle={product.handle}
+                    productTitle={title}
+                    reviews={list}
+                  />
+                )}
+              </Await>
+            </Suspense>
           </div>
         </div>
 
@@ -152,7 +192,7 @@ export default function Product() {
               return (
                 <div className="related">
                   <div className="section__head">
-                    <h2>También te puede interesar</h2>
+                    <h2>{t('relatedProducts')}</h2>
                   </div>
                   <div className="prodgrid">
                     {items.map((p) => (

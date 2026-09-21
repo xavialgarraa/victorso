@@ -10,6 +10,7 @@ import {useAside} from './Aside';
 import {Icon} from '~/lib/icons';
 import {NotifyMeForm} from './NotifyMeForm';
 import type {ProductFragment} from 'storefrontapi.generated';
+import {useI18n} from '~/lib/i18n';
 
 export function ProductForm({
   productId,
@@ -22,6 +23,7 @@ export function ProductForm({
 }) {
   const navigate = useNavigate();
   const {open} = useAside();
+  const {t} = useI18n();
   const [qty, setQty] = useState(1);
   return (
     <div className="product-form">
@@ -108,7 +110,7 @@ export function ProductForm({
       })}
 
       <div className="qty-row">
-        <span style={{fontWeight: 700, fontSize: '.85rem'}}>Cantidad</span>
+        <span style={{fontWeight: 700, fontSize: '.85rem'}}>{t('quantity')}</span>
         <div className="qty-stepper">
           <button type="button" aria-label="Restar" onClick={() => setQty((q) => Math.max(1, q - 1))}>
             <Icon name="minus" />
@@ -122,7 +124,7 @@ export function ProductForm({
 
       <p className={`stock-msg ${selectedVariant?.availableForSale ? 'in' : 'out'}`}>
         <Icon name={selectedVariant?.availableForSale ? 'checkCircle' : 'close'} />
-        <span>{selectedVariant?.availableForSale ? 'En stock' : 'Agotado'}</span>
+        <span>{selectedVariant?.availableForSale ? t('inStock') : t('outOfStock')}</span>
       </p>
 
       <div className="pdp__actions">
@@ -144,7 +146,7 @@ export function ProductForm({
               : []
           }
         >
-          {selectedVariant?.availableForSale ? 'Añadir al carrito' : 'Agotado'}
+          {selectedVariant?.availableForSale ? t('addToCart') : t('outOfStock')}
         </AddToCartButton>
         <AddToCartButton
           className="btn btn--dark"
@@ -164,7 +166,7 @@ export function ProductForm({
               : []
           }
         >
-          Comprar ahora
+          {t('buyNow')}
         </AddToCartButton>
       </div>
 

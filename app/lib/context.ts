@@ -2,6 +2,7 @@ import {createHydrogenContext} from '@shopify/hydrogen';
 import {AppSession} from '~/lib/session';
 import {CART_QUERY_FRAGMENT} from '~/lib/fragments';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
+import {getLocaleFromRequest, LOCALE_TO_SHOPIFY_LANGUAGE} from '~/lib/locales';
 
 // Define the additional context object
 const additionalContext = {
@@ -52,8 +53,10 @@ export async function createHydrogenRouterContext(
       cache,
       waitUntil,
       session,
-      // Or detect from URL path based on locale subpath, cookies, or any other strategy
-      i18n: {language: 'EN', country: 'US'},
+      // Idioma elegido en el selector de la web (cookie "vs_locale"), para
+      // que el catalogo (titulos, descripciones...) llegue ya traducido
+      // via @inContext cuando ese idioma esté publicado en Shopify.
+      i18n: {language: LOCALE_TO_SHOPIFY_LANGUAGE[getLocaleFromRequest(request)], country: 'US'},
       cart: {
         queryFragment: CART_QUERY_FRAGMENT,
       },

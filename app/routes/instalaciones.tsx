@@ -2,6 +2,7 @@ import {useEffect} from 'react';
 import {Link} from 'react-router';
 import type {Route} from './+types/instalaciones';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Instalaciones realizadas — Victor So Professional'}];
@@ -37,29 +38,21 @@ function useTikTokEmbed() {
 
 export default function InstallationsPage() {
   useTikTokEmbed();
-  const waHref = `https://wa.me/34619406443?text=${encodeURIComponent(
-    'Hola, querría pedir información sobre una instalación de sonido/iluminación.',
-  )}`;
+  const {t} = useI18n();
+  const waHref = `https://wa.me/34619406443?text=${encodeURIComponent(t('installWaText'))}`;
 
   return (
     <div>
       <div className="breadcrumb container">
-        <Link to="/">Inicio</Link> / Instalaciones
+        <Link to="/">{t('breadcrumbHome')}</Link> / {t('navInstalaciones')}
       </div>
 
       <section className="section">
         <div className="container">
-          <h1 className="section-title-lg">Instalaciones realizadas</h1>
-          <p className="visit-text">
-            Además de tienda, somos técnicos con más de 35 años de experiencia: diseñamos,
-            instalamos y mantenemos sistemas de sonido e iluminación a medida para ayuntamientos,
-            discotecas, salas de eventos y empresas. Desde la megafonía de un paseo marítimo hasta
-            la iluminación escénica de una sala, nos encargamos de todo el proceso — estudio
-            previo, instalación y servicio técnico posterior — con material profesional y garantía
-            oficial.
-          </p>
+          <h1 className="section-title-lg">{t('aboutInstallTitle')}</h1>
+          <p className="visit-text">{t('aboutInstallIntro')}</p>
           <a className="btn btn--primary" href={waHref} target="_blank" rel="noopener noreferrer">
-            <Icon name="chat" /> Pedir instalación
+            <Icon name="chat" /> {t('installCta')}
           </a>
         </div>
       </section>
@@ -86,7 +79,7 @@ export default function InstallationsPage() {
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Nuestro TikTok</h2>
+            <h2>{t('installTiktokTitle')}</h2>
           </div>
           <div className="tiktok-embed-wrap">
             <blockquote

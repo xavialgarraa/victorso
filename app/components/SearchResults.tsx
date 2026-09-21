@@ -3,6 +3,7 @@ import {Pagination} from '@shopify/hydrogen';
 import {urlWithTrackingParams, type RegularSearchReturn} from '~/lib/search';
 import {ProductCard} from '~/components/ProductCard';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 type SearchItems = RegularSearchReturn['result']['items'];
 type PartialSearchResult<ItemType extends keyof SearchItems> = Pick<
@@ -132,9 +133,10 @@ function SearchResultsProducts({
 }
 
 function SearchResultsEmpty() {
+  const {t} = useI18n();
   return (
     <div className="empty-state">
-      <p>Sin resultados. Prueba con otra búsqueda.</p>
+      <p>{t('searchEmptyHint')}</p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
 import {CartSummary} from './CartSummary';
+import {useI18n} from '~/lib/i18n';
 
 export type CartLayout = 'page' | 'aside';
 
@@ -66,16 +67,17 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
 function CartEmpty({layout}: {layout: CartMainProps['layout']}) {
   const {close} = useAside();
+  const {t} = useI18n();
   return (
     <div className="empty-state">
-      <p>Tu carrito está vacío.</p>
+      <p>{t('cartEmpty')}</p>
       <Link
         className="btn btn--primary"
         to="/collections/all"
         onClick={close}
         prefetch="viewport"
       >
-        Ver productos
+        {t('cartEmptyCta')}
       </Link>
     </div>
   );

@@ -1,24 +1,23 @@
 import {Link} from 'react-router';
 import type {Route} from './+types/marcas';
 import {BRANDS} from '~/lib/brands';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Nuestras Marcas — Victor So Professional'}];
 };
 
 export default function BrandsIndex() {
+  const {t} = useI18n();
   return (
     <div>
       <div className="breadcrumb container">
-        <Link to="/">Inicio</Link> / Nuestras Marcas
+        <Link to="/">{t('breadcrumbHome')}</Link> / {t('navBrands')}
       </div>
       <section className="section">
         <div className="container">
-          <h1 className="section-title-lg">Nuestras Marcas</h1>
-          <p className="visit-text">
-            Trabajamos con los fabricantes más reconocidos del sector del audio profesional, DJ e
-            iluminación. Elige una marca para ver su información y sus productos.
-          </p>
+          <h1 className="section-title-lg">{t('navBrands')}</h1>
+          <p className="visit-text">{t('brandsIndexLede')}</p>
           <div className="brandsindex__grid">
             {BRANDS.map((b) => (
               <Link

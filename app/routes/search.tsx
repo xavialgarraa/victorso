@@ -14,6 +14,7 @@ import type {
   RegularSearchQuery,
   PredictiveSearchQuery,
 } from 'storefrontapi.generated';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: `Hydrogen | Search`}];
@@ -40,22 +41,23 @@ export async function loader({request, context}: Route.LoaderArgs) {
  */
 export default function SearchPage() {
   const {type, term, result, error} = useLoaderData<typeof loader>();
+  const {t} = useI18n();
   if (type === 'predictive') return null;
 
   return (
     <div>
       <div className="breadcrumb container">
-        <a href="/">Inicio</a> / Búsqueda
+        <a href="/">{t('breadcrumbHome')}</a> / {t('searchLabel')}
       </div>
       <section className="section listing">
         <div className="container">
           <div className="section__head">
-            <h1>{term ? `Resultados para "${term}"` : 'Buscar'}</h1>
+            <h1>{term ? t('searchResultsFor', term) : t('searchLabel')}</h1>
           </div>
           <SearchForm className="search" style={{maxWidth: 460, marginBottom: 24}}>
             {({inputRef}) => (
               <>
-                <input defaultValue={term} name="q" placeholder="Buscar productos, marcas..." ref={inputRef} type="search" />
+                <input defaultValue={term} name="q" placeholder={t('searchPlaceholder')} ref={inputRef} type="search" />
                 <button type="submit">
                   <Icon name="search" />
                 </button>

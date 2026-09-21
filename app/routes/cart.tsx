@@ -3,6 +3,7 @@ import type {Route} from './+types/cart';
 import type {CartQueryDataReturn} from '@shopify/hydrogen';
 import {CartForm} from '@shopify/hydrogen';
 import {CartMain} from '~/components/CartMain';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: `Hydrogen | Cart`}];
@@ -103,14 +104,15 @@ export async function loader({context}: Route.LoaderArgs) {
 
 export default function Cart() {
   const cart = useLoaderData<typeof loader>();
+  const {t} = useI18n();
 
   return (
     <div className="section">
       <div className="breadcrumb container">
-        <a href="/">Inicio</a> / Carrito
+        <a href="/">{t('breadcrumbHome')}</a> / {t('breadcrumbCart')}
       </div>
       <div className="container">
-        <h1 className="section-title-lg">Carrito</h1>
+        <h1 className="section-title-lg">{t('cartTitle')}</h1>
         <CartMain layout="page" cart={cart} />
       </div>
     </div>

@@ -4,8 +4,10 @@ import type {ProductCardFragment} from 'storefrontapi.generated';
 import {AddToCartButton} from '~/components/AddToCartButton';
 import {useAside} from '~/components/Aside';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 export function ProductCard({product}: {product: ProductCardFragment}) {
+  const {t} = useI18n();
   const price = product.priceRange.minVariantPrice;
   const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
   const hasOffer =
@@ -24,7 +26,7 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
             <div className="pcard__badges">
               {hasOffer && <span className="badge badge--offer">-{pct}%</span>}
               {!variant?.availableForSale && (
-                <span className="badge badge--outlet">Agotado</span>
+                <span className="badge badge--outlet">{t('outOfStock')}</span>
               )}
             </div>
           )}

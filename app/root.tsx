@@ -9,6 +9,7 @@ import {
   Scripts,
   ScrollRestoration,
   useRouteLoaderData,
+  useLocation,
 } from 'react-router';
 import type {Route} from './+types/root';
 import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
@@ -199,9 +200,21 @@ export function Layout({children}: {children?: React.ReactNode}) {
 
 export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
+  const location = useLocation();
+  // El panel interno tiene su propio layout (AdminShell) — no lleva la
+  // cabecera/pie/carrito/chat de la tienda pública.
+  const isAdminInterno = location.pathname.startsWith('/admin-interno');
 
   if (!data) {
     return <Outlet />;
+  }
+
+  if (isAdminInterno) {
+    return (
+      <Analytics.Provider cart={data.cart} shop={data.shop} consent={data.consent}>
+        <Outlet />
+      </Analytics.Provider>
+    );
   }
 
   return (

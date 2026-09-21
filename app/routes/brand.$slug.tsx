@@ -2,6 +2,7 @@ import {Link, redirect, useLoaderData} from 'react-router';
 import type {Route} from './+types/brand.$slug';
 import {Icon} from '~/lib/icons';
 import {findBrand} from '~/lib/brands';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [{title: `${data?.brand.name ?? ''} — Victor So Professional`}];
@@ -25,11 +26,12 @@ export async function loader({context, params}: Route.LoaderArgs) {
 
 export default function BrandPage() {
   const {brand, count, hasMore} = useLoaderData<typeof loader>();
+  const {t} = useI18n();
 
   return (
     <div>
       <div className="breadcrumb container">
-        <Link to="/">Inicio</Link> / <Link to="/marcas">Nuestras Marcas</Link> / {brand.name}
+        <Link to="/">{t('breadcrumbHome')}</Link> / <Link to="/marcas">{t('navBrands')}</Link> / {brand.name}
       </div>
       <section className="section brand-page">
         <div className="container brand-page__inner">
@@ -43,16 +45,16 @@ export default function BrandPage() {
           <div className="brand-page__actions">
             {brand.website && (
               <a className="btn btn--outline" href={brand.website} target="_blank" rel="noopener noreferrer">
-                Visitar web oficial <Icon name="arrowRight" />
+                {t('brandVisitSite')} <Icon name="arrowRight" />
               </a>
             )}
             {count > 0 ? (
               <Link className="btn btn--primary" to={`/search?q=${encodeURIComponent(brand.name)}`}>
-                Ver productos ({hasMore ? `${count}+` : count})
+                {t('brandSeeProducts', hasMore ? `${count}+` : count)}
               </Link>
             ) : (
               <Link className="btn btn--primary" to="/collections/all">
-                Ver todos los productos
+                {t('allProducts')}
               </Link>
             )}
           </div>

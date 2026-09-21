@@ -6,6 +6,7 @@ import {Link} from 'react-router';
 import {useAside} from './Aside';
 import {Icon} from '~/lib/icons';
 import type {CartApiQueryFragment} from 'storefrontapi.generated';
+import {useI18n} from '~/lib/i18n';
 
 export type CartLine = OptimisticCartLine<CartApiQueryFragment>;
 
@@ -97,6 +98,7 @@ function CartLineRemoveButton({
   lineIds: string[];
   disabled: boolean;
 }) {
+  const {t} = useI18n();
   return (
     <CartForm
       fetcherKey={getUpdateKey(lineIds)}
@@ -105,7 +107,7 @@ function CartLineRemoveButton({
       inputs={{lineIds}}
     >
       <button className="cart-item__remove" disabled={disabled} type="submit">
-        Quitar
+        {t('remove')}
       </button>
     </CartForm>
   );

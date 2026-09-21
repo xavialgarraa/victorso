@@ -2,34 +2,31 @@ import {Link} from 'react-router';
 import type {Route} from './+types/quienes-somos';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Quiénes somos — Victor So Professional'}];
 };
 
 export default function AboutPage() {
+  const {t} = useI18n();
   return (
     <div>
       <div className="breadcrumb container">
-        <Link to="/">Inicio</Link> / Quiénes somos
+        <Link to="/">{t('breadcrumbHome')}</Link> / {t('aboutTitle')}
       </div>
 
       <section className="section about-page">
         <div className="container">
-          <h1 className="section-title-lg">Quiénes somos</h1>
-          <p className="visit-text">
-            Desde 1987 acompañamos a DJs, técnicos de sonido y estudios de toda la Costa Brava,
-            ofreciendo el mismo trato cercano y el mismo criterio con el que empezamos: equipo
-            fiable, asesoramiento honesto y servicio técnico propio, tanto si compras en nuestra
-            tienda de Lloret de Mar como si nos escribes desde cualquier punto de España.
-          </p>
+          <h1 className="section-title-lg">{t('aboutTitle')}</h1>
+          <p className="visit-text">{t('aboutLede')}</p>
         </div>
       </section>
 
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Visítanos</h2>
+            <h2>{t('aboutVisitTitle')}</h2>
           </div>
           <div className="visit-grid">
             <div className="visit-photo">
@@ -45,17 +42,14 @@ export default function AboutPage() {
               />
             </div>
           </div>
-          <p className="visit-text">
-            Además de tienda online, somos tienda física con servicio técnico e instalaciones a
-            domicilio. Pásate a ver el material en directo o pide cita para tu instalación.
-          </p>
+          <p className="visit-text">{t('aboutVisitText')}</p>
           <a
             className="btn btn--primary"
             href="https://maps.app.goo.gl/rCt2WshcWTawViw28"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Icon name="pin" /> Cómo llegar
+            <Icon name="pin" /> {t('aboutVisitCta')}
           </a>
         </div>
       </section>
@@ -64,35 +58,22 @@ export default function AboutPage() {
         <div className="container">
           <div className="about-page__grid">
             <div className="about-page__text">
-              <p>
-                Victor So Professional es una empresa fundada en 1987 para dar respuesta a la
-                creciente demanda de audio de calidad en la Costa Brava. Con los años hemos ido
-                ampliando nuestro campo de actividad hacia la iluminación espectacular, los
-                audiovisuales y las instalaciones de antenas y fibra óptica.
-              </p>
-              <p>
-                Uno de nuestros objetivos fundamentales, que se mantiene desde el primer día, es
-                ofrecer productos de calidad, realizar instalaciones fiables y duraderas en el
-                tiempo, y mantener siempre el equilibrio entre calidad y precio.
-              </p>
-              <p>
-                Hoy seguimos siendo una tienda especializada y de trato cercano: asesoramos a
-                técnicos de sonido, DJs y estudios profesionales para que encuentren el equipo que
-                mejor se adapta a su proyecto.
-              </p>
+              <p>{t('aboutP1')}</p>
+              <p>{t('aboutP2')}</p>
+              <p>{t('aboutP3')}</p>
             </div>
             <div className="about-page__stats">
               <div className="about-stat">
                 <span className="about-stat__num">1987</span>
-                <span>Año de fundación</span>
+                <span>{t('aboutStatYear')}</span>
               </div>
               <div className="about-stat">
                 <span className="about-stat__num">+35</span>
-                <span>Años de experiencia</span>
+                <span>{t('aboutStatExp')}</span>
               </div>
               <div className="about-stat">
                 <span className="about-stat__num">100%</span>
-                <span>Garantía oficial</span>
+                <span>{t('aboutStatWarranty')}</span>
               </div>
             </div>
           </div>
@@ -102,15 +83,11 @@ export default function AboutPage() {
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Instalaciones realizadas</h2>
+            <h2>{t('aboutInstallTitle')}</h2>
           </div>
-          <p className="visit-text">
-            Además de tienda, somos técnicos con más de 35 años de experiencia: diseñamos,
-            instalamos y mantenemos sistemas de sonido e iluminación a medida para ayuntamientos,
-            discotecas, salas de eventos y empresas.
-          </p>
+          <p className="visit-text">{t('aboutInstallIntro')}</p>
           <Link className="btn btn--primary" to="/instalaciones">
-            <Icon name="arrowRight" /> Ver instalaciones realizadas
+            <Icon name="arrowRight" /> {t('aboutInstallCta')}
           </Link>
         </div>
       </section>
@@ -118,7 +95,7 @@ export default function AboutPage() {
       <section className="section section--muted reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Marcas con las que trabajamos</h2>
+            <h2>{t('aboutBrands')}</h2>
           </div>
           <BrandsTicker />
         </div>

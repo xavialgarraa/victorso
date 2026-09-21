@@ -5,6 +5,7 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {Icon, type IconName} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales'}];
@@ -53,16 +54,17 @@ function categoryIcon(title: string): IconName {
 export default function Homepage() {
   const {newest, bestselling, offers, bestsellers, collections} =
     useLoaderData<typeof loader>();
+  const {t} = useI18n();
 
   const leftSlides: HeroSlide[] = newest.map((p) => ({
     key: `new-${p.id}`,
     href: `/products/${p.handle}`,
     image: p.featuredImage?.url ?? '',
-    badge: 'Nuevo',
+    badge: t('storeHeroNewBadge'),
     badgeClass: 'storehero__badge--new',
     eyebrow: p.vendor,
     title: p.title,
-    cta: 'Descubrir',
+    cta: t('storeHeroNewCta'),
     ctaClass: 'btn--outline',
   }));
 
@@ -72,7 +74,7 @@ export default function Homepage() {
       key: `best-${bestselling.id}`,
       href: `/products/${bestselling.handle}`,
       image: bestselling.featuredImage?.url ?? '',
-      badge: 'Más vendido',
+      badge: t('storeHeroBestsellerBadge'),
       badgeClass: 'storehero__badge--offer',
       eyebrow: bestselling.vendor,
       title: bestselling.title,
@@ -83,7 +85,7 @@ export default function Homepage() {
           </span>
         </div>
       ),
-      cta: 'Ver producto',
+      cta: t('storeHeroBestsellerCta'),
       ctaClass: 'btn--primary',
     });
   }
@@ -93,22 +95,22 @@ export default function Homepage() {
       href: 'https://wa.me/34619406443',
       external: true,
       image: '/assets/tienda-fachada.jpeg',
-      badge: 'Contacto',
+      badge: t('storeHeroContactBadge'),
       badgeClass: 'storehero__badge--brand',
       eyebrow: '972 364 114',
-      title: 'Escríbenos por WhatsApp',
-      cta: 'Contactar',
+      title: t('storeHeroContactTitle'),
+      cta: t('storeHeroContactCta'),
       ctaClass: 'btn--outline',
     },
     {
       key: 'visit',
       href: '/quienes-somos',
       image: '/assets/tienda-fachada.jpeg',
-      badge: 'Visítanos',
+      badge: t('storeHeroVisitBadge'),
       badgeClass: 'storehero__badge--brand',
-      eyebrow: 'Lloret de Mar (Girona)',
-      title: 'Visita nuestra tienda',
-      cta: 'Cómo llegar',
+      eyebrow: t('storeHeroVisitEyebrow'),
+      title: t('storeHeroVisitTitle'),
+      cta: t('storeHeroVisitCta'),
       ctaClass: 'btn--outline',
     },
   );
@@ -120,7 +122,7 @@ export default function Homepage() {
       <section className="section reveal" id="categorySection">
         <div className="container">
           <div className="section__head">
-            <h2>Categorías</h2>
+            <h2>{t('sectionCategories')}</h2>
           </div>
           <div className="catgrid">
             {collections.map((c) => {
@@ -143,7 +145,7 @@ export default function Homepage() {
       <section className="section discover reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Descubre más</h2>
+            <h2>{t('discoverTitle')}</h2>
           </div>
           <div className="discover__grid">
             <Link
@@ -153,9 +155,9 @@ export default function Homepage() {
             >
               <span className="discover__icon"><Icon name="speaker" /></span>
               <div className="discover__info">
-                <h3>Instalaciones realizadas</h3>
-                <p>Sonorización de espacios públicos, locales y eventos.</p>
-                <span className="discover__link">Ver más <Icon name="arrowRight" /></span>
+                <h3>{t('discoverInstallTitle')}</h3>
+                <p>{t('discoverInstallText')}</p>
+                <span className="discover__link">{t('discoverLink')} <Icon name="arrowRight" /></span>
               </div>
             </Link>
             <a
@@ -166,9 +168,9 @@ export default function Homepage() {
             >
               <span className="discover__icon"><Icon name="whatsapp" /></span>
               <div className="discover__info">
-                <h3>Contacta por WhatsApp</h3>
-                <p>Te asesoramos sin compromiso.</p>
-                <span className="discover__link">Escribir <Icon name="arrowRight" /></span>
+                <h3>{t('discoverContactTitle')}</h3>
+                <p>{t('discoverContactText')}</p>
+                <span className="discover__link">{t('discoverLink')} <Icon name="arrowRight" /></span>
               </div>
             </a>
             <Link
@@ -178,9 +180,9 @@ export default function Homepage() {
             >
               <span className="discover__icon"><Icon name="shield" /></span>
               <div className="discover__info">
-                <h3>Quiénes somos</h3>
-                <p>Más de 35 años de experiencia en sonido y DJ.</p>
-                <span className="discover__link">Conócenos <Icon name="arrowRight" /></span>
+                <h3>{t('discoverAboutTitle')}</h3>
+                <p>{t('discoverAboutText')}</p>
+                <span className="discover__link">{t('discoverLink')} <Icon name="arrowRight" /></span>
               </div>
             </Link>
           </div>
@@ -189,16 +191,16 @@ export default function Homepage() {
 
       <div className="shipband">
         <Icon name="truck" />
-        <span>Envío gratis Península desde 149€</span>
+        <span>{t('shipBar')} 149€</span>
       </div>
 
       {offers.length > 0 && (
         <section className="section section--muted reveal">
           <div className="container">
             <div className="section__head">
-              <h2>Ofertas</h2>
+              <h2>{t('sectionOffers')}</h2>
               <Link to="/collections/outlet">
-                Ver outlet <Icon name="arrowRight" />
+                {t('sectionOffersLink')} <Icon name="arrowRight" />
               </Link>
             </div>
             <div className="prodgrid">
@@ -213,7 +215,7 @@ export default function Homepage() {
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
-            <h2>Los más vendidos</h2>
+            <h2>{t('sectionBestsellers')}</h2>
           </div>
           <div className="prodgrid">
             {bestsellers.map((p) => (

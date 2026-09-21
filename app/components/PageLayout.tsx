@@ -7,11 +7,12 @@ import type {
 } from 'storefrontapi.generated';
 import {Aside} from '~/components/Aside';
 import {Footer} from '~/components/Footer';
-import {Header, HeaderMenu} from '~/components/Header';
+import {Header} from '~/components/Header';
 import {CartMain} from '~/components/CartMain';
 import {ScrollReveal} from '~/components/ScrollReveal';
 import {HeaderOffset} from '~/components/HeaderOffset';
 import {ChatAssistant} from '~/components/ChatAssistant';
+import {I18nProvider} from '~/lib/i18n';
 
 interface PageLayoutProps {
   cart: Promise<CartApiQueryFragment | null>;
@@ -31,27 +32,28 @@ export function PageLayout({
   publicStoreDomain,
 }: PageLayoutProps) {
   return (
-    <Aside.Provider>
-      <ScrollReveal />
-      <HeaderOffset />
-      <CartAside cart={cart} />
-      <MobileMenuAside header={header} />
-      {header && (
-        <Header
+    <I18nProvider>
+      <Aside.Provider>
+        <ScrollReveal />
+        <HeaderOffset />
+        <CartAside cart={cart} />
+        {header && (
+          <Header
+            header={header}
+            cart={cart}
+            isLoggedIn={isLoggedIn}
+            publicStoreDomain={publicStoreDomain}
+          />
+        )}
+        <main>{children}</main>
+        <Footer
+          footer={footer}
           header={header}
-          cart={cart}
-          isLoggedIn={isLoggedIn}
           publicStoreDomain={publicStoreDomain}
         />
-      )}
-      <main>{children}</main>
-      <Footer
-        footer={footer}
-        header={header}
-        publicStoreDomain={publicStoreDomain}
-      />
-      <ChatAssistant />
-    </Aside.Provider>
+        <ChatAssistant />
+      </Aside.Provider>
+    </I18nProvider>
   );
 }
 
@@ -65,14 +67,6 @@ function CartAside({cart}: {cart: PageLayoutProps['cart']}) {
           }}
         </Await>
       </Suspense>
-    </Aside>
-  );
-}
-
-function MobileMenuAside({header}: {header: PageLayoutProps['header']}) {
-  return (
-    <Aside type="mobile" heading="Menú">
-      <HeaderMenu viewport="mobile" collections={header?.collections?.nodes} />
     </Aside>
   );
 }

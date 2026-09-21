@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Icon} from '~/lib/icons';
+import {useI18n} from '~/lib/i18n';
 
 const KEY = 'vs_theme';
 
@@ -14,7 +15,8 @@ function getEffectiveTheme(): 'light' | 'dark' {
 }
 
 /** Boton sol/luna que alterna data-theme en <html> y lo persiste en localStorage. */
-export function ThemeToggle() {
+export function ThemeToggle({className = 'theme-toggle', showLabel = false}: {className?: string; showLabel?: boolean}) {
+  const {t} = useI18n();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
@@ -32,13 +34,14 @@ export function ThemeToggle() {
     setTheme(next);
   }
 
+  const label = theme === 'dark' ? t('themeLight') : t('themeDark');
+
   return (
-    <button
-      className="theme-toggle"
-      onClick={toggle}
-      aria-label={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-    >
-      <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+    <button className={className} onClick={toggle} aria-label={label}>
+      <span className="icon">
+        <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+      </span>
+      {showLabel && <span>{label}</span>}
     </button>
   );
 }
