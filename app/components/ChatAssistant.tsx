@@ -61,6 +61,11 @@ export function ChatAssistant() {
     );
   }
 
+  // Nueva función para vaciar el chat
+  function clearChat() {
+    setMessages([GREETING]);
+  }
+
   return (
     <>
       <button
@@ -84,9 +89,23 @@ export function ChatAssistant() {
                 </span>
               </div>
             </div>
-            <button type="button" aria-label="Cerrar" onClick={() => setOpen(false)}>
-              <Icon name="close" />
-            </button>
+            
+            {/* Contenedor para agrupar los botones de la cabecera */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {messages.length > 1 && (
+                <button 
+                  type="button" 
+                  aria-label="Vaciar chat" 
+                  title="Vaciar chat"
+                  onClick={clearChat}
+                >
+                  <Icon name="trash" /> {/* Asegúrate de tener este icono, o cámbialo por 'refresh' */}
+                </button>
+              )}
+              <button type="button" aria-label="Cerrar" onClick={() => setOpen(false)}>
+                <Icon name="close" />
+              </button>
+            </div>
           </div>
 
           <div className="chat-panel__body" ref={listRef}>
