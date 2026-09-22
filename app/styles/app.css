@@ -920,6 +920,7 @@ body.nav-open { overflow: hidden; }
 @media (min-width: 780px) { .about-hero__grid { grid-template-columns: 1.1fr 0.9fr; } }
 .about-hero__lede { font-size: 1.15rem; font-weight: 600; color: var(--text); margin: 0 0 14px; }
 .about-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.about-hero__actions + .rating-badge { margin-top: 18px; }
 .about-hero__photo { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); aspect-ratio: 4/3; background: var(--img-bg); }
 .about-hero__photo img { width: 100%; height: 100%; object-fit: cover; }
 .about-hero__scrollhint { margin: 36px 0 0; }
