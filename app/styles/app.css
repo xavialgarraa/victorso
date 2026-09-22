@@ -955,7 +955,7 @@ body.nav-open { overflow: hidden; }
 .tech-badge img { height: 26px; width: auto; object-fit: contain; }
 .tech-badge span { font-size: .8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
 
-.tech-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.tech-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); justify-content: center; }
 .tech-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; text-align: center; }
 .tech-card .icon { font-size: 1.8rem; color: var(--red); margin-bottom: 10px; }
 .tech-card h3 { font-size: 1.05rem; margin: 0 0 8px; }
