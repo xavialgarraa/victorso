@@ -202,14 +202,16 @@ export default function App() {
   const data = useRouteLoaderData<RootLoader>('root');
   const location = useLocation();
   // El panel interno tiene su propio layout (AdminShell) — no lleva la
-  // cabecera/pie/carrito/chat de la tienda pública.
+  // cabecera/pie/carrito/chat de la tienda pública. "/opina" (tarjetas NFC
+  // de reseñas) tampoco: es una página de aterrizaje sola, sin distraer.
   const isAdminInterno = location.pathname.startsWith('/admin-interno');
+  const isBareLayout = isAdminInterno || location.pathname === '/opina';
 
   if (!data) {
     return <Outlet />;
   }
 
-  if (isAdminInterno) {
+  if (isBareLayout) {
     return (
       <Analytics.Provider cart={data.cart} shop={data.shop} consent={data.consent}>
         <Outlet />

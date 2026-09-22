@@ -1296,3 +1296,19 @@ aside li { margin-bottom: .125rem; }
   text-transform: uppercase;
   box-shadow: 0 2px 12px rgba(0, 0, 0, .25);
 }
+
+.opina-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 24px;
+}
+.opina-page__card {
+  max-width: 440px; width: 100%; text-align: center; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  padding: 40px 32px; display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.opina-page__logo { margin-bottom: 6px; }
+.opina-page__card h1 { font-size: 1.5rem; margin: 0; }
+.opina-page__card p { color: var(--text-muted); font-size: 1rem; line-height: 1.6; margin: 0 0 8px; }
+.opina-page__cta { font-size: 1.05rem; padding: 14px 28px; }
+.opina-page__cta .icon { color: #ffc531; }
+.opina-page__back { color: var(--text-soft); font-size: .85rem; margin-top: 8px; }
