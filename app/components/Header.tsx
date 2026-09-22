@@ -150,9 +150,16 @@ function useNavLinks(collections: NavCollection[] = []): NavLinkData[] {
   const collectionLinks: NavLinkData[] = collections
     // "frontpage" es la colección automática de Shopify con todos los
     // productos; no es una categoría real, ya existe "Todos los productos".
+    // "novedades-destacadas-home" es de uso interno (elige qué sale en el
+    // hero de la home) y no debe aparecer como categoría navegable.
     // El nombre de estas colecciones viene de Shopify tal cual está en el
     // admin, así que no se traduce con este sistema de idiomas de interfaz.
-    .filter((c) => c.handle !== 'frontpage' && c.products.nodes.length > 0)
+    .filter(
+      (c) =>
+        c.handle !== 'frontpage' &&
+        c.handle !== 'novedades-destacadas-home' &&
+        c.products.nodes.length > 0,
+    )
     .map((c) => ({
       href: `/collections/${c.handle}`,
       label: c.title,

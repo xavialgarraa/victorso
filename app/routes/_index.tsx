@@ -13,12 +13,18 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({context}: Route.LoaderArgs) {
   const {storefront} = context;
-  const [{products}, {collections}] = await Promise.all([
+  const [{products, newest: newestByDate, featuredHome}, {collections}] = await Promise.all([
     storefront.query(HOME_PRODUCTS_QUERY),
     storefront.query(HOME_COLLECTIONS_QUERY),
   ]);
 
-  const newest = [...products.nodes].sort((a, b) => (a.handle < b.handle ? 1 : -1)).slice(0, 3);
+  // "Novedades" del hero: si Iván ha metido productos a mano en la colección
+  // "Novedades destacadas (Home)" (Shopify > Colecciones), se usan esos en
+  // el orden que él les dé; si la deja vacía, se muestran los 3 productos
+  // más nuevos de verdad (por fecha de creación real, no por nombre/handle).
+  const newest = featuredHome?.products?.nodes?.length
+    ? featuredHome.products.nodes.slice(0, 3)
+    : newestByDate.nodes;
   const bestselling = products.nodes[0] ?? null;
   const offers = products.nodes
     .filter(
@@ -30,10 +36,17 @@ export async function loader({context}: Route.LoaderArgs) {
     .slice(0, 4);
   const bestsellers = products.nodes.slice(0, 8);
   // "frontpage" es la colección automática de Shopify con todos los
-  // productos; no es una categoría real. Solo mostramos categorías que
-  // ya tienen productos asignados en el catálogo actual.
+  // productos; no es una categoría real. "novedades-destacadas-home" es de
+  // uso interno (elige qué sale en el hero) y tampoco debe listarse como
+  // categoría. Solo mostramos categorías que ya tienen productos asignados
+  // en el catálogo actual.
   const collectionsWithProducts = collections.nodes
-    .filter((c) => c.handle !== 'frontpage' && c.products.nodes.length > 0)
+    .filter(
+      (c) =>
+        c.handle !== 'frontpage' &&
+        c.handle !== 'novedades-destacadas-home' &&
+        c.products.nodes.length > 0,
+    )
     .slice(0, 9);
 
   return {newest, bestselling, offers, bestsellers, collections: collectionsWithProducts};
@@ -235,6 +248,18 @@ const HOME_PRODUCTS_QUERY = `#graphql
     products(first: 16, sortKey: BEST_SELLING) {
       nodes {
         ...ProductCard
+      }
+    }
+    newest: products(first: 3, sortKey: CREATED_AT, reverse: true) {
+      nodes {
+        ...ProductCard
+      }
+    }
+    featuredHome: collectionByHandle(handle: "novedades-destacadas-home") {
+      products(first: 3) {
+        nodes {
+          ...ProductCard
+        }
       }
     }
   }
