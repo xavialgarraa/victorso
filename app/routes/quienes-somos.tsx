@@ -3,6 +3,7 @@ import type {Route} from './+types/quienes-somos';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
 import {QuoteForm} from '~/components/QuoteForm';
+import {CountUp} from '~/components/CountUp';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
@@ -48,21 +49,24 @@ export default function AboutPage() {
           <div className="section__head">
             <h2>{t('aboutVisitTitle')}</h2>
           </div>
+          <p className="visit-text">{t('aboutVisitText')}</p>
           <div className="visit-grid">
             <div className="visit-info">
-              <div className="visit-info__row">
-                <Icon name="pin" />
-                <span>Avda. Vila de Tossa, 50-52, Lloret de Mar (Girona)</span>
-              </div>
-              <div className="visit-info__row">
-                <Icon name="phone" />
-                <a href="tel:+34972364114">972 364 114</a>
-              </div>
-              <div className="visit-info__row">
-                <Icon name="whatsapp" />
-                <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
-                  WhatsApp
-                </a>
+              <div className="visit-info__contact">
+                <div className="visit-info__row">
+                  <Icon name="pin" />
+                  <span>Avda. Vila de Tossa, 50-52, Lloret de Mar (Girona)</span>
+                </div>
+                <div className="visit-info__row">
+                  <Icon name="phone" />
+                  <a href="tel:+34972364114">972 364 114</a>
+                </div>
+                <div className="visit-info__row">
+                  <Icon name="whatsapp" />
+                  <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
+                    WhatsApp
+                  </a>
+                </div>
               </div>
               <div className="visit-info__hours">
                 <div className="visit-info__row">
@@ -70,6 +74,14 @@ export default function AboutPage() {
                   <span>{t('footerHours')}</span>
                 </div>
               </div>
+              <a
+                className="btn btn--primary visit-info__cta"
+                href="https://maps.app.goo.gl/rCt2WshcWTawViw28"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="pin" /> {t('aboutVisitCta')}
+              </a>
             </div>
             <div className="visit-map">
               <iframe
@@ -81,15 +93,6 @@ export default function AboutPage() {
               />
             </div>
           </div>
-          <p className="visit-text">{t('aboutVisitText')}</p>
-          <a
-            className="btn btn--primary"
-            href="https://maps.app.goo.gl/rCt2WshcWTawViw28"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="pin" /> {t('aboutVisitCta')}
-          </a>
         </div>
       </section>
 
@@ -103,15 +106,15 @@ export default function AboutPage() {
             </div>
             <div className="about-page__stats">
               <div className="about-stat">
-                <span className="about-stat__num">1987</span>
+                <span className="about-stat__num"><CountUp to={1987} /></span>
                 <span>{t('aboutStatYear')}</span>
               </div>
               <div className="about-stat">
-                <span className="about-stat__num">+35</span>
+                <span className="about-stat__num"><CountUp to={35} prefix="+" /></span>
                 <span>{t('aboutStatExp')}</span>
               </div>
               <div className="about-stat">
-                <span className="about-stat__num">100%</span>
+                <span className="about-stat__num"><CountUp to={100} suffix="%" /></span>
                 <span>{t('aboutStatWarranty')}</span>
               </div>
             </div>
