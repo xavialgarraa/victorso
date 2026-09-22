@@ -49,8 +49,27 @@ export default function AboutPage() {
             <h2>{t('aboutVisitTitle')}</h2>
           </div>
           <div className="visit-grid">
-            <div className="visit-photo">
-              <img src="/assets/tienda-fachada.jpeg" alt="Fachada de la tienda Victor So Professional" loading="lazy" />
+            <div className="visit-info">
+              <div className="visit-info__row">
+                <Icon name="pin" />
+                <span>Avda. Vila de Tossa, 50-52, Lloret de Mar (Girona)</span>
+              </div>
+              <div className="visit-info__row">
+                <Icon name="phone" />
+                <a href="tel:+34972364114">972 364 114</a>
+              </div>
+              <div className="visit-info__row">
+                <Icon name="whatsapp" />
+                <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
+                  WhatsApp
+                </a>
+              </div>
+              <div className="visit-info__hours">
+                <div className="visit-info__row">
+                  <Icon name="checkCircle" />
+                  <span>{t('footerHours')}</span>
+                </div>
+              </div>
             </div>
             <div className="visit-map">
               <iframe
