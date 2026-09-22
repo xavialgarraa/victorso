@@ -47,6 +47,11 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
         </span>
       </div>
 
+      <div className="cart-summary__row">
+        <span>{t('shipping')}</span>
+        <span>{remaining <= 0 ? t('free') : t('shippingAtCheckout')}</span>
+      </div>
+
       <CartDiscounts
         discountCodes={cart?.discountCodes}
         discountsHeadingId={discountsHeadingId}
