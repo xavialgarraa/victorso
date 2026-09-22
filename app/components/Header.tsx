@@ -170,6 +170,7 @@ function useNavLinks(collections: NavCollection[] = []): NavLinkData[] {
     {href: '/', label: t('navHome')},
     {href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
     ...collectionLinks,
+    {href: '/servicio-tecnico', label: t('navServicio'), icon: 'wrench'},
     {href: '/quienes-somos', label: t('navAbout')},
   ];
 }

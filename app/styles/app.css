@@ -942,6 +942,19 @@ body.nav-open { overflow: hidden; }
 .tiktok-embed-wrap { display: flex; justify-content: center; }
 .tiktok-embed-wrap blockquote.tiktok-embed { margin: 0; }
 
+.tech-badges { display: flex; flex-wrap: wrap; gap: 14px; margin: 18px 0; }
+.tech-badge { display: flex; align-items: center; gap: 10px; background: var(--surface-alt); border-radius: var(--radius); padding: 10px 16px; }
+.tech-badge img { height: 26px; width: auto; object-fit: contain; }
+.tech-badge span { font-size: .8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+
+.tech-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.tech-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; text-align: center; }
+.tech-card .icon { font-size: 1.8rem; color: var(--red); margin-bottom: 10px; }
+.tech-card h3 { font-size: 1.05rem; margin: 0 0 8px; }
+.tech-card p { color: var(--text-muted); font-size: .88rem; line-height: 1.6; margin: 0; }
+
+.tech-contacts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+
 /* ---------- Floating WhatsApp ---------- */
 .whatsapp-float { position: fixed; bottom: 20px; right: 20px; width: 54px; height: 54px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); z-index: 90; transition: transform .2s var(--ease); }
 .whatsapp-float:hover { transform: scale(1.08); }
