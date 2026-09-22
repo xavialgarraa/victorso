@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   {to: '/admin-interno/proveedores', label: 'Proveedores', end: false},
   {to: '/admin-interno/historial', label: 'Historial', end: false},
   {to: '/admin-interno/resenas', label: 'Reseñas', end: false},
+  {to: '/admin-interno/solicitudes', label: 'Solicitudes', end: false},
 ];
 
 export function AdminShell({

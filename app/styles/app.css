@@ -954,6 +954,30 @@ body.nav-open { overflow: hidden; }
 .tech-card p { color: var(--text-muted); font-size: .88rem; line-height: 1.6; margin: 0; }
 
 .tech-contacts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.tech-quoteform { max-width: 520px; margin-top: 40px; }
+.tech-quoteform h3 { margin: 0 0 14px; }
+.tech-install-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+.tech-install-cta h2 { margin: 0 0 6px; }
+.tech-install-cta .visit-text { margin: 0; }
+
+.quote-form { display: flex; flex-direction: column; gap: 14px; }
+.quote-form__row { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .quote-form__row { grid-template-columns: 1fr 1fr; } }
+.quote-form__field { display: flex; flex-direction: column; gap: 6px; }
+.quote-form__field label { font-size: .82rem; font-weight: 700; color: var(--text-muted); }
+.quote-form__field input,
+.quote-form__field select,
+.quote-form__field textarea {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px;
+  font: inherit; background: var(--surface); color: var(--text);
+}
+.quote-form__error { color: var(--red); font-size: .85rem; margin: 0; }
+.quote-form__success { display: flex; align-items: center; gap: 8px; color: #16743a; font-weight: 600; }
+
+.quoteform-section { display: grid; gap: 28px; align-items: start; }
+.quoteform-section__info p { color: var(--text-muted); }
+.quoteform-section .quote-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+@media (min-width: 800px) { .quoteform-section { grid-template-columns: 1fr 1fr; } }
 
 /* ---------- Floating WhatsApp ---------- */
 .whatsapp-float { position: fixed; bottom: 20px; right: 20px; width: 54px; height: 54px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); z-index: 90; transition: transform .2s var(--ease); }

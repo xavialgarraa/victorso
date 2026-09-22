@@ -20,6 +20,9 @@ declare global {
     // Email transaccional (Resend) para el envío real del aviso de restock.
     RESEND_API_KEY?: string;
     RESEND_FROM_EMAIL?: string;
+    // A qué email llegan los avisos de "Solicitar presupuesto" (servicio
+    // técnico / instalaciones). Si no se pone, se usa info@victorso.com.
+    SERVICE_REQUEST_TO_EMAIL?: string;
     // Asistente de chat con IA (API de Anthropic/Claude).
     ANTHROPIC_API_KEY?: string;
 

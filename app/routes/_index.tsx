@@ -4,6 +4,7 @@ import {Money} from '@shopify/hydrogen';
 import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
+import {QuoteForm} from '~/components/QuoteForm';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 
@@ -235,6 +236,16 @@ export default function Homepage() {
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="section section--muted reveal">
+        <div className="container quoteform-section">
+          <div className="quoteform-section__info">
+            <h2>{t('quoteFormTitle')}</h2>
+            <p>{t('techIntro')}</p>
+          </div>
+          <QuoteForm compact />
         </div>
       </section>
     </div>

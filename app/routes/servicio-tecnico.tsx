@@ -1,6 +1,7 @@
 import {Link} from 'react-router';
 import type {Route} from './+types/servicio-tecnico';
 import {Icon} from '~/lib/icons';
+import {QuoteForm} from '~/components/QuoteForm';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
@@ -75,6 +76,23 @@ export default function ServicioTecnicoPage() {
               <Icon name="phone" /> 972 364 114
             </a>
           </div>
+
+          <div className="tech-quoteform">
+            <h3>{t('quoteFormTitle')}</h3>
+            <QuoteForm />
+          </div>
+        </div>
+      </section>
+
+      <section className="section section--muted reveal">
+        <div className="container tech-install-cta">
+          <div>
+            <h2>{t('techInstallTitle')}</h2>
+            <p className="visit-text">{t('techInstallText')}</p>
+          </div>
+          <Link className="btn btn--primary" to="/instalaciones">
+            <Icon name="arrowRight" /> {t('techInstallCta')}
+          </Link>
         </div>
       </section>
     </div>
