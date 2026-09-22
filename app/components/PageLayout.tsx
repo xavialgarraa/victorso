@@ -62,7 +62,10 @@ export function PageLayout({
 // oficialmente, así que se marca claramente como "en construcción" para
 // evitar confusión mientras convive con la tienda anterior. Quitar este
 // componente (y su import en PageLayout) cuando se lance oficialmente.
+// Se oculta en local (npm run dev) para no estorbar mientras probamos,
+// pero sigue en el código para que salga en cada despliegue real.
 function ConstructionBanner() {
+  if (import.meta.env.DEV) return null;
   return (
     <div className="construction-banner" role="status">
       Página en construcción

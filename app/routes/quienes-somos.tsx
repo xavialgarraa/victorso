@@ -10,16 +10,31 @@ export const meta: Route.MetaFunction = () => {
 
 export default function AboutPage() {
   const {t} = useI18n();
+  const waHref = `https://wa.me/34619406443`;
   return (
     <div>
       <div className="breadcrumb container">
         <Link to="/">{t('breadcrumbHome')}</Link> / {t('aboutTitle')}
       </div>
 
-      <section className="section about-page">
-        <div className="container">
-          <h1 className="section-title-lg">{t('aboutTitle')}</h1>
-          <p className="visit-text">{t('aboutLede')}</p>
+      <section className="section about-hero">
+        <div className="container about-hero__grid">
+          <div className="about-hero__info">
+            <h1 className="section-title-lg">{t('aboutTitle')}</h1>
+            <p className="about-hero__lede">{t('aboutLede')}</p>
+            <p className="visit-text">{t('aboutHeroIntro')}</p>
+            <div className="about-hero__actions">
+              <a className="btn btn--primary" href={waHref} target="_blank" rel="noopener noreferrer">
+                <Icon name="chat" /> {t('aboutHeroWaCta')}
+              </a>
+              <a className="btn btn--outline" href="tel:+34972364114">
+                <Icon name="phone" /> {t('aboutHeroCallCta')}
+              </a>
+            </div>
+          </div>
+          <div className="about-hero__photo">
+            <img src="/assets/tienda-fachada.jpeg" alt="Fachada de la tienda Victor So Professional" loading="lazy" />
+          </div>
         </div>
       </section>
 
