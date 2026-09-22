@@ -52,7 +52,7 @@ export default function InstallationsPage() {
           <h1 className="section-title-lg">{t('aboutInstallTitle')}</h1>
           <p className="visit-text">{t('aboutInstallIntro')}</p>
           <a className="btn btn--primary" href={waHref} target="_blank" rel="noopener noreferrer">
-            <Icon name="chat" /> {t('installCta')}
+            <Icon name="whatsapp" /> {t('installCta')}
           </a>
         </div>
       </section>

@@ -2,6 +2,7 @@ import {Link} from 'react-router';
 import type {Route} from './+types/quienes-somos';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
+import {QuoteForm} from '~/components/QuoteForm';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
@@ -25,7 +26,7 @@ export default function AboutPage() {
             <p className="visit-text">{t('aboutHeroIntro')}</p>
             <div className="about-hero__actions">
               <a className="btn btn--primary" href={waHref} target="_blank" rel="noopener noreferrer">
-                <Icon name="chat" /> {t('aboutHeroWaCta')}
+                <Icon name="whatsapp" /> {t('aboutHeroWaCta')}
               </a>
               <a className="btn btn--outline" href="tel:+34972364114">
                 <Icon name="phone" /> {t('aboutHeroCallCta')}
@@ -35,6 +36,10 @@ export default function AboutPage() {
           <div className="about-hero__photo">
             <img src="/assets/tienda-fachada.jpeg" alt="Fachada de la tienda Victor So Professional" loading="lazy" />
           </div>
+        </div>
+        <div className="storehero__scrollhint about-hero__scrollhint">
+          <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>
+          <span className="storehero__scrollhint-text">{t('scrollHint')}</span>
         </div>
       </section>
 
@@ -113,6 +118,16 @@ export default function AboutPage() {
             <h2>{t('aboutBrands')}</h2>
           </div>
           <BrandsTicker />
+        </div>
+      </section>
+
+      <section className="section reveal">
+        <div className="container quoteform-section">
+          <div className="quoteform-section__info">
+            <h2>{t('quoteFormTitle')}</h2>
+            <p>{t('aboutQuoteIntro')}</p>
+          </div>
+          <QuoteForm compact />
         </div>
       </section>
     </div>

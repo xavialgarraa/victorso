@@ -40,7 +40,7 @@ export function Header({header, isLoggedIn, cart}: HeaderProps) {
               972 364 114
             </a>
             <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
-              <Icon name="chat" />
+              <Icon name="whatsapp" />
               WhatsApp
             </a>
             <LangSelect />

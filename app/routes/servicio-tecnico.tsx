@@ -35,7 +35,7 @@ export default function ServicioTecnicoPage() {
           </div>
 
           <a className="btn btn--primary" href={waHref} target="_blank" rel="noopener noreferrer">
-            <Icon name="chat" /> {t('techCta')}
+            <Icon name="whatsapp" /> {t('techCta')}
           </a>
         </div>
       </section>
@@ -70,7 +70,7 @@ export default function ServicioTecnicoPage() {
           <p className="visit-text">{t('techContactText')}</p>
           <div className="tech-contacts">
             <a className="btn btn--outline" href={waHref} target="_blank" rel="noopener noreferrer">
-              <Icon name="chat" /> WhatsApp
+              <Icon name="whatsapp" /> WhatsApp
             </a>
             <a className="btn btn--outline" href="tel:+34972364114">
               <Icon name="phone" /> 972 364 114

@@ -80,7 +80,7 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
             972 364 114
           </a>
           <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
-            <Icon name="chat" />
+            <Icon name="whatsapp" />
             WhatsApp Ventas
           </a>
           <a href="mailto:info@victorso.com">
