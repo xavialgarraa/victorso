@@ -4,6 +4,7 @@ import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
 import {QuoteForm} from '~/components/QuoteForm';
 import {CountUp} from '~/components/CountUp';
+import {RatingBadge, Testimonials} from '~/components/Testimonials';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
@@ -33,6 +34,7 @@ export default function AboutPage() {
                 <Icon name="phone" /> {t('aboutHeroCallCta')}
               </a>
             </div>
+            <RatingBadge />
           </div>
           <div className="about-hero__photo">
             <img src="/assets/tienda-fachada.jpeg" alt="Fachada de la tienda Victor So Professional" loading="lazy" />
@@ -119,6 +121,16 @@ export default function AboutPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="section reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>Lo que dicen de nosotros</h2>
+            <RatingBadge compact />
+          </div>
+          <Testimonials />
         </div>
       </section>
 
