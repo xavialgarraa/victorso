@@ -34,6 +34,7 @@ export function PageLayout({
   return (
     <I18nProvider>
       <Aside.Provider>
+        <ConstructionBanner />
         <ScrollReveal />
         <HeaderOffset />
         <CartAside cart={cart} />
@@ -54,6 +55,18 @@ export function PageLayout({
         <ChatAssistant />
       </Aside.Provider>
     </I18nProvider>
+  );
+}
+
+// Aviso temporal a petición de Victor: la web todavía no se ha anunciado
+// oficialmente, así que se marca claramente como "en construcción" para
+// evitar confusión mientras convive con la tienda anterior. Quitar este
+// componente (y su import en PageLayout) cuando se lance oficialmente.
+function ConstructionBanner() {
+  return (
+    <div className="construction-banner" role="status">
+      Página en construcción
+    </div>
   );
 }
 

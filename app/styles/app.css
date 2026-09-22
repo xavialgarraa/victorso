@@ -1204,3 +1204,23 @@ aside li { margin-bottom: .125rem; }
 .admin-login__box {
   background: #fff; border-radius: 14px; padding: 32px; width: 100%; max-width: 340px;
 }
+
+.construction-banner {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%) rotate(-3deg);
+  z-index: 9999;
+  pointer-events: none;
+  text-align: center;
+  padding: 10px 0;
+  background: #f5a623;
+  color: #1a1a1a;
+  font-family: var(--font-heading, inherit);
+  font-weight: 700;
+  font-size: clamp(1rem, 4vw, 1.8rem);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .25);
+}
