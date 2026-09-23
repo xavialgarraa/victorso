@@ -137,6 +137,18 @@ function SearchResultsEmpty() {
   return (
     <div className="empty-state">
       <p>{t('searchEmptyHint')}</p>
+      <div className="empty-state__actions">
+        <Link className="btn btn--primary" to="/collections/all">
+          {t('searchEmptyAllProducts')}
+        </Link>
+        <button
+          type="button"
+          className="btn btn--outline"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-chat-assistant'))}
+        >
+          <Icon name="chat" /> {t('searchEmptyAskAssistant')}
+        </button>
+      </div>
     </div>
   );
 }

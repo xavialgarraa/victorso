@@ -190,6 +190,17 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
 .burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
 .search { position: relative; display: flex; align-items: center; background: var(--nav-surface); border: 1px solid var(--nav-border); border-radius: 30px; padding: 6px 6px 6px 16px; flex: 1; min-width: 0; max-width: 460px; transition: background .2s ease; }
+/* .search usa las variables --nav-* (pensadas para ir sobre la barra
+   oscura de la cabecera) — el mismo buscador reutilizado suelto en la
+   página de resultados (fuera de la cabecera) necesita los colores
+   normales del tema, si no el texto queda casi invisible sobre blanco. */
+.results-search {
+  --nav-surface: var(--surface-alt);
+  --nav-border: var(--border);
+  --nav-text: var(--text);
+  --nav-text-soft: var(--text-muted);
+  --nav-surface-hover: var(--surface-alt);
+}
 .search input { min-width: 0; }
 .search:focus-within { background: var(--nav-surface-hover); }
 .search input { flex: 1; border: none; background: none; outline: none; font-size: .9rem; color: var(--nav-text); }
@@ -693,6 +704,7 @@ body.nav-open { overflow: hidden; }
 }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 18px; }
 
 /* ---------- Blog ---------- */
 .blog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }

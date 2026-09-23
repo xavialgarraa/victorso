@@ -45,6 +45,15 @@ export function ChatAssistant() {
     }
   }, [open]);
 
+  // Permite abrir el chat desde otros sitios de la web (ej. "sin
+  // resultados de búsqueda, pregúntale al asistente") sin acoplarse
+  // directamente a este componente.
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener('open-chat-assistant', openChat);
+    return () => window.removeEventListener('open-chat-assistant', openChat);
+  }, []);
+
   // En móvil el panel ocupa toda la pantalla (ver CSS @media max-width:
   // 480px) — bloqueamos el scroll del fondo mientras está abierto.
   useEffect(() => {

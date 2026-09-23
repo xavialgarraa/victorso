@@ -1,4 +1,4 @@
-import {useLoaderData} from 'react-router';
+import {redirect, useLoaderData} from 'react-router';
 import type {Route} from './+types/search';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
 import {SearchForm} from '~/components/SearchForm';
@@ -33,7 +33,17 @@ export async function loader({request, context}: Route.LoaderArgs) {
     return {term: '', result: null, error: error.message};
   });
 
-  return await searchPromise;
+  const search = await searchPromise;
+
+  // Búsqueda vacía (sin término): mejor mandar a ver todo el catálogo que
+  // dejar a alguien mirando una página en blanco. Si hay término pero no
+  // hay resultados, se queda en esta página con un aviso + alternativas
+  // (ver el catálogo entero / preguntar al asistente).
+  if (!isPredictive && !search.term) {
+    throw redirect('/collections/all');
+  }
+
+  return search;
 }
 
 /**
@@ -54,7 +64,7 @@ export default function SearchPage() {
           <div className="section__head">
             <h1>{term ? t('searchResultsFor', term) : t('searchLabel')}</h1>
           </div>
-          <SearchForm className="search" style={{maxWidth: 460, marginBottom: 24}}>
+          <SearchForm className="search results-search" style={{maxWidth: 460, marginBottom: 24}}>
             {({inputRef}) => (
               <>
                 <input defaultValue={term} name="q" placeholder={t('searchPlaceholder')} ref={inputRef} type="search" />
