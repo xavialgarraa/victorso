@@ -215,26 +215,6 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
   .header__right .search-wrap { flex: none; width: 330px; max-width: none; }
 }
 
-/* En móvil, al tocar el buscador se pasa a pantalla completa (solo
-   buscador + teclado, sin el resto de la cabecera) en vez de dejar que
-   el sistema haga zoom sobre el input pequeño — así no buguea. */
-@media (max-width: 899px) {
-  body.search-open { overflow: hidden; }
-  .search-wrap--active-mobile {
-    position: fixed; inset: 0; z-index: 200; background: var(--bg);
-    display: flex; flex-direction: column; padding: 14px 16px; gap: 0;
-  }
-  .search-wrap--active-mobile .search { max-width: none; padding: 8px 8px 8px 18px; }
-  .search-wrap--active-mobile .search-suggest {
-    position: static; display: block; margin-top: 10px; border-radius: var(--radius);
-    max-height: none; flex: 1; overflow-y: auto;
-  }
-  .search-wrap__close {
-    align-self: flex-end; background: none; border: none; color: var(--text);
-    font-size: 1.3rem; padding: 6px; margin-bottom: 8px;
-  }
-}
-
 .header__actions { display: flex; align-items: center; gap: 14px; }
 .cart-btn { position: relative; font-size: 1.35rem; color: var(--nav-text); display: inline-flex; }
 .cart-btn.bump { animation: cart-btn-bump .4s var(--ease); }
@@ -1072,7 +1052,6 @@ body.nav-open .whatsapp-float { display: none; }
 @media (max-width: 480px) {
   .chat-panel { inset: 0; bottom: 0; right: 0; width: 100%; height: 100%; border-radius: 0; border: none; }
   .chat-float.open { display: none; }
-  body.chat-open { overflow: hidden; }
 }
 
 .chat-panel__head {
@@ -1368,13 +1347,3 @@ aside li { margin-bottom: .125rem; }
 .testimonial-card__name { font-size: .82rem; font-weight: 700; color: var(--text-muted); }
 
 .storehero .rating-badge { margin: 4px auto 0; }
-
-/* ---------- Móvil: evitar el zoom automático de Safari/Chrome ----------
-   Si el texto de un input tiene menos de 16px, el navegador hace zoom in
-   al enfocarlo (comportamiento del propio sistema, no se puede desactivar
-   de otra forma). Con tantos inputs distintos en la web (buscador, chat,
-   formularios...) es más fiable forzarlo aquí una vez para todos que ir
-   subiendo el font-size uno a uno. */
-@media (max-width: 640px) {
-  input, select, textarea { font-size: 16px !important; }
-}
