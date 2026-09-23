@@ -5,6 +5,7 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {QuoteForm} from '~/components/QuoteForm';
+import {RatingBadge, Testimonials} from '~/components/Testimonials';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 
@@ -236,6 +237,16 @@ export default function Homepage() {
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="section reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>Lo que dicen de nosotros</h2>
+            <RatingBadge compact />
+          </div>
+          <Testimonials />
         </div>
       </section>
 

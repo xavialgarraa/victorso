@@ -2,7 +2,6 @@ import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
-import {RatingBadge} from '~/components/Testimonials';
 import {useI18n} from '~/lib/i18n';
 
 export type HeroSlide = {
@@ -163,8 +162,6 @@ export function StoreHero({
           <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
         </button>
       </div>
-
-      <RatingBadge compact />
 
       <div className="storehero__brands">
         <span className="storehero__brandsLabel">{t('brandsLabel')}</span>
