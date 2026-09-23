@@ -37,7 +37,19 @@ export function ChatAssistant() {
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    // En móvil no forzamos el foco: hacerlo a la vez que la animación de
+    // aparición del panel y el teclado abriéndose es lo que provocaba el
+    // bugueo/zoom raro. En escritorio (sin teclado virtual) sí es cómodo.
+    if (open && typeof window !== 'undefined' && window.matchMedia('(min-width: 481px)').matches) {
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  // En móvil el panel ocupa toda la pantalla (ver CSS @media max-width:
+  // 480px) — bloqueamos el scroll del fondo mientras está abierto.
+  useEffect(() => {
+    document.body.classList.toggle('chat-open', open);
+    return () => document.body.classList.remove('chat-open');
   }, [open]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import {Suspense, useEffect, useRef, useState} from 'react';
-import {Await, Link, NavLink, useAsyncValue, useNavigate} from 'react-router';
+import {Await, Link, NavLink, useAsyncValue, useLocation, useNavigate} from 'react-router';
 import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
@@ -299,11 +299,42 @@ function MainNavPanel({
 function HeaderSearch() {
   const {t} = useI18n();
   const [open, setOpen] = useState(false);
+  // En móvil, al tocar el buscador se pasa a pantalla completa (solo
+  // buscador + teclado) en vez de dejar que el navegador haga zoom sobre
+  // el input pequeño de la cabecera, que es lo que se rompía antes.
+  const [mobileActive, setMobileActive] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    document.body.classList.toggle('search-open', mobileActive);
+    return () => document.body.classList.remove('search-open');
+  }, [mobileActive]);
+
+  // Cierra la pantalla completa del buscador al navegar (buscar con
+  // Enter, tocar una sugerencia, o "ver todos los resultados").
+  useEffect(() => {
+    setMobileActive(false);
+    setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
+
+  function closeMobile() {
+    setMobileActive(false);
+    setOpen(false);
+  }
 
   return (
-    <div className="search-wrap" onBlur={(e) => {
-      if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
-    }}>
+    <div
+      className={`search-wrap${mobileActive ? ' search-wrap--active-mobile' : ''}`}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+      }}
+    >
+      {mobileActive && (
+        <button type="button" className="search-wrap__close" aria-label="Cerrar buscador" onClick={closeMobile}>
+          <Icon name="close" />
+        </button>
+      )}
       <SearchFormPredictive className="search">
         {({fetchResults, goToSearch, inputRef}) => (
           <>
@@ -317,9 +348,19 @@ function HeaderSearch() {
                 setOpen(Boolean(e.target.value));
                 fetchResults(e);
               }}
-              onFocus={(e) => setOpen(Boolean(e.target.value))}
+              onFocus={(e) => {
+                setOpen(Boolean(e.target.value));
+                setMobileActive(true);
+              }}
             />
-            <button type="submit" aria-label="Buscar" onClick={goToSearch}>
+            <button
+              type="submit"
+              aria-label="Buscar"
+              onClick={() => {
+                goToSearch();
+                closeMobile();
+              }}
+            >
               <Icon name="search" />
             </button>
           </>
