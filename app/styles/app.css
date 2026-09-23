@@ -220,11 +220,30 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
    el sistema haga zoom sobre el input pequeño — así no buguea. */
 @media (max-width: 899px) {
   body.search-open { overflow: hidden; }
-  .search-wrap--active-mobile {
+  .search-wrap.search-wrap--active-mobile {
     position: fixed; inset: 0; z-index: 200; background: var(--bg);
     display: flex; flex-direction: column; padding: 14px 16px; gap: 0;
+    max-width: none; width: 100%; height: 100%;
+    /* El buscador y sus sugerencias usan las variables --nav-* (pensadas
+       para la barra oscura de la cabecera) — aquí, a pantalla completa
+       sobre el fondo normal de la página, se redirigen a las variables
+       de tema normales para que no quede un cuadro oscuro descolgado. */
+    --nav-bg: var(--surface);
+    --nav-text: var(--text);
+    --nav-text-soft: var(--text-muted);
+    --nav-border: var(--border);
+    --nav-surface: var(--surface-alt);
+    --nav-surface-hover: var(--surface-alt);
+    --nav-accent: var(--red);
   }
-  .search-wrap--active-mobile .search { max-width: none; padding: 8px 8px 8px 18px; }
+  .search-wrap--active-mobile .search {
+    max-width: none; padding: 8px 8px 8px 18px;
+    /* .search tiene flex:1 pensado para crecer en horizontal dentro de
+       la cabecera normal; aquí el contenedor es una columna vertical, así
+       que ese mismo flex:1 lo estiraba en ALTURA (caja enorme y vacía
+       con el input hundido abajo). Se fija a su altura de contenido. */
+    flex: 0 0 auto;
+  }
   .search-wrap--active-mobile .search-suggest {
     position: static; display: block; margin-top: 10px; border-radius: var(--radius);
     max-height: none; flex: 1; overflow-y: auto;
