@@ -1104,16 +1104,6 @@ body.nav-open .whatsapp-float { display: none; }
   .chat-panel { inset: 0; bottom: 0; right: 0; width: 100%; height: 100%; border-radius: 0; border: none; }
   .chat-float.open { display: none; }
   body.chat-open { overflow: hidden; }
-  .chat-panel__head { padding: 14px 16px; }
-  .chat-panel__title { font-size: .92rem; }
-  .chat-panel__status { font-size: .74rem; }
-  .chat-panel__body { padding: 16px; gap: 10px; }
-  .chat-msg { font-size: .9rem; padding: 10px 13px; }
-  .chat-quick-replies button { padding: 10px 14px; font-size: .88rem; }
-  .chat-panel__form { padding: 14px; gap: 10px; }
-  .chat-panel__form input { padding: 13px 18px; font-size: .95rem; border-radius: 28px; }
-  .chat-panel__form button { width: 46px; height: 46px; }
-  .chat-panel__form button .icon { font-size: 1.15rem; }
 }
 
 .chat-panel__head {
@@ -1176,6 +1166,21 @@ body.nav-open .whatsapp-float { display: none; }
 }
 .chat-panel__form button:hover:not(:disabled) { transform: scale(1.08); box-shadow: 0 5px 14px rgba(227,6,19,.45); }
 .chat-panel__form button:disabled { opacity: .4; box-shadow: none; }
+
+@media (max-width: 640px) {
+  .chat-panel__head { padding: 14px 16px; }
+  .chat-panel__title { font-size: .92rem; }
+  .chat-panel__status { font-size: .74rem; }
+  .chat-panel__body { padding: 16px; gap: 10px; }
+  .chat-msg { font-size: .9rem; padding: 10px 13px; }
+  .chat-quick-replies button { padding: 10px 14px; font-size: .88rem; }
+  .chat-panel__form { padding: 14px; gap: 10px; align-items: center; }
+  .chat-panel__form input { padding: 12px 18px; font-size: .95rem; border-radius: 28px; height: 42px; }
+  /* El botón de enviar queda claramente más alto que el campo de texto,
+     no a la misma altura. */
+  .chat-panel__form button { width: 52px; height: 52px; }
+  .chat-panel__form button .icon { font-size: 1.2rem; }
+}
 
 /* ---------- Utility ---------- */
 .text-center { text-align: center; }
