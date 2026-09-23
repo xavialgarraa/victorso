@@ -1110,9 +1110,10 @@ body.nav-open .whatsapp-float { display: none; }
   .chat-panel__body { padding: 16px; gap: 10px; }
   .chat-msg { font-size: .9rem; padding: 10px 13px; }
   .chat-quick-replies button { padding: 10px 14px; font-size: .88rem; }
-  .chat-panel__form { padding: 12px; gap: 8px; }
-  .chat-panel__form input { padding: 12px 16px; }
-  .chat-panel__form button { width: 42px; height: 42px; }
+  .chat-panel__form { padding: 14px; gap: 10px; }
+  .chat-panel__form input { padding: 13px 18px; font-size: .95rem; border-radius: 28px; }
+  .chat-panel__form button { width: 46px; height: 46px; }
+  .chat-panel__form button .icon { font-size: 1.15rem; }
 }
 
 .chat-panel__head {
@@ -1160,10 +1161,21 @@ body.nav-open .whatsapp-float { display: none; }
 }
 .chat-quick-replies button:hover { border-color: var(--red); color: var(--red); }
 
-.chat-panel__form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--border); flex-shrink: 0; }
-.chat-panel__form input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 20px; font-size: .82rem; background: var(--surface); color: var(--text); }
-.chat-panel__form button { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--red); color: #fff; display: flex; align-items: center; justify-content: center; }
-.chat-panel__form button:disabled { opacity: .5; }
+.chat-panel__form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--surface-alt); flex-shrink: 0; }
+.chat-panel__form input {
+  flex: 1; min-width: 0; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 24px;
+  font-size: .82rem; background: var(--surface); color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.chat-panel__form input:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(227,6,19,.12); }
+.chat-panel__form button {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: linear-gradient(135deg, #ff3f47, var(--red-dark)); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(227,6,19,.35); transition: transform .15s var(--ease), box-shadow .15s ease;
+}
+.chat-panel__form button:hover:not(:disabled) { transform: scale(1.08); box-shadow: 0 5px 14px rgba(227,6,19,.45); }
+.chat-panel__form button:disabled { opacity: .4; box-shadow: none; }
 
 /* ---------- Utility ---------- */
 .text-center { text-align: center; }
