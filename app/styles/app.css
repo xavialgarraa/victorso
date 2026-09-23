@@ -916,6 +916,16 @@ body.nav-open { overflow: hidden; }
 @media (min-width: 800px) { .about-page__grid { grid-template-columns: 1.4fr 1fr; align-items: start; } }
 
 /* ---------- Visítanos (tienda física + mapa) ---------- */
+/* Igual que .storehero: se bloquea a la altura visible de la pantalla
+   para que el "sigue bajando" quepa siempre sin hacer scroll, en
+   cualquier dispositivo. */
+.about-hero {
+  display: flex; flex-direction: column; justify-content: center;
+  box-sizing: border-box;
+  min-height: calc(100vh - var(--topchrome-offset, 140px));
+  min-height: calc(100svh - var(--topchrome-offset, 140px));
+  max-height: 820px;
+}
 .about-hero__grid { display: grid; gap: 28px; align-items: center; }
 @media (min-width: 780px) { .about-hero__grid { grid-template-columns: 1.1fr 0.9fr; } }
 .about-hero__lede { font-size: 1.15rem; font-weight: 600; color: var(--text); margin: 0 0 14px; }
@@ -923,7 +933,8 @@ body.nav-open { overflow: hidden; }
 .about-hero__actions + .rating-badge { margin-top: 18px; }
 .about-hero__photo { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); aspect-ratio: 4/3; background: var(--img-bg); }
 .about-hero__photo img { width: 100%; height: 100%; object-fit: cover; }
-.about-hero__scrollhint { margin: 36px 0 0; }
+.about-hero__scrollhint { margin: 24px 0 0; }
+@media (max-height: 720px) and (min-width: 1000px) { .about-hero__photo { aspect-ratio: 16/9; } }
 
 .visit-grid { display: grid; gap: 14px; margin-bottom: 18px; }
 .visit-photo, .visit-map { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 4/3; background: var(--img-bg); }
