@@ -34,13 +34,15 @@ export function SearchFormPredictive({
   const navigate = useNavigate();
   const aside = useAside();
 
-  /** Reset the input value and blur the input */
+  /** Al enviar el formulario (Enter en el teclado, no solo el botón de la
+   * lupa) hay que buscar de verdad — antes solo se quitaba el foco y no
+   * pasaba nada, lo cual confundía sobre todo en móvil (el teclado
+   * suele mostrar "Buscar"/"Ir" en la tecla de intro). */
   function resetInput(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     event.stopPropagation();
-    if (inputRef?.current?.value) {
-      inputRef.current.blur();
-    }
+    inputRef?.current?.blur();
+    goToSearch();
   }
 
   /** Navigate to the search page with the current input value */

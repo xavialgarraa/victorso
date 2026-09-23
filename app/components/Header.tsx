@@ -336,7 +336,7 @@ function HeaderSearch() {
         </button>
       )}
       <SearchFormPredictive className="search">
-        {({fetchResults, goToSearch, inputRef}) => (
+        {({fetchResults, inputRef}) => (
           <>
             <input
               name="q"
@@ -353,14 +353,11 @@ function HeaderSearch() {
                 setMobileActive(true);
               }}
             />
-            <button
-              type="submit"
-              aria-label="Buscar"
-              onClick={() => {
-                goToSearch();
-                closeMobile();
-              }}
-            >
+            {/* type="submit": el Enter del teclado y este botón hacen lo
+                mismo (envían el <form>, que ya navega a /search — ver
+                SearchFormPredictive). Aquí solo hace falta cerrar la
+                vista de pantalla completa de móvil. */}
+            <button type="submit" aria-label="Buscar" onClick={closeMobile}>
               <Icon name="search" />
             </button>
           </>
