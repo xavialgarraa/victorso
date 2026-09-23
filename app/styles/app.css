@@ -1178,8 +1178,8 @@ body.nav-open .whatsapp-float { display: none; }
   .chat-panel__form input { padding: 12px 18px; font-size: .95rem; border-radius: 28px; height: 42px; }
   /* El botón de enviar queda claramente más alto que el campo de texto,
      no a la misma altura. */
-  .chat-panel__form button { width: 44px; height: 44px; }
-  .chat-panel__form button .icon { font-size: 1.05rem; }
+  .chat-panel__form button { width: 42px; height: 42px; }
+  .chat-panel__form button .icon { font-size: 1rem; }
 }
 
 /* ---------- Utility ---------- */
