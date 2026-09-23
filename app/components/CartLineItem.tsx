@@ -51,7 +51,13 @@ export function CartLineItem({
         </Link>
         {variantLabel && <div className="cart-item__variant">{variantLabel}</div>}
         <div className="cart-item__price">
-          <Money data={line.cost.totalAmount} />
+          {/* Con la actualización optimista, la línea recién añadida puede
+              no traer todavía el coste real calculado por Shopify. */}
+          {line.cost?.totalAmount ? (
+            <Money data={line.cost.totalAmount} />
+          ) : merchandise.price ? (
+            <Money data={merchandise.price} />
+          ) : null}
         </div>
       </div>
       <div className="cart-item__right">
