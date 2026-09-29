@@ -80,7 +80,8 @@ type ActionResult =
   | {intent: 'update-slide'; ok: true}
   | {intent: 'update-slide'; ok: false; error: string}
   | {intent: 'delete-slide'; ok: true}
-  | {intent: 'toggle-auto'; ok: true};
+  | {intent: 'toggle-auto'; ok: true}
+  | {intent: 'move-slide'; ok: true};
 
 function slideFromForm(formData: FormData, imageUrl: string): HeroSlide {
   return {
@@ -118,6 +119,18 @@ export async function action({request, context}: Route.ActionArgs) {
     const key = String(formData.get('key') || '');
     if (key) await toggleHiddenAutoKey(context.env, key);
     return data<ActionResult>({intent: 'toggle-auto', ok: true}, {headers});
+  }
+
+  if (intent === 'move-slide') {
+    const id = String(formData.get('id') || '');
+    const existing = (await listHeroSlides(context.env)).find((s) => s.id === id);
+    if (existing) {
+      await updateHeroSlide(context.env, id, {
+        ...existing.slide,
+        position: existing.slide.position === 'left' ? 'right' : 'left',
+      });
+    }
+    return data<ActionResult>({intent: 'move-slide', ok: true}, {headers});
   }
 
   if (intent === 'add-slide') {
@@ -324,6 +337,18 @@ export default function AdminHero() {
                     <span className="hero-admin__link">{slide.href}</span>
                   </div>
                   <div className="hero-admin__card-actions">
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="move-slide" />
+                      <input type="hidden" name="id" value={id} />
+                      <button
+                        type="submit"
+                        className="hero-admin__icon-btn"
+                        title={`Mover al panel ${position === 'left' ? 'derecho' : 'izquierdo'}`}
+                        disabled={isBusy}
+                      >
+                        {position === 'left' ? '→' : '←'}
+                      </button>
+                    </Form>
                     <details style={{position: 'relative'}}>
                       <summary className="hero-admin__icon-btn" style={{listStyle: 'none', display: 'flex'}}>
                         ✎
