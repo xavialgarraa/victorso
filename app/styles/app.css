@@ -549,6 +549,10 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Sections ---------- */
 .section { padding: 44px 16px; }
+/* El botón "Comprar por categoría" del hero hace scrollIntoView aquí — sin
+   esto, el header sticky tapa el título de la sección al aterrizar, dando
+   la sensación de que el scroll "se pasa" de las categorías. */
+#categorySection { scroll-margin-top: var(--topchrome-offset, 140px); }
 .section__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 8px; }
 .section__head h2 { font-size: 1.5rem; margin: 0; }
 .section__head a { display: inline-flex; align-items: center; gap: 6px; color: var(--red); font-weight: 700; font-size: .85rem; white-space: nowrap; }
