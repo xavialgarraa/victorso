@@ -1,5 +1,6 @@
-import {Link} from 'react-router';
+import {Link, useLoaderData} from 'react-router';
 import type {Route} from './+types/quienes-somos';
+import {Image} from '@shopify/hydrogen';
 import {Icon} from '~/lib/icons';
 import {BrandsTicker} from '~/components/BrandsTicker';
 import {QuoteForm} from '~/components/QuoteForm';
@@ -11,8 +12,36 @@ export const meta: Route.MetaFunction = () => {
   return [{title: 'Quiénes somos — Victor So Professional'}];
 };
 
+// El blog de Shopify ("Noticias", handle "noticias") se muestra aquí como
+// un avance de las últimas entradas en vez de tener una sección de
+// "/blog" aparte — a propósito, así pedido. El artículo completo sigue
+// viviendo en /blogs/noticias/<handle> (rutas ya existentes del esqueleto
+// de Hydrogen), este bloque solo enlaza ahí.
+const ABOUT_BLOG_QUERY = `#graphql
+  query AboutBlogPreview($language: LanguageCode) @inContext(language: $language) {
+    blog(handle: "noticias") {
+      handle
+      articles(first: 3, sortKey: PUBLISHED_AT, reverse: true) {
+        nodes {
+          id
+          title
+          handle
+          publishedAt
+          image { id altText url width height }
+        }
+      }
+    }
+  }
+` as const;
+
+export async function loader({context}: Route.LoaderArgs) {
+  const {blog} = await context.storefront.query(ABOUT_BLOG_QUERY, {cache: context.storefront.CacheShort()});
+  return {articles: blog?.articles.nodes ?? []};
+}
+
 export default function AboutPage() {
   const {t} = useI18n();
+  const {articles} = useLoaderData<typeof loader>();
   const waHref = `https://wa.me/34619406443`;
   return (
     <div>
@@ -145,6 +174,43 @@ export default function AboutPage() {
           </Link>
         </div>
       </section>
+
+      {articles.length > 0 && (
+        <section className="section reveal">
+          <div className="container">
+            <div className="section__head">
+              <h2>Noticias</h2>
+            </div>
+            <div className="blog-grid">
+              {articles.map((article) => (
+                <Link className="blog-card" key={article.id} to={`/blogs/noticias/${article.handle}`}>
+                  <div className="blog-card__imgwrap">
+                    {article.image ? (
+                      <Image
+                        alt={article.image.altText || article.title}
+                        aspectRatio="3/2"
+                        data={article.image}
+                        loading="lazy"
+                        sizes="(min-width: 768px) 33vw, 100vw"
+                      />
+                    ) : (
+                      <div className="blog-card__imgwrap--empty" />
+                    )}
+                  </div>
+                  <div className="blog-card__body">
+                    <span className="blog-card__date">
+                      {new Intl.DateTimeFormat('es-ES', {year: 'numeric', month: 'long', day: 'numeric'}).format(
+                        new Date(article.publishedAt),
+                      )}
+                    </span>
+                    <h3>{article.title}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="section section--muted reveal">
         <div className="container">
