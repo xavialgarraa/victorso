@@ -26,6 +26,16 @@ import {
   type CatalogVariant,
 } from '~/lib/shopifyProducts.server';
 
+// Colecciones de marca que ya existen en Shopify (heredadas de la web
+// anterior) — cuando el vendor normalizado coincide, el producto se añade
+// TAMBIÉN a esta colección además de la de tipo (un producto puede estar
+// en varias colecciones a la vez). Solo hay una de marca por ahora; si se
+// crean más colecciones de marca en Shopify, añadirlas aquí.
+const BRAND_COLLECTION_BY_VENDOR: Record<string, string> = {
+  'Pioneer DJ': 'Pioneer DJ & AlphaTheta',
+  AlphaTheta: 'Pioneer DJ & AlphaTheta',
+};
+
 export type StelOrderSyncRow =
   | {
       status: 'to-create';
@@ -97,7 +107,7 @@ export async function buildStelOrderSyncSummary(env: Env): Promise<StelOrderSync
   const byCategory: Record<string, number> = {};
 
   for (const product of eligible) {
-    const category = categories.get(product.id) ?? 'Repuestos y Otros';
+    const category = categories.get(product.id) ?? 'Otros';
     byCategory[category] = (byCategory[category] ?? 0) + 1;
 
     const catalogVariant = catalog.get(product.barcode);
@@ -200,10 +210,16 @@ export async function applyStelOrderCreations(
 
   for (const {product, category} of batch) {
     try {
-      const collectionId = await getOrCreateCollection(env, category, collectionCache);
+      const typeCollectionId = await getOrCreateCollection(env, category, collectionCache);
       const rawVendor = (product.categoryId && categoryNames.get(product.categoryId)) || 'Victor So Professional';
       const vendor = normalizeVendorName(rawVendor);
       const description = await getStelOrderDescription(env, product, category, vendor);
+
+      const collectionIds = [typeCollectionId];
+      const brandCollectionTitle = BRAND_COLLECTION_BY_VENDOR[vendor];
+      if (brandCollectionTitle) {
+        collectionIds.push(await getOrCreateCollection(env, brandCollectionTitle, collectionCache));
+      }
 
       const result = await createShopifyProduct(env, {
         title: product.name,
@@ -214,7 +230,7 @@ export async function applyStelOrderCreations(
         price: product.salesPrice,
         stock: product.realStock,
         images: product.images,
-        collectionId,
+        collectionIds,
         productType: category,
         taxonomyCategoryId: STELORDER_CATEGORY_TAXONOMY[category],
       });

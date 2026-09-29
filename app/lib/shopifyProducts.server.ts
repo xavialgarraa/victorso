@@ -282,7 +282,7 @@ export type NewProductInput = {
   price: number;
   stock: number;
   images: string[];
-  collectionId: string;
+  collectionIds: string[];
   productType: string;
   /** GID de la categoría oficial de la taxonomía de Shopify, o null si
    * ninguna encaja lo bastante bien como para forzarla. */
@@ -372,7 +372,7 @@ export async function createShopifyProduct(
         productType: input.productType,
         ...(input.taxonomyCategoryId ? {category: input.taxonomyCategoryId} : {}),
         status: 'DRAFT',
-        collectionsToJoin: [input.collectionId],
+        collectionsToJoin: input.collectionIds,
       },
     },
   );

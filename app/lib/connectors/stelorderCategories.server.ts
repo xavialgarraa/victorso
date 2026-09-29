@@ -2,22 +2,29 @@ import {getDoc, setDoc} from '~/lib/firestore.server';
 import type {StelOrderProduct} from '~/lib/connectors/stelorder.server';
 
 /**
- * Categorías reales (por tipo de producto) para el catálogo de StelOrder.
- * Las categorías propias de StelOrder están organizadas por MARCA
- * (ADAM HALL, PIONEER...), no por tipo — así que la categoría real de cada
- * producto se decide con IA leyendo su nombre, y se cachea en Firestore
- * (colección "stelorder_categories", 1 doc por id de producto de StelOrder)
+ * Categorías reales (por tipo de producto) para el catálogo de StelOrder —
+ * son las colecciones que YA existen en Shopify (heredadas de la web
+ * anterior), no unas inventadas por nosotros: el nombre de cada una tiene
+ * que coincidir tal cual con el título de esa colección para que
+ * getOrCreateCollection encuentre la existente en vez de crear una
+ * duplicada. Las categorías propias de StelOrder están organizadas por
+ * MARCA (ADAM HALL, PIONEER...), no por tipo — así que la categoría real
+ * de cada producto se decide con IA leyendo su nombre, y se cachea en
+ * Firestore (colección "stelorder_categories", 1 doc por id de producto)
  * para no tener que volver a preguntarle a la IA por productos ya vistos.
  */
 export const STELORDER_CATEGORIES = [
-  'DJ y Vinilo',
-  'Sonido',
-  'Iluminación',
-  'Microfonía y Grabación',
-  'Cableado, Conectores y Alimentación',
-  'Soportes, Flightcases y Transporte',
-  'Video, CCTV y Redes',
-  'Repuestos y Otros',
+  'Reproductores DJ',
+  'Controladoras DJ',
+  'Mixers y Mezcladores',
+  'Auriculares',
+  'Altavoces',
+  'Flight Cases y Bolsas',
+  'Giradiscos',
+  'Accesorios y Cables',
+  'Sistemas All-in-One',
+  'Instrumentos y Teclados MIDI',
+  'Otros',
 ] as const;
 
 export type StelOrderCategory = (typeof STELORDER_CATEGORIES)[number];
@@ -28,20 +35,20 @@ export type StelOrderCategory = (typeof STELORDER_CATEGORIES)[number];
  * de nuestras categorías reales. La taxonomía de Shopify es fija y en
  * inglés internamente (el admin la traduce en pantalla según el idioma de
  * la tienda, pero la API siempre devuelve/acepta el GID, no un string en
- * español) — no tiene nodos específicos para "DJ"/"iluminación de
- * escenario", así que son la mejor aproximación dentro de su árbol
- * genérico de Electrónica. "Repuestos y Otros" se deja sin categoría: no
- * hay ningún nodo de la taxonomía que encaje medianamente bien.
+ * español). "Otros" se deja sin categoría: no hay ningún nodo que encaje.
  */
 export const STELORDER_CATEGORY_TAXONOMY: Record<StelOrderCategory, string | null> = {
-  'DJ y Vinilo': 'gid://shopify/TaxonomyCategory/el-2-5-2', // Electronics > Audio > DJ & Specialty Audio > DJ Systems
-  Sonido: 'gid://shopify/TaxonomyCategory/el-2-2-10', // Electronics > Audio > Audio Components > Speakers
-  Iluminación: 'gid://shopify/TaxonomyCategory/hg-13-9', // Home & Garden > Lighting > Lighting Fixtures
-  'Microfonía y Grabación': 'gid://shopify/TaxonomyCategory/el-2-2-8', // Electronics > Audio > Audio Components > Microphones
-  'Cableado, Conectores y Alimentación': 'gid://shopify/TaxonomyCategory/el-7-7', // Electronics > Electronics Accessories > Cables
-  'Soportes, Flightcases y Transporte': 'gid://shopify/TaxonomyCategory/co-1-7', // Cameras & Optics > Camera & Optic Accessories > Tripods & Monopods
-  'Video, CCTV y Redes': 'gid://shopify/TaxonomyCategory/el-17', // Electronics > Video
-  'Repuestos y Otros': null,
+  'Reproductores DJ': 'gid://shopify/TaxonomyCategory/el-2-5-1', // Electronics > Audio > DJ & Specialty Audio > DJ CD Players
+  'Controladoras DJ': 'gid://shopify/TaxonomyCategory/el-2-5-4', // Electronics > Audio > DJ & Specialty Audio > DJ Controllers
+  'Mixers y Mezcladores': 'gid://shopify/TaxonomyCategory/el-2-5-5', // Electronics > Audio > DJ & Specialty Audio > DJ Mixers
+  Auriculares: 'gid://shopify/TaxonomyCategory/el-2-2-7-1-2', // Electronics > Audio > Audio Components > Headphones & Headsets > Headphones > DJ Headphones
+  Altavoces: 'gid://shopify/TaxonomyCategory/el-2-2-10', // Electronics > Audio > Audio Components > Speakers
+  'Flight Cases y Bolsas': 'gid://shopify/TaxonomyCategory/el-2-5-8-1', // Electronics > Audio > DJ & Specialty Audio > DJ & Specialty Audio Accessories > DJ Flight Cases & Bags
+  Giradiscos: 'gid://shopify/TaxonomyCategory/el-2-3-10-2', // Electronics > Audio > Audio Players & Recorders > Turntables & Record Players > Turntables
+  'Accesorios y Cables': 'gid://shopify/TaxonomyCategory/el-7-7', // Electronics > Electronics Accessories > Cables
+  'Sistemas All-in-One': 'gid://shopify/TaxonomyCategory/el-2-5-2', // Electronics > Audio > DJ & Specialty Audio > DJ Systems
+  'Instrumentos y Teclados MIDI': 'gid://shopify/TaxonomyCategory/ae-2-8-4-2', // Arts & Entertainment > ... > Electronic Musical Instruments > MIDI Controllers
+  Otros: null,
 };
 
 const COLLECTION = 'stelorder_categories';
@@ -56,9 +63,11 @@ function buildPrompt(batch: StelOrderProduct[]): string {
 ${STELORDER_CATEGORIES.map((c, i) => `${i + 1}) ${c}`).join('\n')}
 
 Reglas:
-- "Video, CCTV y Redes" = cámaras, videoporteros, videowalls, fibra óptica, HDMI, redes, antenas TV/SAT.
-- "Repuestos y Otros" = piezas sueltas de reparación (resistencias, membranas, goma jogwheel, placas internas), software/licencias, consumibles, o cualquier cosa que no encaje claramente en las demás.
-- Responde SOLO con un JSON array de strings (una categoría exacta de la lista por cada producto, en el mismo orden), sin explicaciones. Ejemplo: ["Sonido","DJ y Vinilo",...]
+- "Reproductores DJ" = CDJ y reproductores de medios para cabina.
+- "Controladoras DJ" = controladoras que no llevan altavoz integrado (se conectan a un sistema de sonido aparte).
+- "Sistemas All-in-One" = equipos todo-en-uno con altavoz/batería incorporados (ej. controladoras portátiles con altavoz).
+- "Otros" = cualquier cosa que no encaje claramente en ninguna de las demás (piezas de reparación, software, cámaras/CCTV, redes, consumibles...).
+- Responde SOLO con un JSON array de strings (una categoría exacta de la lista por cada producto, en el mismo orden), sin explicaciones. Ejemplo: ["Altavoces","Controladoras DJ",...]
 
 Productos:
 ${list}`;
@@ -99,7 +108,7 @@ async function classifyBatchWithAI(
   }
 
   return parsed.map((c) =>
-    (STELORDER_CATEGORIES as readonly string[]).includes(c) ? (c as StelOrderCategory) : 'Repuestos y Otros',
+    (STELORDER_CATEGORIES as readonly string[]).includes(c) ? (c as StelOrderCategory) : 'Otros',
   );
 }
 
@@ -128,9 +137,9 @@ export async function classifyStelOrderProducts(
 
   if (toClassify.length === 0) return result;
   if (!env.ANTHROPIC_API_KEY) {
-    // Sin IA disponible: se marcan como "Repuestos y Otros" (revisable a
-    // mano en el panel) en vez de romper toda la sincronización.
-    for (const p of toClassify) result.set(p.id, 'Repuestos y Otros');
+    // Sin IA disponible: se marcan como "Otros" (revisable a mano en el
+    // panel) en vez de romper toda la sincronización.
+    for (const p of toClassify) result.set(p.id, 'Otros');
     return result;
   }
 
@@ -141,7 +150,7 @@ export async function classifyStelOrderProducts(
       categories = await classifyBatchWithAI(env.ANTHROPIC_API_KEY, batch);
     } catch (error) {
       console.error('[stelorderCategories] batch failed', error);
-      categories = batch.map(() => 'Repuestos y Otros');
+      categories = batch.map(() => 'Otros');
     }
 
     await Promise.all(
