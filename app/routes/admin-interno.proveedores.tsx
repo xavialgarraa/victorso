@@ -26,6 +26,11 @@ import {
   getPrimaryLocationId,
   getShopifyCatalogByBarcode,
 } from '~/lib/shopifyProducts.server';
+import {
+  applyStelOrderCreations,
+  buildStelOrderSyncSummary,
+  type StelOrderSyncSummary,
+} from '~/lib/connectors/stelorderSync.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Proveedores — Panel interno'}];
@@ -57,7 +62,13 @@ type ActionResult =
   | {intent: 'save-supplier'; ok: true}
   | {intent: 'save-supplier'; ok: false; error: string}
   | {intent: 'delete-supplier'; ok: true}
-  | {intent: 'delete-supplier'; ok: false; error: string};
+  | {intent: 'delete-supplier'; ok: false; error: string}
+  | {intent: 'stelorder-sync'; ok: true; summary: StelOrderSyncSummary}
+  | {intent: 'stelorder-sync'; ok: false; error: string}
+  | {intent: 'stelorder-create-batch'; ok: true; created: number; errors: Array<{name: string; message: string}>; remaining: number}
+  | {intent: 'stelorder-create-batch'; ok: false; error: string}
+  | {intent: 'stelorder-update-stock'; ok: true; applied: number; errors: string[]}
+  | {intent: 'stelorder-update-stock'; ok: false; error: string};
 
 // Solo hay parser hecho para el formato de Walkasse. Un proveedor nuevo
 // con otro formato de feed necesitaría su propio parser (como
@@ -80,6 +91,64 @@ export async function action({request, context}: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = String(formData.get('intent') || '');
   const supplierId = String(formData.get('supplierId') || 'walkasse');
+
+  if (intent === 'stelorder-sync') {
+    try {
+      const summary = await buildStelOrderSyncSummary(context.env);
+      return data<ActionResult>({intent: 'stelorder-sync', ok: true, summary}, {headers});
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-sync', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-sync', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-create-batch') {
+    try {
+      const summary = await buildStelOrderSyncSummary(context.env);
+      const result = await applyStelOrderCreations(context.env, summary.toCreate);
+      return data<ActionResult>(
+        {
+          intent: 'stelorder-create-batch',
+          ok: true,
+          created: result.created,
+          errors: result.errors,
+          remaining: Math.max(0, summary.toCreate.length - result.created),
+        },
+        {headers},
+      );
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-create-batch', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-create-batch', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-update-stock') {
+    try {
+      const summary = await buildStelOrderSyncSummary(context.env);
+      const locationId = await getPrimaryLocationId(context.env);
+      const changes = summary.toUpdateStock.map((r) => ({
+        inventoryItemId: r.catalogVariant.inventoryItemId,
+        quantity: r.stockTo,
+      }));
+      const result = await applyStockChanges(context.env, locationId, changes);
+      return data<ActionResult>(
+        {intent: 'stelorder-update-stock', ok: true, applied: result.applied, errors: result.errors},
+        {headers},
+      );
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-update-stock', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-update-stock', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
 
   if (intent === 'sync') {
     const startedAt = new Date().toISOString();
@@ -214,6 +283,11 @@ export default function AdminProveedores() {
   const busyIntent = navigation.formData?.get('intent');
   const busySupplierId = navigation.formData?.get('supplierId');
 
+  const stelorderSummary = actionData?.intent === 'stelorder-sync' && actionData.ok ? actionData.summary : null;
+  const stelorderSyncError = actionData?.intent === 'stelorder-sync' && !actionData.ok ? actionData.error : null;
+  const stelorderCreateResult = actionData?.intent === 'stelorder-create-batch' ? actionData : null;
+  const stelorderUpdateResult = actionData?.intent === 'stelorder-update-stock' ? actionData : null;
+
   const summary = actionData?.intent === 'sync' && actionData.ok ? actionData.summary : null;
   const summarySupplierId = actionData?.intent === 'sync' && actionData.ok ? actionData.supplierId : null;
   const syncError = actionData?.intent === 'sync' && !actionData.ok ? actionData : null;
@@ -231,6 +305,206 @@ export default function AdminProveedores() {
         El cruce con el catálogo se hace siempre por EAN, contra todas las marcas — nunca filtrando antes por
         proveedor o marca.
       </p>
+
+      <div className="admin-card">
+        <div>
+          <strong>StelOrder</strong>{' '}
+          <span className="admin-badge admin-badge--apply">Activo</span>
+        </div>
+        <p className="admin-hint" style={{marginTop: 8, maxWidth: 640}}>
+          A diferencia de los demás proveedores, StelOrder puede traer productos que{' '}
+          <strong>no existen todavía</strong> en la tienda — hay que crearlos, no solo actualizar stock. Solo se
+          sincronizan los productos que Victor marca a mano en StelOrder: escribiendo <strong>"web"</strong> en
+          el comentario privado del producto (y necesitan código de barras). La categoría real la decide la IA
+          leyendo el nombre, y la descripción también la revisa la IA en español (traduce/pule la de StelOrder
+          si existe, sin inventar datos técnicos nuevos). El cron diario ya crea y actualiza esto solo — estos
+          botones son solo para no esperar al cron.
+        </p>
+
+        <Form method="post" style={{marginTop: 12}}>
+          <input type="hidden" name="intent" value="stelorder-sync" />
+          <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+            {isBusy && busyIntent === 'stelorder-sync' ? 'Comparando…' : 'Comparar con Shopify'}
+          </button>
+        </Form>
+
+        {stelorderSyncError && <p className="admin-msg--error">{stelorderSyncError}</p>}
+
+        {stelorderSummary && (
+          <div style={{marginTop: 20}}>
+            <div className="admin-stats">
+              <div className="admin-stat">
+                <span className="admin-stat__value">{stelorderSummary.totalEligible}</span>
+                <span className="admin-stat__label">Marcados "web" en StelOrder</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{stelorderSummary.toCreate.length}</span>
+                <span className="admin-stat__label">Por crear en Shopify</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{stelorderSummary.toUpdateStock.length}</span>
+                <span className="admin-stat__label">Ya existen, stock distinto</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{stelorderSummary.priceChanges.length}</span>
+                <span className="admin-stat__label">Precio distinto (pendiente)</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{stelorderSummary.unchanged}</span>
+                <span className="admin-stat__label">Sin cambios</span>
+              </div>
+            </div>
+
+            <h3 style={{marginTop: 20}}>Por categoría real (asignada por IA)</h3>
+            <ul style={{fontSize: '.85rem', paddingLeft: 20}}>
+              {Object.entries(stelorderSummary.byCategory)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, count]) => (
+                  <li key={cat}>
+                    {cat}: {count}
+                  </li>
+                ))}
+            </ul>
+
+            {stelorderSummary.toUpdateStock.length > 0 && (
+              <>
+                <h3 style={{marginTop: 20}}>Actualizar stock ({stelorderSummary.toUpdateStock.length})</h3>
+                <div className="admin-scroll" style={{maxHeight: 240}}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stelorderSummary.toUpdateStock.slice(0, 200).map((r) => (
+                        <tr key={r.product.barcode}>
+                          <td>{r.catalogVariant.title}</td>
+                          <td>
+                            {r.stockFrom} → {r.stockTo}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Form method="post" style={{marginTop: 12}}>
+                  <input type="hidden" name="intent" value="stelorder-update-stock" />
+                  <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                    {isBusy && busyIntent === 'stelorder-update-stock'
+                      ? 'Actualizando…'
+                      : `Actualizar stock de ${stelorderSummary.toUpdateStock.length} productos`}
+                  </button>
+                </Form>
+              </>
+            )}
+
+            {stelorderSummary.priceChanges.length > 0 && (
+              <>
+                <h3 style={{marginTop: 24}}>Cambios de precio detectados ({stelorderSummary.priceChanges.length})</h3>
+                <p className="admin-hint" style={{maxWidth: 600}}>
+                  Solo informativo — <strong>nunca se aplican solos</strong>, hay que cambiarlos a mano en Shopify
+                  si corresponde. <strong>Ojo:</strong> esto compara el <code>sales-price</code> de StelOrder
+                  contra el precio actual en Shopify — si le has puesto una oferta/promoción directamente en
+                  Shopify, también saldrá aquí como "cambio" aunque no sea un cambio de coste real en StelOrder.
+                  Revisa cada uno antes de tocar nada.
+                </p>
+                <div className="admin-scroll" style={{maxHeight: 240}}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stelorderSummary.priceChanges.slice(0, 200).map((r) => (
+                        <tr key={r.product.barcode} style={r.priceWarning ? {background: '#fdf6e3'} : undefined}>
+                          <td>{r.catalogVariant.title}</td>
+                          <td>
+                            {r.priceFrom.toFixed(2)}€ → {r.priceTo.toFixed(2)}€
+                            {r.priceWarning && (
+                              <div style={{color: '#a15c00', fontSize: '.78rem', marginTop: 2}}>⚠ {r.priceWarning}</div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {stelorderSummary.toCreate.length > 0 && (
+              <>
+                <h3 style={{marginTop: 24}}>Crear productos nuevos ({stelorderSummary.toCreate.length})</h3>
+                <div className="admin-scroll" style={{maxHeight: 240}}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stelorderSummary.toCreate.slice(0, 200).map((r) => (
+                        <tr key={r.product.barcode}>
+                          <td>{r.product.name}</td>
+                          <td>{r.category}</td>
+                          <td>{r.product.salesPrice.toFixed(2)}€</td>
+                          <td>{r.product.realStock}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Form method="post" style={{marginTop: 12}}>
+                  <input type="hidden" name="intent" value="stelorder-create-batch" />
+                  <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+                    {isBusy && busyIntent === 'stelorder-create-batch' ? 'Creando…' : 'Crear siguiente lote'}
+                  </button>
+                </Form>
+              </>
+            )}
+          </div>
+        )}
+
+        {stelorderCreateResult && (
+          <div style={{marginTop: 16}}>
+            {stelorderCreateResult.ok ? (
+              <div className="admin-msg--ok">
+                Creados: {stelorderCreateResult.created}. Quedan {stelorderCreateResult.remaining} por crear.
+                {stelorderCreateResult.errors.length > 0 && (
+                  <div style={{marginTop: 6}}>
+                    {stelorderCreateResult.errors.length} errores:{' '}
+                    {stelorderCreateResult.errors.slice(0, 5).map((e) => `${e.name}: ${e.message}`).join(' · ')}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="admin-msg--error">{stelorderCreateResult.error}</p>
+            )}
+          </div>
+        )}
+
+        {stelorderUpdateResult && (
+          <div style={{marginTop: 16}}>
+            {stelorderUpdateResult.ok ? (
+              <div className="admin-msg--ok">
+                Stock actualizado en {stelorderUpdateResult.applied} lotes.
+                {stelorderUpdateResult.errors.length > 0 && (
+                  <div style={{marginTop: 6}}>{stelorderUpdateResult.errors.length} errores: {stelorderUpdateResult.errors.slice(0, 5).join(' · ')}</div>
+                )}
+              </div>
+            ) : (
+              <p className="admin-msg--error">{stelorderUpdateResult.error}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {suppliers.map(({id, config}) => (
         <div key={id} className="admin-card">
