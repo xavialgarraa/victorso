@@ -252,6 +252,23 @@ export async function getOrCreateCollection(
     throw new Error(`No se pudo crear la colección "${title}": ${userErrors.map((e) => e.message).join(', ')}`);
   }
   const id = created.collectionCreate.collection.id;
+
+  // Igual que con los productos: sin publicarla explícitamente en el
+  // canal, la colección existe pero no aparece nunca en la tienda aunque
+  // tenga productos activos dentro.
+  try {
+    const publicationId = await getOnlineStorePublicationId(env);
+    await adminQuery(
+      env,
+      `mutation Publish($id: ID!, $input: [PublicationInput!]!) {
+        publishablePublish(id: $id, input: $input) { userErrors { field message } }
+      }`,
+      {id, input: [{publicationId}]},
+    );
+  } catch (error) {
+    console.error('[getOrCreateCollection] publish', id, error);
+  }
+
   cache.set(title, id);
   return id;
 }
