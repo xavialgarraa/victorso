@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Form, data, useActionData, useLoaderData, useNavigation} from 'react-router';
 import type {Route} from './+types/admin-interno.hero';
 import {requireAdminUser} from '~/lib/adminSession.server';
@@ -183,6 +184,59 @@ function badgeSuffix(badgeClass: HeroSlide['badgeClass']) {
   return badgeClass.replace('storehero__badge--', '');
 }
 
+/**
+ * La foto se estira con "object-fit: cover" y el recuadro del hero cambia
+ * de proporción según el dispositivo (más cuadrado en móvil, más ancho en
+ * escritorio) — así que un mismo encuadre no se ve igual en todos lados.
+ * Esto muestra en vivo qué parte de la foto se recorta en cada tamaño,
+ * antes de guardarla, para poder elegir/centrar bien la imagen.
+ */
+function HeroImageCropPreview({initialUrl}: {initialUrl?: string}) {
+  const [src, setSrc] = useState<string | null>(initialUrl ?? null);
+
+  return (
+    <>
+      <input
+        type="file"
+        name="image"
+        accept="image/*"
+        required={!initialUrl}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) {
+            setSrc(initialUrl ?? null);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => setSrc(String(reader.result));
+          reader.readAsDataURL(file);
+        }}
+      />
+      {src && (
+        <div className="hero-admin__crop-preview">
+          <p className="admin-hint" style={{margin: '8px 0 6px'}}>
+            Así se recortará según la pantalla — procura que lo importante quede centrado:
+          </p>
+          <div className="hero-admin__crop-row">
+            <div className="hero-admin__crop-box hero-admin__crop-box--mobile">
+              <img src={src} alt="" />
+              <span className="hero-admin__crop-label">Móvil</span>
+            </div>
+            <div className="hero-admin__crop-box hero-admin__crop-box--tablet">
+              <img src={src} alt="" />
+              <span className="hero-admin__crop-label">Tablet</span>
+            </div>
+            <div className="hero-admin__crop-box hero-admin__crop-box--desktop">
+              <img src={src} alt="" />
+              <span className="hero-admin__crop-label">Escritorio</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function AdminHero() {
   const {user, slides, settings, autoLeftCandidates, autoRightCandidates} = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -283,7 +337,7 @@ export default function AdminHero() {
                           <input type="hidden" name="id" value={id} />
                           <input type="hidden" name="position" value={slide.position} />
                           <label>Nueva imagen (opcional)</label>
-                          <input type="file" name="image" accept="image/*" />
+                          <HeroImageCropPreview initialUrl={slide.imageUrl} />
                           <label>Enlace</label>
                           <input type="text" name="href" defaultValue={slide.href} />
                           <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
@@ -382,7 +436,7 @@ export default function AdminHero() {
                   <input type="hidden" name="intent" value="add-slide" />
                   <input type="hidden" name="position" value={position} />
                   <label>Imagen</label>
-                  <input type="file" name="image" accept="image/*" required />
+                  <HeroImageCropPreview />
                   <div className="hero-admin__field-grid">
                     <div className="hero-admin__field-grid--full">
                       <label>Enlace (ej. /blogs/noticias/mi-articulo, /collections/dj, https://...)</label>
