@@ -102,17 +102,25 @@ export function isMarkedForWeb(p: StelOrderProduct): boolean {
  * usamos como SKU al crear el producto en Shopify — ver stelorderSync).
  * Se usa al vender algo en la web para saber si ese SKU viene de StelOrder
  * y, si es así, actualizarle el stock — ver setStelOrderStock.
+ *
+ * OJO: el filtro `full-reference` de la API de StelOrder hace coincidencia
+ * por PREFIJO, no exacta — buscar "HDJ-F10" también devuelve "HDJ-F10-TX".
+ * Por eso aquí se piden varios resultados y se filtra a mano por
+ * igualdad exacta antes de devolver nada; sin este filtro, un SKU que sea
+ * prefijo de otro podía acabar actualizando el stock del producto
+ * equivocado.
  */
 export async function findStelOrderProductByReference(
   apiKey: string,
   fullReference: string,
 ): Promise<StelOrderProduct | null> {
-  const url = `https://app.stelorder.com/app/products?full-reference=${encodeURIComponent(fullReference)}&limit=1`;
+  const url = `https://app.stelorder.com/app/products?full-reference=${encodeURIComponent(fullReference)}&limit=20`;
   const response = await fetch(url, {headers: {APIKEY: apiKey}});
   if (!response.ok) throw new Error(`StelOrder API error (${response.status}) buscando referencia ${fullReference}.`);
   const page = (await response.json()) as RawStelOrderProduct[];
-  if (!Array.isArray(page) || page.length === 0) return null;
-  return normalize(page[0]);
+  if (!Array.isArray(page)) return null;
+  const exact = page.find((p) => p['full-reference'] === fullReference);
+  return exact ? normalize(exact) : null;
 }
 
 /** Fija el stock real de un producto de StelOrder al valor exacto dado
