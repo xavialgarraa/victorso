@@ -257,13 +257,13 @@ export async function getOrCreateCollection(
   // canal, la colección existe pero no aparece nunca en la tienda aunque
   // tenga productos activos dentro.
   try {
-    const publicationId = await getOnlineStorePublicationId(env);
+    const publicationIds = await getAllPublicationIds(env);
     await adminQuery(
       env,
       `mutation Publish($id: ID!, $input: [PublicationInput!]!) {
         publishablePublish(id: $id, input: $input) { userErrors { field message } }
       }`,
-      {id, input: [{publicationId}]},
+      {id, input: publicationIds.map((publicationId) => ({publicationId}))},
     );
   } catch (error) {
     console.error('[getOrCreateCollection] publish', id, error);
@@ -289,22 +289,48 @@ export type NewProductInput = {
   taxonomyCategoryId: string | null;
 };
 
-let cachedOnlineStorePublicationId: string | null = null;
-
 /** "Online Store" — el canal de ventas que sirve victorso.es (Hydrogen usa
  * el mismo storefront que este canal, no uno aparte). Sin publicar el
  * producto aquí explícitamente se queda invisible aunque esté Activo — es
- * justo el bug que hizo que los primeros 15 de prueba no aparecieran. */
-async function getOnlineStorePublicationId(env: Env): Promise<string> {
-  if (cachedOnlineStorePublicationId) return cachedOnlineStorePublicationId;
-  const data = await adminQuery<{publications: {nodes: Array<{id: string; name: string}>}}>(
-    env,
-    `query { publications(first: 20) { nodes { id name } } }`,
-  );
-  const onlineStore = data.publications.nodes.find((p) => p.name === 'Online Store');
-  if (!onlineStore) throw new Error('No se encontró el canal "Online Store" en publications.');
-  cachedOnlineStorePublicationId = onlineStore.id;
-  return onlineStore.id;
+ * justo el bug que hizo que los primeros 15 de prueba no aparecieran.
+ *
+ * OJO: el canal "Hydrogen" (el que de verdad lee el storefront custom, no
+ * "Online Store") NO aparece en `publications(first: N)` para esta app,
+ * aunque exista y sea imprescindible — sin publicar ahí también, un
+ * producto puede estar "Activo" y publicado en "Online Store" y aun así
+ * no salir en la tienda real. Como no es descubrible vía esa query, se
+ * saca del propio catálogo: cualquier producto ya bien configurado
+ * (los que vinieron con la tienda) tiene ese canal en su
+ * resourcePublications. */
+let cachedPublicationIds: string[] | null = null;
+
+async function getAllPublicationIds(env: Env): Promise<string[]> {
+  if (cachedPublicationIds) return cachedPublicationIds;
+
+  const [fromList, fromProduct] = await Promise.all([
+    adminQuery<{publications: {nodes: Array<{id: string; name: string}>}}>(
+      env,
+      `query { publications(first: 20) { nodes { id name } } }`,
+    ),
+    adminQuery<{
+      products: {nodes: Array<{resourcePublications: {nodes: Array<{publication: {id: string}}>}}>};
+    }>(
+      env,
+      `query { products(first: 1, query: "status:active") { nodes { resourcePublications(first: 20) { nodes { publication { id } } } } } }`,
+    ),
+  ]);
+
+  const ids = new Set<string>(fromList.publications.nodes.map((p) => p.id));
+  const referenceProduct = fromProduct.products.nodes[0];
+  if (referenceProduct) {
+    for (const {publication} of referenceProduct.resourcePublications.nodes) {
+      ids.add(publication.id);
+    }
+  }
+
+  if (ids.size === 0) throw new Error('No se encontró ningún canal de publicación.');
+  cachedPublicationIds = [...ids];
+  return cachedPublicationIds;
 }
 
 /**
@@ -421,7 +447,7 @@ export async function createShopifyProduct(
   // que, en cuanto alguien lo pase a Activo desde el panel, aparezca en la
   // tienda al momento sin tener que acordarse de este paso aparte.
   try {
-    const publicationId = await getOnlineStorePublicationId(env);
+    const publicationIds = await getAllPublicationIds(env);
     const publishResult = await adminQuery<{
       publishablePublish: {userErrors: Array<{field: string[]; message: string}>};
     }>(
@@ -431,7 +457,7 @@ export async function createShopifyProduct(
           userErrors { field message }
         }
       }`,
-      {id: product.id, input: [{publicationId}]},
+      {id: product.id, input: publicationIds.map((publicationId) => ({publicationId}))},
     );
     const publishErrors = publishResult.publishablePublish.userErrors;
     if (publishErrors.length > 0) {
