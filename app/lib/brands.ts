@@ -145,3 +145,57 @@ export const BRANDS: Brand[] = [
 export function findBrand(slug: string): Brand | undefined {
   return BRANDS.find((b) => b.slug === slug);
 }
+
+// StelOrder (y otros proveedores) mandan el nombre de marca en su propio
+// formato (todo mayúsculas, abreviado distinto...) que nunca hace match
+// exacto con el `name` canónico de arriba — sin esto, "PIONEER" y
+// "Pioneer DJ" quedan como dos marcas distintas para Shopify (vendor es
+// solo texto libre) y la página /marcas/pioneer-dj no encuentra sus
+// productos. Alias manuales para los casos que no son un simple problema
+// de mayúsculas/minúsculas.
+const VENDOR_ALIASES: Record<string, string> = {
+  PIONEER: 'Pioneer DJ',
+  'PIONEER DJ': 'Pioneer DJ',
+  'ALPHA THETA': 'AlphaTheta',
+  ALPHATHETA: 'AlphaTheta',
+  RANE: 'RANE_DJ',
+  'RANE DJ': 'RANE_DJ',
+  WORK: 'work',
+  'WORK PRO': 'work',
+  'ALLEN & HEATH': 'Allen & Heath',
+  'ALLEN HEATH': 'Allen & Heath',
+  KORG: 'korg',
+};
+
+function normalizeKey(name: string): string {
+  return name
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase();
+}
+
+const BRANDS_BY_KEY = new Map(BRANDS.map((b) => [normalizeKey(b.name), b.name]));
+
+/**
+ * Convierte un nombre de marca "en crudo" (de StelOrder, Walkasse, etc.)
+ * al nombre canónico ya usado en BRANDS si existe uno, para que el
+ * producto cuente en la página de esa marca. Si no hay ningún match,
+ * devuelve el nombre original convertido a Title Case (mejor que dejarlo
+ * todo en mayúsculas) en vez de perderlo.
+ */
+export function normalizeVendorName(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+
+  const key = normalizeKey(trimmed);
+  if (VENDOR_ALIASES[key]) return VENDOR_ALIASES[key];
+
+  const known = BRANDS_BY_KEY.get(key);
+  if (known) return known;
+
+  // Sin marca conocida: Title Case en vez de MAYÚSCULAS SIN MÁS.
+  return trimmed
+    .toLowerCase()
+    .replace(/(^|\s|&)([a-záéíóúñ])/g, (_, sep, letter) => sep + letter.toUpperCase());
+}

@@ -10,6 +10,7 @@ import {
   type StelOrderCategory,
 } from '~/lib/connectors/stelorderCategories.server';
 import {getStelOrderDescription} from '~/lib/connectors/stelorderDescriptions.server';
+import {normalizeVendorName} from '~/lib/brands';
 import {getImportedStelOrderIds, markStelOrderImported} from '~/lib/connectors/stelorderImports.server';
 import {
   MIN_VALID_PRICE,
@@ -200,7 +201,8 @@ export async function applyStelOrderCreations(
   for (const {product, category} of batch) {
     try {
       const collectionId = await getOrCreateCollection(env, category, collectionCache);
-      const vendor = (product.categoryId && categoryNames.get(product.categoryId)) || 'Victor So Professional';
+      const rawVendor = (product.categoryId && categoryNames.get(product.categoryId)) || 'Victor So Professional';
+      const vendor = normalizeVendorName(rawVendor);
       const description = await getStelOrderDescription(env, product, category, vendor);
 
       const result = await createShopifyProduct(env, {
