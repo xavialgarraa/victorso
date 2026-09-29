@@ -44,17 +44,31 @@ export async function deleteHeroSlide(env: Env, id: string): Promise<void> {
 /** Si no hay slides manuales para un lado (o el admin lo prefiere así), el
  * hero sigue rellenando ese hueco con producto novedad/más vendido —
  * ver _index.tsx. Esto decide, por lado, si ese relleno automático está
- * permitido. */
-export type HeroSettings = {leftAutoFallback: boolean; rightAutoFallback: boolean};
+ * permitido. hiddenAutoKeys permite ocultar tarjetas de relleno concretas
+ * una a una (por su "key": new-<id>, best-<id>, contact, visit) sin tener
+ * que desactivar todo el relleno de ese lado. */
+export type HeroSettings = {
+  leftAutoFallback: boolean;
+  rightAutoFallback: boolean;
+  hiddenAutoKeys: string[];
+};
 
 const SETTINGS_COLLECTION = 'hero_settings';
 const SETTINGS_ID = 'config';
 
 export async function getHeroSettings(env: Env): Promise<HeroSettings> {
   const doc = await getDoc<HeroSettings>(env, SETTINGS_COLLECTION, SETTINGS_ID);
-  return doc ?? {leftAutoFallback: true, rightAutoFallback: true};
+  return {leftAutoFallback: true, rightAutoFallback: true, hiddenAutoKeys: [], ...doc};
 }
 
 export async function setHeroSettings(env: Env, settings: HeroSettings): Promise<void> {
   await setDoc(env, SETTINGS_COLLECTION, SETTINGS_ID, settings);
+}
+
+export async function toggleHiddenAutoKey(env: Env, key: string): Promise<void> {
+  const settings = await getHeroSettings(env);
+  const hiddenAutoKeys = settings.hiddenAutoKeys.includes(key)
+    ? settings.hiddenAutoKeys.filter((k) => k !== key)
+    : [...settings.hiddenAutoKeys, key];
+  await setHeroSettings(env, {...settings, hiddenAutoKeys});
 }

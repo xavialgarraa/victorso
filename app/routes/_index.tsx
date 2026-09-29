@@ -112,17 +112,21 @@ export default function Homepage() {
       ctaClass: slide.ctaClass,
     }));
 
-  const autoLeft: HeroSlide[] = newest.map((p) => ({
-    key: `new-${p.id}`,
-    href: `/products/${p.handle}`,
-    image: p.featuredImage?.url ?? '',
-    badge: t('storeHeroNewBadge'),
-    badgeClass: 'storehero__badge--new',
-    eyebrow: p.vendor,
-    title: p.title,
-    cta: t('storeHeroNewCta'),
-    ctaClass: 'btn--outline',
-  }));
+  const hiddenAutoKeys = heroSettings.hiddenAutoKeys ?? [];
+
+  const autoLeft: HeroSlide[] = newest
+    .map((p) => ({
+      key: `new-${p.id}`,
+      href: `/products/${p.handle}`,
+      image: p.featuredImage?.url ?? '',
+      badge: t('storeHeroNewBadge'),
+      badgeClass: 'storehero__badge--new' as const,
+      eyebrow: p.vendor,
+      title: p.title,
+      cta: t('storeHeroNewCta'),
+      ctaClass: 'btn--outline' as const,
+    }))
+    .filter((s) => !hiddenAutoKeys.includes(s.key));
   const leftSlides: HeroSlide[] = [...manualLeft, ...(heroSettings.leftAutoFallback ? autoLeft : [])];
 
   const autoRight: HeroSlide[] = [];
@@ -171,7 +175,10 @@ export default function Homepage() {
       ctaClass: 'btn--outline',
     },
   );
-  const rightSlides: HeroSlide[] = [...manualRight, ...(heroSettings.rightAutoFallback ? autoRight : [])];
+  const rightSlides: HeroSlide[] = [
+    ...manualRight,
+    ...(heroSettings.rightAutoFallback ? autoRight.filter((s) => !hiddenAutoKeys.includes(s.key)) : []),
+  ];
 
   return (
     <div className="home">
