@@ -52,12 +52,15 @@ export type SyncSummary = {
   rows: SyncRow[];
 };
 
-const MIN_VALID_PRICE = 0.01;
+// Exportadas para que cualquier otro conector (StelOrder, etc.) use
+// exactamente los mismos umbrales al avisar de cambios de precio raros —
+// ver stelorderSync.server.ts.
+export const MIN_VALID_PRICE = 0.01;
 // Si el precio nuevo es menos de un tercio o más del triple del actual,
 // es más probable que sea un dato corrupto del feed que una bajada/subida
 // real — se avisa en vez de proponerlo como cambio automático.
-const SUSPICIOUS_PRICE_RATIO_LOW = 1 / 3;
-const SUSPICIOUS_PRICE_RATIO_HIGH = 3;
+export const SUSPICIOUS_PRICE_RATIO_LOW = 1 / 3;
+export const SUSPICIOUS_PRICE_RATIO_HIGH = 3;
 
 export function walkasseToSupplierRows(products: WalkasseProduct[]): SupplierRow[] {
   return products.map((p) => ({

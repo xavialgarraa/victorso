@@ -1206,7 +1206,7 @@ body.nav-open .whatsapp-float { display: none; }
 aside {
   --aside-bg: var(--nav-bg); --aside-text: var(--nav-text); --aside-border: var(--nav-border);
   background: var(--aside-bg); color: var(--aside-text);
-  box-shadow: var(--shadow-lg); height: 100vh; width: min(var(--aside-width), 100vw);
+  box-shadow: var(--shadow-lg); height: 100vh; height: 100dvh; width: min(var(--aside-width), 100vw);
   position: fixed; right: calc(-1 * var(--aside-width)); top: 0;
   transition: transform .25s var(--ease); z-index: 90; display: flex; flex-direction: column;
 }

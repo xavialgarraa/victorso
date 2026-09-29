@@ -86,23 +86,38 @@ async function firestoreFetch(env: Env, path: string, init?: RequestInit) {
 
 export type FirestoreDoc<T> = {id: string; data: T};
 
-/** Lee todos los documentos de una colección. */
+/** Lee todos los documentos de una colección, paginando de verdad — la API
+ * de Firestore corta cada respuesta a ~300 documentos (nextPageToken), así
+ * que sin este bucle una colección grande (p.ej. stelorder_imports) se
+ * leería truncada en silencio. */
 export async function listDocs<T extends Record<string, unknown>>(
   env: Env,
   collection: string,
 ): Promise<FirestoreDoc<T>[]> {
-  const response = await firestoreFetch(env, `/${collection}`);
-  if (response.status === 404) return [];
-  if (!response.ok) {
-    throw new Error(`Firestore: no se pudo leer "${collection}" (${response.status}).`);
-  }
-  const data = (await response.json()) as {
-    documents?: Array<{name: string; fields?: Record<string, FirestoreValue>}>;
-  };
-  return (data.documents ?? []).map((doc) => ({
-    id: doc.name.split('/').pop()!,
-    data: fromFirestoreFields(doc.fields ?? {}) as T,
-  }));
+  const all: FirestoreDoc<T>[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const query = pageToken ? `?pageSize=300&pageToken=${encodeURIComponent(pageToken)}` : '?pageSize=300';
+    const response = await firestoreFetch(env, `/${collection}${query}`);
+    if (response.status === 404) return all;
+    if (!response.ok) {
+      throw new Error(`Firestore: no se pudo leer "${collection}" (${response.status}).`);
+    }
+    const data = (await response.json()) as {
+      documents?: Array<{name: string; fields?: Record<string, FirestoreValue>}>;
+      nextPageToken?: string;
+    };
+    all.push(
+      ...(data.documents ?? []).map((doc) => ({
+        id: doc.name.split('/').pop()!,
+        data: fromFirestoreFields(doc.fields ?? {}) as T,
+      })),
+    );
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return all;
 }
 
 export async function getDoc<T extends Record<string, unknown>>(

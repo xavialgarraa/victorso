@@ -1,6 +1,7 @@
 import type {Route} from './+types/webhooks.products-update';
 import {getRestockSubscribers, setRestockSubscribers} from '~/lib/restockSubscribers.server';
 import {sendRestockEmail} from '~/lib/email.server';
+import {verifyShopifyWebhook} from '~/lib/shopifyWebhook.server';
 
 /**
  * Webhook de Shopify (topic `products/update`) — se registra apuntando a
@@ -51,27 +52,4 @@ export async function action({request, context}: Route.ActionArgs) {
   await setRestockSubscribers(context.env, productId, []);
 
   return new Response('ok', {status: 200});
-}
-
-async function verifyShopifyWebhook(
-  request: Request,
-  rawBody: string,
-  secret?: string,
-): Promise<boolean> {
-  if (!secret) return false;
-
-  const hmacHeader = request.headers.get('X-Shopify-Hmac-Sha256');
-  if (!hmacHeader) return false;
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    {name: 'HMAC', hash: 'SHA-256'},
-    false,
-    ['sign'],
-  );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
-  const computedHmac = btoa(String.fromCharCode(...new Uint8Array(signature)));
-
-  return computedHmac === hmacHeader;
 }

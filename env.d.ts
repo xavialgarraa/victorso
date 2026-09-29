@@ -54,5 +54,11 @@ declare global {
     // Secreto compartido para /api/sync-trigger (lo llama un cron externo,
     // no una persona logueada — ver Cloudflare Worker de ejemplo).
     SYNC_TRIGGER_SECRET?: string;
+
+    // StelOrder (ERP): API key de superadmin para leer catálogo/stock. A
+    // diferencia de Walkasse (feed CSV), este proveedor puede traer
+    // productos que NO existen todavía en Shopify — hay que CREARLOS, no
+    // solo actualizar stock. Ver connectors/stelorder.server.ts.
+    STELORDER_API_KEY?: string;
   }
 }
