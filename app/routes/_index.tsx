@@ -8,6 +8,7 @@ import {QuoteForm} from '~/components/QuoteForm';
 import {RatingBadge, Testimonials} from '~/components/Testimonials';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
+import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales'}];
@@ -15,10 +16,13 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({context}: Route.LoaderArgs) {
   const {storefront} = context;
-  const [{products, newest: newestByDate, featuredHome}, {collections}] = await Promise.all([
-    storefront.query(HOME_PRODUCTS_QUERY),
-    storefront.query(HOME_COLLECTIONS_QUERY),
-  ]);
+  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings] =
+    await Promise.all([
+      storefront.query(HOME_PRODUCTS_QUERY),
+      storefront.query(HOME_COLLECTIONS_QUERY),
+      listHeroSlides(context.env),
+      getHeroSettings(context.env),
+    ]);
 
   // "Novedades" del hero: si Iván ha metido productos a mano en la colección
   // "Novedades destacadas (Home)" (Shopify > Colecciones), se usan esos en
@@ -51,7 +55,15 @@ export async function loader({context}: Route.LoaderArgs) {
     )
     .slice(0, 9);
 
-  return {newest, bestselling, offers, bestsellers, collections: collectionsWithProducts};
+  return {
+    newest,
+    bestselling,
+    offers,
+    bestsellers,
+    collections: collectionsWithProducts,
+    manualSlides,
+    heroSettings,
+  };
 }
 
 function categoryIcon(title: string): IconName {
@@ -67,11 +79,40 @@ function categoryIcon(title: string): IconName {
 }
 
 export default function Homepage() {
-  const {newest, bestselling, offers, bestsellers, collections} =
+  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
 
-  const leftSlides: HeroSlide[] = newest.map((p) => ({
+  const manualLeft: HeroSlide[] = manualSlides
+    .filter(({slide}) => slide.position === 'left')
+    .map(({id, slide}) => ({
+      key: `manual-${id}`,
+      href: slide.href,
+      external: slide.external,
+      image: slide.imageUrl,
+      badge: slide.badge,
+      badgeClass: slide.badgeClass,
+      eyebrow: slide.eyebrow,
+      title: slide.title,
+      cta: slide.cta,
+      ctaClass: slide.ctaClass,
+    }));
+  const manualRight: HeroSlide[] = manualSlides
+    .filter(({slide}) => slide.position === 'right')
+    .map(({id, slide}) => ({
+      key: `manual-${id}`,
+      href: slide.href,
+      external: slide.external,
+      image: slide.imageUrl,
+      badge: slide.badge,
+      badgeClass: slide.badgeClass,
+      eyebrow: slide.eyebrow,
+      title: slide.title,
+      cta: slide.cta,
+      ctaClass: slide.ctaClass,
+    }));
+
+  const autoLeft: HeroSlide[] = newest.map((p) => ({
     key: `new-${p.id}`,
     href: `/products/${p.handle}`,
     image: p.featuredImage?.url ?? '',
@@ -82,10 +123,11 @@ export default function Homepage() {
     cta: t('storeHeroNewCta'),
     ctaClass: 'btn--outline',
   }));
+  const leftSlides: HeroSlide[] = [...manualLeft, ...(heroSettings.leftAutoFallback ? autoLeft : [])];
 
-  const rightSlides: HeroSlide[] = [];
+  const autoRight: HeroSlide[] = [];
   if (bestselling) {
-    rightSlides.push({
+    autoRight.push({
       key: `best-${bestselling.id}`,
       href: `/products/${bestselling.handle}`,
       image: bestselling.featuredImage?.url ?? '',
@@ -104,7 +146,7 @@ export default function Homepage() {
       ctaClass: 'btn--primary',
     });
   }
-  rightSlides.push(
+  autoRight.push(
     {
       key: 'contact',
       href: 'https://wa.me/34619406443',
@@ -129,6 +171,7 @@ export default function Homepage() {
       ctaClass: 'btn--outline',
     },
   );
+  const rightSlides: HeroSlide[] = [...manualRight, ...(heroSettings.rightAutoFallback ? autoRight : [])];
 
   return (
     <div className="home">

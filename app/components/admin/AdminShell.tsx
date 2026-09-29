@@ -3,6 +3,7 @@ import {Form, NavLink} from 'react-router';
 const NAV_ITEMS = [
   {to: '/admin-interno', label: 'Resumen', end: true},
   {to: '/admin-interno/proveedores', label: 'Proveedores', end: false},
+  {to: '/admin-interno/hero', label: 'Hero', end: false},
   {to: '/admin-interno/historial', label: 'Historial', end: false},
   {to: '/admin-interno/resenas', label: 'Reseñas', end: false},
   {to: '/admin-interno/solicitudes', label: 'Solicitudes', end: false},
