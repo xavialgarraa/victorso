@@ -737,6 +737,10 @@ body.nav-open { overflow: hidden; }
 .article-page__content img { border-radius: var(--radius-sm); margin: 1.2em 0; }
 .article-page__content h2, .article-page__content h3 { font-family: var(--font-display); margin: 1.4em 0 .5em; }
 .article-page__content a { color: var(--red); text-decoration: underline; }
+.article-page__content ul, .article-page__content ol { margin: 0 0 1.1em; padding-left: 1.4em; }
+.article-page__content ul { list-style: disc; }
+.article-page__content ol { list-style: decimal; }
+.article-page__content li { margin: 0 0 .4em; }
 
 /* ---------- Brands ticker ---------- */
 .ticker { position: relative; overflow: hidden; padding: 14px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
