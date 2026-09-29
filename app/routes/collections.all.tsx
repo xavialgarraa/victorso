@@ -29,7 +29,7 @@ export async function loader({context, request}: Route.LoaderArgs) {
 
   const {products} = await storefront.query(ALL_PRODUCTS_QUERY, {
     variables: {},
-    cache: storefront.CacheNone(),
+    cache: storefront.CacheShort(),
   });
 
   const collectionsData = await storefront.query(CATEGORY_LINKS_QUERY);
