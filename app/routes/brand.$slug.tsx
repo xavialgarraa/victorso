@@ -49,7 +49,10 @@ export default function BrandPage() {
               </a>
             )}
             {count > 0 ? (
-              <Link className="btn btn--primary" to={`/search?q=${encodeURIComponent(brand.name)}`}>
+              <Link
+                className="btn btn--primary"
+                to={`/collections/all?filter=${encodeURIComponent(JSON.stringify({productVendor: brand.name}))}`}
+              >
                 {t('brandSeeProducts', hasMore ? `${count}+` : count)}
               </Link>
             ) : (
