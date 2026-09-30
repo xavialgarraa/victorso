@@ -201,7 +201,11 @@ export default function Homepage() {
               // el rótulo por código para que la tarjeta no se quede muda.
               const hasCustomCover = Boolean(c.image);
               return (
-                <Link key={c.id} className="catcard" to={`/collections/${c.handle}`}>
+                <Link
+                  key={c.id}
+                  className={`catcard${hasCustomCover ? '' : ' catcard--plain'}`}
+                  to={`/collections/${c.handle}`}
+                >
                   <Icon name={categoryIcon(c.title)} className="catcard__icon" />
                   {photo && <img src={photo.url} alt={photo.altText ?? c.title} loading="lazy" />}
                   {!hasCustomCover && <span className="catcard__label">{c.title}</span>}

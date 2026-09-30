@@ -571,7 +571,7 @@ body.nav-open { overflow: hidden; }
 .catcard { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4/3; box-shadow: var(--shadow); }
 .catcard img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
 .catcard:hover img { transform: scale(1.07); }
-.catcard::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.05) 60%); }
+.catcard--plain::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.05) 60%); }
 .catcard__label { position: absolute; left: 14px; right: 14px; bottom: 12px; color: #fff; font-family: var(--font-display); font-weight: 700; z-index: 2; font-size: 1.15rem; line-height: 1.2; text-shadow: 0 2px 10px rgba(0,0,0,.4); }
 @media (min-width: 640px) { .catcard__label { font-size: 1.3rem; } }
 .catcard__icon { position: absolute; top: 10px; left: 10px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(12,12,14,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #fff; font-size: 1rem; padding: 8px; box-sizing: border-box; }
