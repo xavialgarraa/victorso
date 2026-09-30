@@ -195,11 +195,16 @@ export default function Homepage() {
               // subido; si no, la del primer producto real de esa categoría,
               // para que las categorías nuevas ya se vean bien sin configurar nada.
               const photo = c.image ?? c.products.nodes[0]?.featuredImage;
+              // Las fotos de portada que sube el admin ya suelen llevar el
+              // nombre de la categoría escrito encima (diseñadas a mano);
+              // la del producto de relleno no, así que ahí sí hace falta
+              // el rótulo por código para que la tarjeta no se quede muda.
+              const hasCustomCover = Boolean(c.image);
               return (
                 <Link key={c.id} className="catcard" to={`/collections/${c.handle}`}>
                   <Icon name={categoryIcon(c.title)} className="catcard__icon" />
                   {photo && <img src={photo.url} alt={photo.altText ?? c.title} loading="lazy" />}
-                  <span className="catcard__label">{c.title}</span>
+                  {!hasCustomCover && <span className="catcard__label">{c.title}</span>}
                 </Link>
               );
             })}
