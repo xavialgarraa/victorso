@@ -68,7 +68,10 @@ function ConstructionBanner() {
   if (import.meta.env.DEV) return null;
   return (
     <div className="construction-banner" role="status">
-      Página en construcción
+      <span className="construction-banner__text">Página en construcción</span>
+      <span className="construction-banner__worker construction-banner__worker--1" aria-hidden="true">👷</span>
+      <span className="construction-banner__worker construction-banner__worker--2" aria-hidden="true">👷‍♀️</span>
+      <span className="construction-banner__worker construction-banner__worker--3 construction-banner__worker--flip" aria-hidden="true">👷</span>
     </div>
   );
 }

@@ -389,9 +389,14 @@ body.nav-open { overflow: hidden; }
   position: relative;
   display: flex; flex-direction: column; justify-content: flex-start;
   box-sizing: border-box; padding: 10px 0; gap: 32px;
-  min-height: calc(100vh - var(--topchrome-offset, 140px));
-  min-height: calc(100svh - var(--topchrome-offset, 140px));
-  max-height: 820px;
+  /* height (no min-height + max-height): si min-height acaba siendo mayor
+     que max-height — como pasa en monitores grandes, donde 100vh menos la
+     cabecera supera 820px — la especificación CSS hace que min-height gane
+     y max-height se ignore del todo, así que el hero se quedaba mucho más
+     alto de lo pensado y había que hacer scroll de más para llegar al
+     resto de la home. height: min(...) sí limita de verdad en ambos casos. */
+  height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
+  height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
 }
 .storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
@@ -1012,9 +1017,8 @@ body.nav-open { overflow: hidden; }
 .about-hero {
   display: flex; flex-direction: column; justify-content: center;
   box-sizing: border-box;
-  min-height: calc(100vh - var(--topchrome-offset, 140px));
-  min-height: calc(100svh - var(--topchrome-offset, 140px));
-  max-height: 820px;
+  height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
+  height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
 }
 .about-hero__grid { display: grid; gap: 28px; align-items: center; }
 @media (min-width: 780px) { .about-hero__grid { grid-template-columns: 1.1fr 0.9fr; } }
@@ -1530,6 +1534,38 @@ aside li { margin-bottom: .125rem; }
   letter-spacing: .04em;
   text-transform: uppercase;
   box-shadow: 0 2px 12px rgba(0, 0, 0, .25);
+  overflow: hidden;
+}
+.construction-banner__text { position: relative; z-index: 1; }
+.construction-banner__worker {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.3em;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3));
+  animation-name: construction-walk, construction-bob;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+.construction-banner__worker--1 { animation-duration: 11s, .45s; animation-delay: 0s, 0s; }
+.construction-banner__worker--2 { animation-duration: 14s, .5s; animation-delay: -5s, -.1s; }
+.construction-banner__worker--3 { animation-duration: 12s, .4s; animation-delay: -9s, -.2s; }
+.construction-banner__worker--flip { animation-name: construction-walk-reverse, construction-bob; }
+@keyframes construction-walk {
+  from { left: -8%; }
+  to { left: 108%; }
+}
+@keyframes construction-walk-reverse {
+  from { left: 108%; transform: translateY(-50%) scaleX(-1); }
+  to { left: -8%; transform: translateY(-50%) scaleX(-1); }
+}
+@keyframes construction-bob {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -3px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .construction-banner__worker { display: none; }
 }
 
 .opina-page {
