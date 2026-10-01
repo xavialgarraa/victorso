@@ -102,6 +102,23 @@ export default function Collection() {
       <div className="breadcrumb container">
         <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
       </div>
+      {collection.handle === 'pioneer-dj-alphatheta' && (
+        <div className="container">
+          <div className="collection-banner">
+            <img
+              src="/assets/pioneer-dj-alphatheta-banner.jpg"
+              alt="Pioneer DJ & AlphaTheta"
+              loading="eager"
+            />
+            <p className="collection-banner__text">
+              Pioneer DJ es el estándar mundial en cabinas de DJ profesionales. AlphaTheta es la marca
+              joven del mismo grupo, nacida para explorar lo que viene después. En Victor So Professional
+              trabajamos con las dos codo a codo: aquí tienes todo lo que tenemos de ambas, del CDJ más
+              clásico a lo último que ha salido.
+            </p>
+          </div>
+        </div>
+      )}
       <ProductListing
         title={collection.title}
         products={collection.products}
