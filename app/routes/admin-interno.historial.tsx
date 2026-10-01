@@ -28,9 +28,26 @@ function RunDetails({run}: {run: SyncRunLog}) {
 
   // Los registros guardados antes de este campo no lo tienen.
   const priceWarnings = details.priceWarnings ?? [];
+  const orphaned = details.orphaned ?? [];
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+      {orphaned.length > 0 && (
+        <div style={{padding: 12, background: '#fdeaea', borderRadius: 8}}>
+          <strong style={{fontSize: '.9rem'}}>
+            ⚠ {orphaned.length} producto{orphaned.length === 1 ? '' : 's'} del proveedor ya no está
+            {orphaned.length === 1 ? '' : 'n'} en su feed
+          </strong>
+          <ul style={{margin: '8px 0 0', paddingLeft: 20, fontSize: '.85rem'}}>
+            {orphaned.map((p) => (
+              <li key={p.ean}>
+                {p.title} (SKU {p.sku || '—'}, EAN {p.ean})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {priceWarnings.length > 0 && (
         <div style={{padding: 12, background: '#fdf6e3', borderRadius: 8}}>
           <strong style={{fontSize: '.9rem'}}>⚠ Avisos de precio del proveedor ({priceWarnings.length})</strong>

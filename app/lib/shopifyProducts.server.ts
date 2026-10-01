@@ -6,6 +6,8 @@ export type CatalogVariant = {
   inventoryItemId: string;
   sku: string;
   title: string;
+  vendor: string;
+  status: string;
   price: number;
   inventoryQuantity: number;
   barcode: string;
@@ -17,6 +19,8 @@ type ProductsPage = {
     nodes: Array<{
       id: string;
       title: string;
+      vendor: string;
+      status: string;
       variants: {
         nodes: Array<{
           id: string;
@@ -40,6 +44,8 @@ const CATALOG_QUERY = `
       nodes {
         id
         title
+        vendor
+        status
         variants(first: 50) {
           nodes {
             id
@@ -78,6 +84,8 @@ export async function getShopifyCatalogByBarcode(env: Env): Promise<Map<string, 
           inventoryItemId: variant.inventoryItem.id,
           sku: variant.sku ?? '',
           title: product.title,
+          vendor: product.vendor,
+          status: product.status,
           price: Number(variant.price),
           inventoryQuantity: variant.inventoryQuantity ?? 0,
           barcode,
@@ -103,6 +111,33 @@ export async function getPrimaryLocationId(env: Env): Promise<string> {
     throw new Error('No se encontró ninguna ubicación/sucursal en Shopify.');
   }
   return location.id;
+}
+
+/** Pasa productos a borrador (p.ej. porque un proveedor los ha
+ * descatalogado de su feed) — uno a uno, la Admin API no tiene una
+ * mutación de productUpdate en lote. */
+export async function draftProducts(env: Env, productIds: string[]): Promise<{applied: number; errors: string[]}> {
+  const errors: string[] = [];
+  let applied = 0;
+
+  for (const id of productIds) {
+    try {
+      const result = await adminQuery<{productUpdate: {userErrors: Array<{message: string}>}}>(
+        env,
+        `mutation($input: ProductInput!) { productUpdate(input: $input) { userErrors { field message } } }`,
+        {input: {id, status: 'DRAFT'}},
+      );
+      if (result.productUpdate.userErrors.length) {
+        errors.push(`${id}: ${result.productUpdate.userErrors.map((e) => e.message).join(', ')}`);
+      } else {
+        applied++;
+      }
+    } catch (error) {
+      errors.push(`${id}: ${error instanceof Error ? error.message : 'Error desconocido.'}`);
+    }
+  }
+
+  return {applied, errors};
 }
 
 export type StockChangeInput = {inventoryItemId: string; quantity: number};

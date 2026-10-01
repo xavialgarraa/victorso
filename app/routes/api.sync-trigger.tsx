@@ -103,7 +103,7 @@ export async function action({request, context}: Route.ActionArgs) {
         fetchWalkasseFeed(feedUrl),
         getShopifyCatalogByBarcode(context.env),
       ]);
-      const summary = buildSyncSummary(walkasseToSupplierRows(feed), catalog);
+      const summary = buildSyncSummary(walkasseToSupplierRows(feed), catalog, ['walkasse']);
       const locationId = await getPrimaryLocationId(context.env);
 
       const stockChanges = summary.rows

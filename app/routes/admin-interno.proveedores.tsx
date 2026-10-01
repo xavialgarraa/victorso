@@ -23,6 +23,7 @@ import {
 import {
   applyPriceChanges,
   applyStockChanges,
+  draftProducts,
   getPrimaryLocationId,
   getShopifyCatalogByBarcode,
 } from '~/lib/shopifyProducts.server';
@@ -68,7 +69,9 @@ type ActionResult =
   | {intent: 'stelorder-create-batch'; ok: true; created: number; errors: Array<{name: string; message: string}>; remaining: number}
   | {intent: 'stelorder-create-batch'; ok: false; error: string}
   | {intent: 'stelorder-update-stock'; ok: true; applied: number; errors: string[]}
-  | {intent: 'stelorder-update-stock'; ok: false; error: string};
+  | {intent: 'stelorder-update-stock'; ok: false; error: string}
+  | {intent: 'draft-orphaned'; ok: true; applied: number; errors: string[]}
+  | {intent: 'draft-orphaned'; ok: false; error: string};
 
 // Solo hay parser hecho para el formato de Walkasse. Un proveedor nuevo
 // con otro formato de feed necesitaría su propio parser (como
@@ -82,7 +85,7 @@ async function runWalkasseSync(env: Env, supplierId: string) {
     fetchWalkasseFeed(feedUrl),
     getShopifyCatalogByBarcode(env),
   ]);
-  const summary = buildSyncSummary(walkasseToSupplierRows(feed), catalog);
+  const summary = buildSyncSummary(walkasseToSupplierRows(feed), catalog, ['walkasse']);
   return {config, summary};
 }
 
@@ -173,6 +176,20 @@ export async function action({request, context}: Route.ActionArgs) {
       console.error('[admin-interno/proveedores] sync', error);
       return data<ActionResult>(
         {intent: 'sync', ok: false, supplierId, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'draft-orphaned') {
+    try {
+      const productIds = formData.getAll('productId').map(String).filter(Boolean);
+      const result = await draftProducts(context.env, productIds);
+      return data<ActionResult>({intent: 'draft-orphaned', ok: true, applied: result.applied, errors: result.errors}, {headers});
+    } catch (error) {
+      console.error('[admin-interno/proveedores] draft-orphaned', error);
+      return data<ActionResult>(
+        {intent: 'draft-orphaned', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
         {headers},
       );
     }
@@ -292,6 +309,7 @@ export default function AdminProveedores() {
   const summarySupplierId = actionData?.intent === 'sync' && actionData.ok ? actionData.supplierId : null;
   const syncError = actionData?.intent === 'sync' && !actionData.ok ? actionData : null;
   const applyResult = actionData?.intent === 'apply' ? actionData : null;
+  const draftOrphanedResult = actionData?.intent === 'draft-orphaned' ? actionData : null;
   const changedRows = summary?.rows.filter((r) => r.status === 'matched' && (r.changes.stock || r.changes.price)) ?? [];
   const unchangedRows = summary?.rows.filter((r) => r.status === 'matched' && !r.changes.stock && !r.changes.price) ?? [];
   const unmatchedRows = summary?.rows.filter((r) => r.status === 'unmatched') ?? [];
@@ -608,6 +626,65 @@ export default function AdminProveedores() {
                 cuyo EAN no existe en tu catálogo — normal si {config.name} vende más referencias de las que
                 tienes dadas de alta.
               </p>
+
+              {summary.orphaned.length > 0 && (
+                <div className="admin-card" style={{borderLeft: '3px solid var(--red)', marginTop: 16}}>
+                  <h2 style={{marginTop: 0}}>
+                    ⚠ {summary.orphaned.length} producto{summary.orphaned.length === 1 ? '' : 's'} de {config.name}{' '}
+                    ya no está{summary.orphaned.length === 1 ? '' : 'n'} en su feed
+                  </h2>
+                  <p className="admin-hint">
+                    Son productos con la marca de este proveedor que siguen activos en la tienda, pero cuyo EAN ha
+                    desaparecido del feed actual — normalmente significa que el proveedor los ha descatalogado por
+                    su lado. El stock se queda congelado tal como estaba la última vez que sí coincidían.
+                  </p>
+                  <div className="admin-scroll" style={{maxHeight: 220, marginBottom: 12}}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Título</th>
+                          <th>SKU</th>
+                          <th>EAN</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summary.orphaned.map((p) => (
+                          <tr key={p.ean}>
+                            <td>{p.title}</td>
+                            <td>{p.sku}</td>
+                            <td>{p.ean}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Form
+                    method="post"
+                    onSubmit={(e) => {
+                      if (!confirm(`¿Pasar ${summary.orphaned.length} producto(s) a borrador?`)) e.preventDefault();
+                    }}
+                  >
+                    <input type="hidden" name="intent" value="draft-orphaned" />
+                    <input type="hidden" name="supplierId" value={id} />
+                    {summary.orphaned.map((p) => (
+                      <input key={p.productId} type="hidden" name="productId" value={p.productId} />
+                    ))}
+                    <button type="submit" className="admin-btn admin-btn--danger" disabled={isBusy}>
+                      Pasar a borrador
+                    </button>
+                  </Form>
+                  {draftOrphanedResult && (
+                    draftOrphanedResult.ok ? (
+                      <p className="admin-msg--ok">
+                        {draftOrphanedResult.applied} producto(s) pasados a borrador.
+                        {draftOrphanedResult.errors.length > 0 && ` ${draftOrphanedResult.errors.length} errores.`}
+                      </p>
+                    ) : (
+                      <p className="admin-msg--error">{draftOrphanedResult.error}</p>
+                    )
+                  )}
+                </div>
+              )}
 
               {changedRows.length > 0 && (
                 <>

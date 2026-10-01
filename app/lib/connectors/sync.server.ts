@@ -42,6 +42,18 @@ export type UnmatchedRow = {
 
 export type SyncRow = MatchedRow | UnmatchedRow;
 
+// Producto que existe en Shopify con la marca/vendor de este proveedor,
+// pero cuyo EAN ya no aparece en el feed actual — normalmente significa
+// que el proveedor lo ha descatalogado por su lado. El stock se queda
+// congelado tal cual estaba la última vez que sí coincidía, así que sin
+// este aviso puede pasar desapercibido indefinidamente.
+export type OrphanedProduct = {
+  ean: string;
+  title: string;
+  sku: string;
+  productId: string;
+};
+
 export type SyncSummary = {
   totalFeedRows: number;
   matchedCount: number;
@@ -49,6 +61,7 @@ export type SyncSummary = {
   unchangedCount: number;
   unmatchedCount: number;
   suspiciousPriceCount: number;
+  orphaned: OrphanedProduct[];
   rows: SyncRow[];
 };
 
@@ -80,6 +93,11 @@ export function walkasseToSupplierRows(products: WalkasseProduct[]): SupplierRow
 export function buildSyncSummary(
   supplierRows: SupplierRow[],
   catalog: Map<string, CatalogVariant>,
+  // Prefijos de "vendor" (case-insensitive) que identifican productos de
+  // este proveedor dentro del catálogo de Shopify — para poder avisar de
+  // los que se han caído del feed. Ej: ['walkasse'] detecta tanto "Walkasse"
+  // como "Walkasse-made In Spa". Opcional: sin esto no se calculan huérfanos.
+  vendorPrefixes: string[] = [],
 ): SyncSummary {
   const rows: SyncRow[] = [];
   let matchedCount = 0;
@@ -87,6 +105,8 @@ export function buildSyncSummary(
   let unchangedCount = 0;
   let unmatchedCount = 0;
   let suspiciousPriceCount = 0;
+
+  const supplierEans = new Set(supplierRows.map((r) => r.ean));
 
   for (const row of supplierRows) {
     const variant = catalog.get(row.ean);
@@ -139,6 +159,19 @@ export function buildSyncSummary(
     });
   }
 
+  const orphaned: OrphanedProduct[] = [];
+  if (vendorPrefixes.length > 0) {
+    const prefixes = vendorPrefixes.map((p) => p.toLowerCase());
+    for (const variant of catalog.values()) {
+      if (variant.status !== 'ACTIVE') continue; // ya gestionado (p.ej. pasado a borrador)
+      const vendorLower = variant.vendor.toLowerCase();
+      const isThisSupplier = prefixes.some((p) => vendorLower.startsWith(p));
+      if (isThisSupplier && !supplierEans.has(variant.barcode)) {
+        orphaned.push({ean: variant.barcode, title: variant.title, sku: variant.sku, productId: variant.productId});
+      }
+    }
+  }
+
   return {
     totalFeedRows: supplierRows.length,
     matchedCount,
@@ -146,6 +179,7 @@ export function buildSyncSummary(
     unchangedCount,
     unmatchedCount,
     suspiciousPriceCount,
+    orphaned,
     rows,
   };
 }
@@ -168,13 +202,14 @@ export type SyncRunDetails = {
   // porque un precio inválido NO se propone como cambio, pero sigue
   // mereciendo que alguien lo revise a mano en el feed del proveedor.
   priceWarnings: Array<{ean: string; title: string; message: string}>;
+  orphaned: OrphanedProduct[];
 };
 
 /** Aplana el resumen a algo compacto para guardar en Firestore junto al
  * registro de la sincronización, y poder revisarlo luego en el historial
  * sin tener que repetir la comparación. */
 export function summaryToRunDetails(summary: SyncSummary): SyncRunDetails {
-  const details: SyncRunDetails = {changed: [], unchanged: [], unmatched: [], priceWarnings: []};
+  const details: SyncRunDetails = {changed: [], unchanged: [], unmatched: [], priceWarnings: [], orphaned: summary.orphaned};
 
   for (const row of summary.rows) {
     if (row.status === 'unmatched') {
