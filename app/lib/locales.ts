@@ -6,11 +6,11 @@ import type {LanguageCode} from '@shopify/hydrogen/storefront-api-types';
 export const LOCALE_COOKIE = 'vs_locale';
 
 export const LOCALES = {
-  es: {label: 'Español', flag: '/assets/flag-es.svg', urlHint: 'victorso.com/es'},
-  en: {label: 'English', flag: '/assets/flag-en.svg', urlHint: 'victorso.com/en'},
-  fr: {label: 'Français', flag: '/assets/flag-fr.svg', urlHint: 'victorso.com/fr'},
-  pt: {label: 'Português', flag: '/assets/flag-pt.svg', urlHint: 'victorso.com/pt'},
-  ca: {label: 'Català', flag: '/assets/flag-catalonia.webp', urlHint: 'victorso.com/ca'},
+  es: {label: 'Español', flag: '/assets/flag-es.svg'},
+  en: {label: 'English', flag: '/assets/flag-en.svg'},
+  fr: {label: 'Français', flag: '/assets/flag-fr.svg'},
+  pt: {label: 'Português', flag: '/assets/flag-pt.svg'},
+  ca: {label: 'Català', flag: '/assets/flag-catalonia.webp'},
 } as const;
 
 export type LocaleCode = keyof typeof LOCALES;

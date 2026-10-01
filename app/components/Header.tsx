@@ -128,7 +128,6 @@ function LangSelect() {
           >
             <span className="lang-select__flag"><img src={l.flag} alt="" width={18} height={18} /></span>
             <span className="lang-select__name">{l.label}</span>
-            <span className="lang-select__hint">{l.urlHint}</span>
           </li>
         ))}
       </ul>

@@ -162,7 +162,6 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
 .lang-select__flag { font-size: 1.1rem; line-height: 1; }
 .flag-img { width: 20px; height: 14px; object-fit: cover; border-radius: 2px; display: block; }
 .lang-select__name { font-weight: 600; }
-.lang-select__hint { color: var(--text-soft); font-size: .72rem; margin-left: auto; }
 .lang-select__menu li:last-child { border-bottom: none; }
 .lang-select__menu li:hover { background: var(--surface-alt); color: var(--red); }
 .lang-select__menu li.active { color: var(--red); }
