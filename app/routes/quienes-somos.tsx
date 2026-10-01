@@ -194,7 +194,9 @@ export default function AboutPage() {
                         sizes="(min-width: 768px) 33vw, 100vw"
                       />
                     ) : (
-                      <div className="blog-card__imgwrap--empty" />
+                      <div className="blog-card__imgwrap--empty">
+                        <Icon name="newspaper" />
+                      </div>
                     )}
                   </div>
                   <div className="blog-card__body">

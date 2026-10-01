@@ -4,6 +4,7 @@ import {Image, getPaginationVariables} from '@shopify/hydrogen';
 import type {ArticleItemFragment} from 'storefrontapi.generated';
 import {PaginatedResourceSection} from '~/components/PaginatedResourceSection';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {Icon} from '~/lib/icons';
 
 export const meta: Route.MetaFunction = ({data}) => {
   return [{title: `${data?.blog.title ?? 'Blog'} — Victor So Professional`}];
@@ -88,7 +89,9 @@ function ArticleItem({
             sizes="(min-width: 768px) 33vw, 100vw"
           />
         ) : (
-          <div className="blog-card__imgwrap--empty" />
+          <div className="blog-card__imgwrap--empty">
+            <Icon name="newspaper" />
+          </div>
         )}
       </div>
       <div className="blog-card__body">
