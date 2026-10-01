@@ -53,13 +53,11 @@ export default function Blog() {
           <div className="section__head">
             <h1 className="section-title-lg">{blog.title}</h1>
           </div>
-          <div className="blog-grid">
-            <PaginatedResourceSection<ArticleItemFragment> connection={articles}>
-              {({node: article, index}) => (
-                <ArticleItem article={article} key={article.id} loading={index < 2 ? 'eager' : 'lazy'} />
-              )}
-            </PaginatedResourceSection>
-          </div>
+          <PaginatedResourceSection<ArticleItemFragment> connection={articles} resourcesClassName="blog-grid">
+            {({node: article, index}) => (
+              <ArticleItem article={article} key={article.id} loading={index < 2 ? 'eager' : 'lazy'} />
+            )}
+          </PaginatedResourceSection>
         </div>
       </section>
     </div>

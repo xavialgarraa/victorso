@@ -29,12 +29,21 @@ export default async function handleRequest(
       'https://*.tiktokcdn.com',
       'https://*.tiktokcdn-us.com',
       'https://*.ibyteimg.com',
+      'https://*.cdninstagram.com',
+      'https://www.instagram.com',
     ],
-    // Necesario para el embed de TikTok en /instalaciones (script + iframe)
-    // y el mapa de Google Maps en /quienes-somos (iframe).
-    scriptSrc: ["'self'", 'https://cdn.shopify.com', 'https://shopify.com', 'https://www.tiktok.com'],
-    frameSrc: ["'self'", 'https://www.tiktok.com', 'https://www.google.com'],
-    connectSrc: ['https://www.tiktok.com'],
+    // Necesario para el embed de TikTok en /instalaciones (script + iframe),
+    // el mapa de Google Maps en /quienes-somos (iframe), y los embeds de
+    // Instagram que se puedan pegar en artículos del blog (iframe + script).
+    scriptSrc: [
+      "'self'",
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+      'https://www.tiktok.com',
+      'https://www.instagram.com',
+    ],
+    frameSrc: ["'self'", 'https://www.tiktok.com', 'https://www.google.com', 'https://www.instagram.com'],
+    connectSrc: ['https://www.tiktok.com', 'https://www.instagram.com'],
   });
 
   const body = await renderToReadableStream(
