@@ -388,14 +388,17 @@ body.nav-open { overflow: hidden; }
   position: relative;
   display: flex; flex-direction: column; justify-content: flex-start;
   box-sizing: border-box; padding: 10px 0; gap: 32px;
-  /* height (no min-height + max-height): si min-height acaba siendo mayor
-     que max-height — como pasa en monitores grandes, donde 100vh menos la
-     cabecera supera 820px — la especificación CSS hace que min-height gane
-     y max-height se ignore del todo, así que el hero se quedaba mucho más
-     alto de lo pensado y había que hacer scroll de más para llegar al
-     resto de la home. height: min(...) sí limita de verdad en ambos casos. */
-  height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
-  height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
+  /* min-height: min(...) en vez de min-height + max-height por separado:
+     con los dos por separado, en monitores grandes (100vh - cabecera >
+     820px) la spec de CSS hace que min-height gane y max-height se
+     ignore del todo, así que el hero se quedaba más alto de lo pensado.
+     Pero usar "height" a secas (probado y revertido) rompía el móvil: el
+     contenido apilado en una columna necesita más alto del que cabía en
+     ese tope rígido y se montaba encima de las secciones de alrededor.
+     min-height sigue siendo un suelo, nunca un techo — limita en
+     pantallas grandes sin recortar nada si el contenido necesita más. */
+  min-height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
+  min-height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
 }
 .storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
@@ -1017,8 +1020,13 @@ body.nav-open { overflow: hidden; }
 .about-hero {
   display: flex; flex-direction: column; justify-content: center;
   box-sizing: border-box;
-  height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
-  height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
+  /* min-height, no height a secas: en móvil el contenido apilado (título +
+     dos párrafos + botones + insignia + foto) suele necesitar más alto del
+     que cabe en este tope — con min-height la caja puede crecer para no
+     recortar/solapar nada; solo actúa como techo real en pantallas donde
+     el contenido ya cabe de sobra. */
+  min-height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
+  min-height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
 }
 .about-hero__grid { display: grid; gap: 28px; align-items: center; }
 @media (min-width: 780px) { .about-hero__grid { grid-template-columns: 1.1fr 0.9fr; } }
