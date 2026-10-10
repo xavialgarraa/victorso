@@ -32,6 +32,7 @@ import {
   buildStelOrderSyncSummary,
   type StelOrderSyncSummary,
 } from '~/lib/connectors/stelorderSync.server';
+import {buildStelOrderSkuSyncSummary, type SkuSyncSummary} from '~/lib/connectors/stelorderSkuSync.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Proveedores — Panel interno'}];
@@ -70,6 +71,10 @@ type ActionResult =
   | {intent: 'stelorder-create-batch'; ok: false; error: string}
   | {intent: 'stelorder-update-stock'; ok: true; applied: number; errors: string[]}
   | {intent: 'stelorder-update-stock'; ok: false; error: string}
+  | {intent: 'stelorder-sku-sync'; ok: true; summary: SkuSyncSummary}
+  | {intent: 'stelorder-sku-sync'; ok: false; error: string}
+  | {intent: 'stelorder-sku-apply-stock'; ok: true; applied: number; errors: string[]}
+  | {intent: 'stelorder-sku-apply-stock'; ok: false; error: string}
   | {intent: 'draft-orphaned'; ok: true; applied: number; errors: string[]}
   | {intent: 'draft-orphaned'; ok: false; error: string};
 
@@ -148,6 +153,43 @@ export async function action({request, context}: Route.ActionArgs) {
       console.error('[admin-interno/proveedores] stelorder-update-stock', error);
       return data<ActionResult>(
         {intent: 'stelorder-update-stock', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-sku-sync') {
+    try {
+      const summary = await buildStelOrderSkuSyncSummary(context.env);
+      return data<ActionResult>({intent: 'stelorder-sku-sync', ok: true, summary}, {headers});
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-sku-sync', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-sku-sync', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-sku-apply-stock') {
+    try {
+      const summary = await buildStelOrderSkuSyncSummary(context.env);
+      const locationId = await getPrimaryLocationId(context.env);
+      const changes = summary.rows
+        .filter((r) => r.status === 'matched' && r.stockChange)
+        .map((r) => {
+          const row = r as Extract<typeof r, {status: 'matched'}>;
+          return {inventoryItemId: row.inventoryItemId, quantity: row.stockChange!.to};
+        });
+      const result = await applyStockChanges(context.env, locationId, changes);
+      return data<ActionResult>(
+        {intent: 'stelorder-sku-apply-stock', ok: true, applied: result.applied, errors: result.errors},
+        {headers},
+      );
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-sku-apply-stock', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-sku-apply-stock', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
         {headers},
       );
     }
@@ -304,6 +346,16 @@ export default function AdminProveedores() {
   const stelorderSyncError = actionData?.intent === 'stelorder-sync' && !actionData.ok ? actionData.error : null;
   const stelorderCreateResult = actionData?.intent === 'stelorder-create-batch' ? actionData : null;
   const stelorderUpdateResult = actionData?.intent === 'stelorder-update-stock' ? actionData : null;
+
+  const skuSyncSummary = actionData?.intent === 'stelorder-sku-sync' && actionData.ok ? actionData.summary : null;
+  const skuSyncError = actionData?.intent === 'stelorder-sku-sync' && !actionData.ok ? actionData.error : null;
+  const skuApplyResult = actionData?.intent === 'stelorder-sku-apply-stock' ? actionData : null;
+  const skuStockChangedRows =
+    skuSyncSummary?.rows.filter((r) => r.status === 'matched' && r.stockChange) ?? [];
+  const skuPriceChangedRows =
+    skuSyncSummary?.rows.filter((r) => r.status === 'matched' && r.priceChange) ?? [];
+  const skuUnmatchedRows = skuSyncSummary?.rows.filter((r) => r.status === 'unmatched') ?? [];
+  const skuAmbiguousRows = skuSyncSummary?.rows.filter((r) => r.status === 'ambiguous') ?? [];
 
   const summary = actionData?.intent === 'sync' && actionData.ok ? actionData.summary : null;
   const summarySupplierId = actionData?.intent === 'sync' && actionData.ok ? actionData.supplierId : null;
@@ -519,6 +571,167 @@ export default function AdminProveedores() {
               </div>
             ) : (
               <p className="admin-msg--error">{stelorderUpdateResult.error}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="admin-card">
+        <div>
+          <strong>Productos migrados (por SKU)</strong>{' '}
+          <span className="admin-badge admin-badge--apply">Activo</span>
+        </div>
+        <p className="admin-hint" style={{marginTop: 8, maxWidth: 640}}>
+          Para el catálogo migrado de LiveCommerce (subido una vez por CSV nativo de Shopify, no por este
+          panel): aquí el producto <strong>ya existe</strong> en Shopify, y el cruce con StelOrder se hace por{' '}
+          <strong>SKU = full-reference de StelOrder</strong> — nunca por EAN (en estos productos antiguos no
+          es fiable). Solo se toca el stock (<code>real-stock</code>, nunca el virtual); el precio se deja
+          siempre pendiente de confirmación manual, igual que con Walkasse. Lo que no cruza o cruza por
+          duplicado se lista abajo para que lo corrijáis en StelOrder, no se adivina nada.
+        </p>
+
+        <Form method="post" style={{marginTop: 12}}>
+          <input type="hidden" name="intent" value="stelorder-sku-sync" />
+          <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+            {isBusy && busyIntent === 'stelorder-sku-sync' ? 'Cruzando…' : 'Cruzar por SKU con StelOrder'}
+          </button>
+        </Form>
+
+        {skuSyncError && <p className="admin-msg--error">{skuSyncError}</p>}
+
+        {skuSyncSummary && (
+          <div style={{marginTop: 20}}>
+            <div className="admin-stats">
+              <div className="admin-stat">
+                <span className="admin-stat__value">{skuSyncSummary.totalShopifySkus}</span>
+                <span className="admin-stat__label">Productos con SKU en Shopify</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{skuSyncSummary.matchedCount}</span>
+                <span className="admin-stat__label">Cruzan con StelOrder</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{skuSyncSummary.stockChangedCount}</span>
+                <span className="admin-stat__label">Con cambio de stock</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{skuSyncSummary.unmatchedCount}</span>
+                <span className="admin-stat__label">Sin cruce</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{skuSyncSummary.ambiguousCount}</span>
+                <span className="admin-stat__label">Ambiguos</span>
+              </div>
+            </div>
+
+            {skuStockChangedRows.length > 0 && (
+              <>
+                <h3 style={{marginTop: 20}}>Cambios de stock pendientes ({skuStockChangedRows.length})</h3>
+                <div className="admin-scroll">
+                  <table className="admin-table">
+                    <thead>
+                      <tr><th>Producto</th><th>SKU</th><th>Stock</th></tr>
+                    </thead>
+                    <tbody>
+                      {skuStockChangedRows.slice(0, 200).map((r) => {
+                        const row = r as Extract<typeof r, {status: 'matched'}>;
+                        return (
+                          <tr key={row.sku}>
+                            <td>{row.title}</td>
+                            <td>{row.sku}</td>
+                            <td>{row.stockChange!.from} → {row.stockChange!.to}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Form method="post" style={{marginTop: 12}}>
+                  <input type="hidden" name="intent" value="stelorder-sku-apply-stock" />
+                  <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+                    {isBusy && busyIntent === 'stelorder-sku-apply-stock'
+                      ? 'Aplicando…'
+                      : `Actualizar stock de ${skuStockChangedRows.length} productos`}
+                  </button>
+                </Form>
+              </>
+            )}
+
+            {skuPriceChangedRows.length > 0 && (
+              <>
+                <h3 style={{marginTop: 24}}>Cambios de precio detectados — pendientes de confirmar ({skuPriceChangedRows.length})</h3>
+                <p className="admin-hint">
+                  Nunca se aplican solos. Revísalos a mano en Shopify si de verdad quieres cambiar el precio.
+                </p>
+                <div className="admin-scroll">
+                  <table className="admin-table">
+                    <thead>
+                      <tr><th>Producto</th><th>SKU</th><th>Precio</th><th>Aviso</th></tr>
+                    </thead>
+                    <tbody>
+                      {skuPriceChangedRows.slice(0, 200).map((r) => {
+                        const row = r as Extract<typeof r, {status: 'matched'}>;
+                        return (
+                          <tr key={row.sku}>
+                            <td>{row.title}</td>
+                            <td>{row.sku}</td>
+                            <td>{row.priceChange!.from.toFixed(2)}€ → {row.priceChange!.to.toFixed(2)}€</td>
+                            <td>{row.priceWarning ?? ''}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {skuUnmatchedRows.length > 0 && (
+              <details style={{marginTop: 24}}>
+                <summary style={{cursor: 'pointer', fontWeight: 600}}>
+                  Sin cruce en StelOrder ({skuUnmatchedRows.length})
+                </summary>
+                <div className="admin-scroll" style={{marginTop: 8}}>
+                  {skuUnmatchedRows.slice(0, 300).map((r) => (
+                    <div key={r.sku} style={{padding: '4px 8px', fontSize: '.85rem'}}>
+                      {r.sku} — {r.title}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+
+            {skuAmbiguousRows.length > 0 && (
+              <details style={{marginTop: 12}} open>
+                <summary style={{cursor: 'pointer', fontWeight: 600}}>
+                  Ambiguos — misma referencia en varios productos de StelOrder ({skuAmbiguousRows.length})
+                </summary>
+                <div className="admin-scroll" style={{marginTop: 8}}>
+                  {skuAmbiguousRows.map((r) => {
+                    const row = r as Extract<typeof r, {status: 'ambiguous'}>;
+                    return (
+                      <div key={row.sku} style={{padding: '4px 8px', fontSize: '.85rem'}}>
+                        {row.sku} — {row.title} (aparece {row.count} veces en StelOrder)
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+
+        {skuApplyResult && (
+          <div style={{marginTop: 16}}>
+            {skuApplyResult.ok ? (
+              <div className="admin-msg--ok">
+                Stock actualizado en {skuApplyResult.applied} lotes.
+                {skuApplyResult.errors.length > 0 && (
+                  <div style={{marginTop: 6}}>{skuApplyResult.errors.length} errores: {skuApplyResult.errors.slice(0, 5).join(' · ')}</div>
+                )}
+              </div>
+            ) : (
+              <p className="admin-msg--error">{skuApplyResult.error}</p>
             )}
           </div>
         )}

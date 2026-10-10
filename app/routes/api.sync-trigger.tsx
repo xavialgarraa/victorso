@@ -4,6 +4,7 @@ import {buildSyncSummary, summaryToRunDetails, walkasseToSupplierRows} from '~/l
 import {listSuppliers, logSyncRun, resolveFeedUrl} from '~/lib/connectors/suppliers.server';
 import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
 import {applyStelOrderCreations, buildStelOrderSyncSummary} from '~/lib/connectors/stelorderSync.server';
+import {buildStelOrderSkuSyncSummary} from '~/lib/connectors/stelorderSkuSync.server';
 import {safeCompare} from '~/lib/safeCompare.server';
 
 /**
@@ -82,6 +83,51 @@ export async function action({request, context}: Route.ActionArgs) {
     } catch (error) {
       console.error('[api/sync-trigger] stelorder', error);
       results.push({id: 'stelorder', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'});
+    }
+  }
+
+  // Productos migrados de LiveCommerce (cruce por SKU = full-reference de
+  // StelOrder, no por EAN) — ver stelorderSkuSync.server.ts. Solo stock,
+  // nunca precio.
+  if (context.env.STELORDER_API_KEY) {
+    const startedAt = new Date().toISOString();
+    try {
+      const summary = await buildStelOrderSkuSyncSummary(context.env);
+      const locationId = await getPrimaryLocationId(context.env);
+      const changes = summary.rows
+        .filter((r) => r.status === 'matched' && r.stockChange)
+        .map((r) => {
+          const row = r as Extract<typeof r, {status: 'matched'}>;
+          return {inventoryItemId: row.inventoryItemId, quantity: row.stockChange!.to};
+        });
+      const stockResult = await applyStockChanges(context.env, locationId, changes);
+
+      await logSyncRun(context.env, {
+        supplierId: 'stelorder-sku',
+        supplierName: 'StelOrder (por SKU)',
+        type: 'auto-apply',
+        triggeredBy: 'cron',
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalShopifySkus,
+        matchedCount: summary.matchedCount,
+        changedCount: summary.stockChangedCount,
+        unmatchedCount: summary.unmatchedCount,
+        stockApplied: stockResult.applied,
+        priceApplied: 0,
+        pendingPriceChanges: summary.pendingPriceChanges,
+        errors: stockResult.errors,
+      });
+      results.push({
+        id: 'stelorder-sku',
+        ok: true,
+        stockApplied: stockResult.applied,
+        pendingPriceChanges: summary.pendingPriceChanges,
+        errors: stockResult.errors,
+      });
+    } catch (error) {
+      console.error('[api/sync-trigger] stelorder-sku', error);
+      results.push({id: 'stelorder-sku', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'});
     }
   }
 

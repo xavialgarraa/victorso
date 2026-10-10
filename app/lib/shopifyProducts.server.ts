@@ -99,6 +99,44 @@ export async function getShopifyCatalogByBarcode(env: Env): Promise<Map<string, 
   return map;
 }
 
+/**
+ * Igual que getShopifyCatalogByBarcode pero indexado por SKU — para el
+ * cruce con StelOrder de los productos migrados desde LiveCommerce, donde
+ * la clave de cruce es SKU de Shopify = `full-reference` de StelOrder (el
+ * EAN en estos productos antiguos es poco fiable o no existe).
+ */
+export async function getShopifyCatalogBySku(env: Env): Promise<Map<string, CatalogVariant>> {
+  const map = new Map<string, CatalogVariant>();
+  let cursor: string | null = null;
+
+  do {
+    const data: ProductsPage = await adminQuery<ProductsPage>(env, CATALOG_QUERY, {cursor});
+
+    for (const product of data.products.nodes) {
+      for (const variant of product.variants.nodes) {
+        const sku = variant.sku?.trim();
+        if (!sku) continue;
+        map.set(sku, {
+          productId: product.id,
+          variantId: variant.id,
+          inventoryItemId: variant.inventoryItem.id,
+          sku,
+          title: product.title,
+          vendor: product.vendor,
+          status: product.status,
+          price: Number(variant.price),
+          inventoryQuantity: variant.inventoryQuantity ?? 0,
+          barcode: variant.barcode?.trim() ?? '',
+        });
+      }
+    }
+
+    cursor = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
+  } while (cursor);
+
+  return map;
+}
+
 /** Ubicación (sucursal) donde se ajusta el stock. Asume una sola sucursal
  * activa — si en el futuro hay varias, habría que dejar elegir cuál. */
 export async function getPrimaryLocationId(env: Env): Promise<string> {
