@@ -294,10 +294,36 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
 }
 .mainnav.open { animation: mainnav-in .22s var(--ease); }
 .mainnav.closing { animation: mainnav-out .2s var(--ease) forwards; }
-.mainnav a { color: var(--nav-text); padding: 13px 20px; border-bottom: 1px solid var(--nav-border); font-size: .92rem; font-weight: 500; }
-.mainnav.open a, .mainnav.closing a { padding: 6px 28px; font-size: 1.15rem; font-weight: 600; border-bottom: none; }
-.mainnav a:hover { color: var(--nav-accent); }
+.mainnav a, .mainnav__dropdown-trigger { color: var(--nav-text); padding: 13px 20px; border-bottom: 1px solid var(--nav-border); font-size: .92rem; font-weight: 500; }
+.mainnav.open a, .mainnav.closing a,
+.mainnav.open .mainnav__dropdown-trigger, .mainnav.closing .mainnav__dropdown-trigger { padding: 6px 28px; font-size: 1.15rem; font-weight: 600; border-bottom: none; }
+.mainnav a:hover, .mainnav__dropdown-trigger:hover { color: var(--nav-accent); }
 .mainnav__outlet { color: var(--nav-accent) !important; font-weight: 700 !important; }
+
+.mainnav__dropdown-trigger {
+  background: none;
+  border: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.mainnav__dropdown-trigger .icon { font-size: .7em; transition: transform .2s ease; }
+.mainnav__dropdown-trigger[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.mainnav__dropdown-panel { display: none; flex-direction: column; background: rgba(0, 0, 0, .15); }
+.mainnav__dropdown-panel.open { display: flex; }
+.mainnav__dropdown-link {
+  padding: 10px 20px 10px 40px;
+  font-size: .88rem;
+  font-weight: 500;
+  color: var(--nav-text);
+  border-bottom: 1px solid var(--nav-border);
+}
+.mainnav.open .mainnav__dropdown-link, .mainnav.closing .mainnav__dropdown-link { padding: 4px 28px 4px 48px; font-size: 1rem; font-weight: 500; border-bottom: none; }
+.mainnav__dropdown-link:hover { color: var(--nav-accent); }
 .mainnav__brands { display: inline-flex; align-items: center; gap: 5px; }
 .mainnav__brands .icon { font-size: .8em; color: #f2b400; flex-shrink: 0; }
 .mainnav__utils { display: flex; align-items: center; gap: 10px; padding: 0 24px; }
@@ -320,10 +346,32 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
   .mainnav__utils { display: none; }
   .mainnav { display: flex !important; flex-direction: row; justify-content: center; position: relative; top: auto; z-index: auto; padding: 0; animation: none; }
   .mainnav.open a { padding: 8px 18px; font-size: inherit; font-weight: 500; }
-  .mainnav a { border-bottom: none; padding: 8px 18px; position: relative; transition: color .2s ease; }
-  .mainnav a::after { content: ""; position: absolute; left: 18px; right: 18px; bottom: 3px; height: 2px; background: var(--nav-accent); border-radius: 2px; box-shadow: 0 0 7px rgba(255,91,98,.75); transform: scaleX(0); transform-origin: left; transition: transform .22s var(--ease); }
-  .mainnav a:hover::after { transform: scaleX(1); }
+  .mainnav a, .mainnav__dropdown-trigger { border-bottom: none; padding: 8px 18px; position: relative; transition: color .2s ease; }
+  .mainnav a::after, .mainnav__dropdown-trigger::after { content: ""; position: absolute; left: 18px; right: 18px; bottom: 3px; height: 2px; background: var(--nav-accent); border-radius: 2px; box-shadow: 0 0 7px rgba(255,91,98,.75); transform: scaleX(0); transform-origin: left; transition: transform .22s var(--ease); }
+  .mainnav a:hover::after, .mainnav__dropdown-trigger:hover::after { transform: scaleX(1); }
   .header__inner { padding: 10px 24px; }
+
+  .mainnav__dropdown { position: relative; width: auto; }
+  .mainnav__dropdown-trigger { width: auto; }
+  .mainnav__dropdown-panel {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+    min-width: 230px;
+    background: var(--nav-bg);
+    border: 1px solid var(--nav-border);
+    border-radius: 10px;
+    padding: 6px;
+    gap: 2px;
+    box-shadow: 0 16px 32px rgba(0,0,0,.35);
+    z-index: 95;
+  }
+  .mainnav__dropdown:hover .mainnav__dropdown-panel,
+  .mainnav__dropdown-panel.open { display: flex; }
+  .mainnav__dropdown-link { padding: 9px 16px; border-radius: 6px; border-bottom: none; }
+  .mainnav__dropdown-link:hover { background: var(--nav-surface); }
 
   /* Franja tipo tira LED que separa el menu de categorias de la cabecera,
      guino a que la tienda vende equipos de iluminacion. */

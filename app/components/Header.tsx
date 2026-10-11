@@ -143,35 +143,59 @@ type NavCollection = {
 };
 
 type NavLinkData = {href: string; label: string; cls?: string; icon?: IconName};
+type NavEntry =
+  | ({type: 'link'} & NavLinkData)
+  | {type: 'dropdown'; label: string; items: Array<{href: string; label: string}>};
 
-function useNavLinks(collections: NavCollection[] = []): NavLinkData[] {
+// Handles que se quedan como item propio en la barra, fuera del
+// desplegable "Categorías" — no son una categoría de producto más, son
+// secciones especiales (ofertas, marca insignia de la tienda).
+const NAV_STANDALONE_HANDLES = ['outlet', 'pioneer-dj-alphatheta'];
+
+function useNavLinks(collections: NavCollection[] = []): NavEntry[] {
   const {t} = useI18n();
-  const collectionLinks: NavLinkData[] = collections
-    // "frontpage" es la colección automática de Shopify con todos los
-    // productos; no es una categoría real, ya existe "Todos los productos".
-    // "novedades-destacadas-home" es de uso interno (elige qué sale en el
-    // hero de la home) y no debe aparecer como categoría navegable.
-    // El nombre de estas colecciones viene de Shopify tal cual está en el
-    // admin, así que no se traduce con este sistema de idiomas de interfaz.
-    .filter(
-      (c) =>
-        c.handle !== 'frontpage' &&
-        c.handle !== 'novedades-destacadas-home' &&
-        c.products.nodes.length > 0,
-    )
-    .map((c) => ({
+  // "frontpage" es la colección automática de Shopify con todos los
+  // productos; no es una categoría real, ya existe "Todos los productos".
+  // "novedades-destacadas-home" es de uso interno (elige qué sale en el
+  // hero de la home) y no debe aparecer como categoría navegable.
+  // El nombre de estas colecciones viene de Shopify tal cual está en el
+  // admin, así que no se traduce con este sistema de idiomas de interfaz.
+  const realCollections = collections.filter(
+    (c) =>
+      c.handle !== 'frontpage' &&
+      c.handle !== 'novedades-destacadas-home' &&
+      c.products.nodes.length > 0,
+  );
+
+  const standalone = NAV_STANDALONE_HANDLES.map((handle) =>
+    realCollections.find((c) => c.handle === handle),
+  ).filter((c): c is NavCollection => Boolean(c));
+
+  // El resto de categorías se agrupan bajo "Categorías" para que la barra
+  // no se alargue sin control cuando se añaden colecciones nuevas.
+  const categoryItems = realCollections
+    .filter((c) => !NAV_STANDALONE_HANDLES.includes(c.handle))
+    .map((c) => ({href: `/collections/${c.handle}`, label: c.title}));
+
+  const entries: NavEntry[] = [
+    {type: 'link', href: '/', label: t('navHome')},
+    {type: 'link', href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
+  ];
+  if (categoryItems.length > 0) {
+    entries.push({type: 'dropdown', label: t('navCategories'), items: categoryItems});
+  }
+  for (const c of standalone) {
+    entries.push({
+      type: 'link',
       href: `/collections/${c.handle}`,
       label: c.title,
       cls: c.handle === 'outlet' ? 'mainnav__outlet' : undefined,
-    }));
+    });
+  }
+  entries.push({type: 'link', href: '/servicio-tecnico', label: t('navServicio'), icon: 'wrench'});
+  entries.push({type: 'link', href: '/quienes-somos', label: t('navAbout')});
 
-  return [
-    {href: '/', label: t('navHome')},
-    {href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
-    ...collectionLinks,
-    {href: '/servicio-tecnico', label: t('navServicio'), icon: 'wrench'},
-    {href: '/quienes-somos', label: t('navAbout')},
-  ];
+  return entries;
 }
 
 type NavState = 'closed' | 'open' | 'closing';
@@ -238,6 +262,58 @@ function Burger({state, toggleBurger}: {state: NavState; toggleBurger: () => voi
   );
 }
 
+/** Agrupa categorías bajo un solo item de la barra ("Categorías ▾") en vez
+ * de una por una — en desktop se abre al pasar el ratón o al hacer click
+ * (para que funcione también con teclado/touch), en el panel móvil a
+ * pantalla completa se abre/cierra igual pero en línea, como un acordeón. */
+function NavDropdown({
+  label,
+  items,
+  handleLinkClick,
+}: {
+  label: string;
+  items: Array<{href: string; label: string}>;
+  handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className="mainnav__dropdown"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className="mainnav__item mainnav__dropdown-trigger"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label} <Icon name="chevronDown" />
+      </button>
+      <div className={`mainnav__dropdown-panel${open ? ' open' : ''}`}>
+        {items.map((item) => (
+          <NavLink
+            key={item.href}
+            className="mainnav__dropdown-link"
+            end
+            prefetch="intent"
+            to={item.href}
+            onClick={(e) => {
+              setOpen(false);
+              handleLinkClick(e, item.href);
+            }}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MainNavPanel({
   collections,
   state,
@@ -264,18 +340,22 @@ function MainNavPanel({
         if (e.target === e.currentTarget) closeNav();
       }}
     >
-      {navLinks.map((link) => (
-        <NavLink
-          className={`mainnav__item ${link.cls ?? ''}`}
-          end
-          key={link.href}
-          prefetch="intent"
-          to={link.href}
-          onClick={(e) => handleLinkClick(e, link.href)}
-        >
-          {link.icon && <Icon name={link.icon} />} {link.label}
-        </NavLink>
-      ))}
+      {navLinks.map((entry) =>
+        entry.type === 'dropdown' ? (
+          <NavDropdown key={entry.label} label={entry.label} items={entry.items} handleLinkClick={handleLinkClick} />
+        ) : (
+          <NavLink
+            className={`mainnav__item ${entry.cls ?? ''}`}
+            end
+            key={entry.href}
+            prefetch="intent"
+            to={entry.href}
+            onClick={(e) => handleLinkClick(e, entry.href)}
+          >
+            {entry.icon && <Icon name={entry.icon} />} {entry.label}
+          </NavLink>
+        ),
+      )}
       <div className="mainnav__utils">
         <select
           className="mainnav__lang-select"
