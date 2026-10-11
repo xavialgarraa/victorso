@@ -16,6 +16,10 @@ const SEARCH_QUERY = `#graphql
               currencyCode
             }
           }
+          featuredImage {
+            url(transform: {maxWidth: 200})
+            altText
+          }
           selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {
             availableForSale
           }
@@ -33,6 +37,7 @@ export type ProductSearchResult = {
   currency: string;
   available: boolean;
   url: string;
+  image: string | null;
 };
 
 /** Busca productos reales del catálogo (Storefront API) para que el
@@ -52,6 +57,7 @@ export async function searchProductsForChat(
     vendor: string;
     description: string;
     priceRange: {minVariantPrice: {amount: string; currencyCode: string}};
+    featuredImage: {url: string; altText: string | null} | null;
     selectedOrFirstAvailableVariant: {availableForSale: boolean} | null;
   }>;
 
@@ -69,5 +75,6 @@ export async function searchProductsForChat(
     currency: p.priceRange.minVariantPrice.currencyCode,
     available: p.selectedOrFirstAvailableVariant?.availableForSale ?? true,
     url: `/products/${p.handle}`,
+    image: p.featuredImage?.url ?? null,
   }));
 }

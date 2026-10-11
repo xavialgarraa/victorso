@@ -1,5 +1,5 @@
 import type {Route} from './+types/api.chat';
-import {searchProductsForChat} from '~/lib/productSearch.server';
+import {searchProductsForChat, type ProductSearchResult} from '~/lib/productSearch.server';
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_MESSAGES = 20;
@@ -45,11 +45,13 @@ catálogo (nombre, marca, descripción, precio y disponibilidad actuales).
   salir de lo que de verdad varía en el catálogo, no ser genérica.
 - Si en cambio los resultados ya son pocos y claramente equivalentes para lo
   que pidió, recomienda directamente sin alargarlo con más preguntas.
-- Cuando ya tengas claro qué encaja, recomienda 1-3 como mucho, cada uno con
-  su nombre, precio, una razón breve de por qué encaja con lo que pidió
-  (basada en la descripción real, no inventada) y un enlace [nombre del
-  producto](url) usando la "url" que te da la herramienta EXACTAMENTE tal
-  cual (empieza por "/products/..."), sin anteponerle ningún dominio.
+- Cuando ya tengas claro qué encaja, recomienda 1-3 como mucho. El enlace
+  [nombre del producto](url) se muestra como una tarjeta con foto y precio
+  automáticamente, así que NO hace falta que repitas el precio en el texto
+  — céntrate en una razón breve de por qué encaja con lo que pidió (basada
+  en la descripción real, no inventada). Usa la "url" que te da la
+  herramienta EXACTAMENTE tal cual (empieza por "/products/..."), sin
+  anteponerle ningún dominio.
 - Si la búsqueda no devuelve nada que encaje de verdad, dilo con naturalidad
   y ofrece el contacto directo (WhatsApp/teléfono) o prueba con otro término
   — nunca inventes ni fuerces un producto que no encaja solo por rellenar.
@@ -129,6 +131,29 @@ async function callAnthropic(
   return (await response.json()) as {content: AnthropicContentBlock[]; stop_reason: string};
 }
 
+/** Busca los enlaces [texto](/products/...) que Claude puso en su respuesta
+ * final y, de los que correspondan a un producto real visto durante la
+ * búsqueda, devuelve sus datos completos (con imagen) en orden de
+ * aparición — así el chat puede sustituir ese enlace por una tarjeta. */
+function extractMentionedProducts(
+  reply: string,
+  seenProducts: Map<string, ProductSearchResult>,
+): ProductSearchResult[] {
+  const linkRe = /\[[^\]]+\]\((\/products\/[^)]+)\)/g;
+  const found: ProductSearchResult[] = [];
+  const addedUrls = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = linkRe.exec(reply))) {
+    const url = match[1];
+    const product = seenProducts.get(url);
+    if (product && !addedUrls.has(url)) {
+      addedUrls.add(url);
+      found.push(product);
+    }
+  }
+  return found;
+}
+
 export async function action({request, context}: Route.ActionArgs) {
   if (!context.env.ANTHROPIC_API_KEY) {
     return Response.json(
@@ -157,6 +182,12 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   const conversation: unknown[] = [...messages];
+  // Productos reales vistos durante la conversación (de search_products),
+  // indexados por url — para poder adjuntar sus datos (imagen, precio...)
+  // a la respuesta final y que el chat los pinte como tarjeta, no solo
+  // como un enlace de texto. Solo se manda a Claude el texto, nunca la
+  // imagen (no la necesita para responder, y ahorra tokens).
+  const seenProducts = new Map<string, ProductSearchResult>();
 
   try {
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -165,7 +196,7 @@ export async function action({request, context}: Route.ActionArgs) {
       if (data.stop_reason !== 'tool_use') {
         const reply = data.content.find((b) => b.type === 'text')?.text?.trim();
         if (!reply) break;
-        return Response.json({reply});
+        return Response.json({reply, products: extractMentionedProducts(reply, seenProducts)});
       }
 
       conversation.push({role: 'assistant', content: data.content});
@@ -179,10 +210,12 @@ export async function action({request, context}: Route.ActionArgs) {
             }
             try {
               const results = await searchProductsForChat(context.storefront, toolUse.input);
+              for (const r of results) seenProducts.set(r.url, r);
+              const forModel = results.map(({image, ...rest}) => rest);
               return {
                 type: 'tool_result',
                 tool_use_id: toolUse.id,
-                content: JSON.stringify(results.length > 0 ? results : {message: 'Sin resultados.'}),
+                content: JSON.stringify(forModel.length > 0 ? forModel : {message: 'Sin resultados.'}),
               };
             } catch (error) {
               console.error('[chat] search_products error:', error);

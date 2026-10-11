@@ -1,10 +1,10 @@
 import {useEffect, useRef, useState} from 'react';
 import {useFetcher} from 'react-router';
 import {Icon} from '~/lib/icons';
-import {renderChatMarkdown} from '~/lib/chatMarkdown';
+import {renderChatMarkdown, type ChatProduct} from '~/lib/chatMarkdown';
 
-type ChatMessage = {role: 'user' | 'assistant'; content: string};
-type ChatResponse = {reply?: string; error?: string};
+type ChatMessage = {role: 'user' | 'assistant'; content: string; products?: ChatProduct[]};
+type ChatResponse = {reply?: string; error?: string; products?: ChatProduct[]};
 
 const GREETING: ChatMessage = {
   role: 'assistant',
@@ -63,8 +63,8 @@ export function ChatAssistant() {
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data) {
-      const {reply, error} = fetcher.data;
-      setMessages((prev) => [...prev, {role: 'assistant', content: reply || error || ''}]);
+      const {reply, error, products} = fetcher.data;
+      setMessages((prev) => [...prev, {role: 'assistant', content: reply || error || '', products}]);
     }
   }, [fetcher.state, fetcher.data]);
 
@@ -134,7 +134,7 @@ export function ChatAssistant() {
               <div key={i} className={`chat-msg-row chat-msg-row--${m.role}`}>
                 {m.role === 'assistant' && <Avatar />}
                 <div className={`chat-msg chat-msg--${m.role}`}>
-                  {m.role === 'assistant' ? renderChatMarkdown(m.content) : m.content}
+                  {m.role === 'assistant' ? renderChatMarkdown(m.content, m.products) : m.content}
                 </div>
               </div>
             ))}
