@@ -4,6 +4,7 @@ import {
   MIN_VALID_PRICE,
   SUSPICIOUS_PRICE_RATIO_HIGH,
   SUSPICIOUS_PRICE_RATIO_LOW,
+  type SyncRunDetails,
 } from '~/lib/connectors/sync.server';
 
 /**
@@ -144,4 +145,46 @@ export async function buildStelOrderSkuSyncSummary(env: Env): Promise<SkuSyncSum
     pendingPriceChanges,
     rows,
   };
+}
+
+/** Aplana el resumen al mismo formato que usa el historial para Walkasse/
+ * StelOrder por EAN (ver summaryToRunDetails en sync.server.ts), para que
+ * el desglose fila a fila también se guarde y se pueda ver después. No hay
+ * EAN en este flujo (el cruce es por SKU) — se reutiliza ese campo para el
+ * SKU, es lo que la tabla del historial usa como clave y texto. */
+export function skuSyncSummaryToRunDetails(summary: SkuSyncSummary): SyncRunDetails {
+  const details: SyncRunDetails = {changed: [], unchanged: [], unmatched: [], priceWarnings: [], orphaned: []};
+
+  for (const row of summary.rows) {
+    if (row.status === 'unmatched') {
+      details.unmatched.push({ean: row.sku, referencia: row.title});
+      continue;
+    }
+    if (row.status === 'ambiguous') {
+      details.unmatched.push({ean: row.sku, referencia: `${row.title} (${row.count} coincidencias ambiguas)`});
+      continue;
+    }
+
+    if (row.priceWarning) {
+      details.priceWarnings.push({ean: row.sku, title: row.title, message: row.priceWarning});
+    }
+
+    if (row.stockChange || row.priceChange) {
+      details.changed.push({
+        ean: row.sku,
+        title: row.title,
+        sku: row.sku,
+        supplierRef: String(row.stelorderId),
+        stockFrom: row.stockChange?.from ?? null,
+        stockTo: row.stockChange?.to ?? null,
+        priceFrom: row.priceChange?.from ?? null,
+        priceTo: row.priceChange?.to ?? null,
+        priceWarning: row.priceWarning,
+      });
+    } else {
+      details.unchanged.push({ean: row.sku, title: row.title, sku: row.sku});
+    }
+  }
+
+  return details;
 }

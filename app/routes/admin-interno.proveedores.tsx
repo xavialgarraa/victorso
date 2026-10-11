@@ -32,7 +32,11 @@ import {
   buildStelOrderSyncSummary,
   type StelOrderSyncSummary,
 } from '~/lib/connectors/stelorderSync.server';
-import {buildStelOrderSkuSyncSummary, type SkuSyncSummary} from '~/lib/connectors/stelorderSkuSync.server';
+import {
+  buildStelOrderSkuSyncSummary,
+  skuSyncSummaryToRunDetails,
+  type SkuSyncSummary,
+} from '~/lib/connectors/stelorderSkuSync.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Proveedores — Panel interno'}];
@@ -159,8 +163,24 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   if (intent === 'stelorder-sku-sync') {
+    const startedAt = new Date().toISOString();
     try {
       const summary = await buildStelOrderSkuSyncSummary(context.env);
+      await logSyncRun(context.env, {
+        supplierId: 'stelorder-sku',
+        supplierName: 'StelOrder (por SKU)',
+        type: 'dry-run',
+        triggeredBy: user.email,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalShopifySkus,
+        matchedCount: summary.matchedCount,
+        changedCount: summary.stockChangedCount,
+        unmatchedCount: summary.unmatchedCount + summary.ambiguousCount,
+        pendingPriceChanges: summary.pendingPriceChanges,
+        errors: [],
+        details: skuSyncSummaryToRunDetails(summary),
+      });
       return data<ActionResult>({intent: 'stelorder-sku-sync', ok: true, summary}, {headers});
     } catch (error) {
       console.error('[admin-interno/proveedores] stelorder-sku-sync', error);
@@ -172,6 +192,7 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   if (intent === 'stelorder-sku-apply-stock') {
+    const startedAt = new Date().toISOString();
     try {
       const summary = await buildStelOrderSkuSyncSummary(context.env);
       const locationId = await getPrimaryLocationId(context.env);
@@ -182,6 +203,23 @@ export async function action({request, context}: Route.ActionArgs) {
           return {inventoryItemId: row.inventoryItemId, quantity: row.stockChange!.to};
         });
       const result = await applyStockChanges(context.env, locationId, changes);
+      await logSyncRun(context.env, {
+        supplierId: 'stelorder-sku',
+        supplierName: 'StelOrder (por SKU)',
+        type: 'apply',
+        triggeredBy: user.email,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalShopifySkus,
+        matchedCount: summary.matchedCount,
+        changedCount: summary.stockChangedCount,
+        unmatchedCount: summary.unmatchedCount + summary.ambiguousCount,
+        stockApplied: result.applied,
+        priceApplied: 0,
+        pendingPriceChanges: summary.pendingPriceChanges,
+        errors: result.errors,
+        details: skuSyncSummaryToRunDetails(summary),
+      });
       return data<ActionResult>(
         {intent: 'stelorder-sku-apply-stock', ok: true, applied: result.applied, errors: result.errors},
         {headers},

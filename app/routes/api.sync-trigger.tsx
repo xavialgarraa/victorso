@@ -4,7 +4,7 @@ import {buildSyncSummary, summaryToRunDetails, walkasseToSupplierRows} from '~/l
 import {listSuppliers, logSyncRun, resolveFeedUrl} from '~/lib/connectors/suppliers.server';
 import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
 import {applyStelOrderCreations, buildStelOrderSyncSummary} from '~/lib/connectors/stelorderSync.server';
-import {buildStelOrderSkuSyncSummary} from '~/lib/connectors/stelorderSkuSync.server';
+import {buildStelOrderSkuSyncSummary, skuSyncSummaryToRunDetails} from '~/lib/connectors/stelorderSkuSync.server';
 import {safeCompare} from '~/lib/safeCompare.server';
 
 /**
@@ -117,6 +117,7 @@ export async function action({request, context}: Route.ActionArgs) {
         priceApplied: 0,
         pendingPriceChanges: summary.pendingPriceChanges,
         errors: stockResult.errors,
+        details: skuSyncSummaryToRunDetails(summary),
       });
       results.push({
         id: 'stelorder-sku',
