@@ -74,8 +74,13 @@ function resolveLinkHref(url: string): {to: string; internal: true} | {href: str
  */
 export function renderChatMarkdown(content: string, products: ChatProduct[] = []): React.ReactNode {
   const productByUrl = new Map(products.map((p) => [p.url, p]));
+  // A veces el modelo envuelve el enlace entero en negrita, ej.
+  // "**[nombre](url)**" — sin esto, el regex de negrita (que no entiende
+  // de corchetes) se lo come primero y los corchetes salen literales en
+  // pantalla en vez de convertirse en enlace/tarjeta.
+  const unwrapped = content.replace(/\*\*(\[[^\]]+\]\([^)]+\))\*\*/g, '$1');
   const tokenRe = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
-  const parts = content.split(tokenRe).filter((part) => part !== '');
+  const parts = unwrapped.split(tokenRe).filter((part) => part !== '');
 
   return parts.map((part, i) => {
     const boldMatch = /^\*\*([^*]+)\*\*$/.exec(part);
