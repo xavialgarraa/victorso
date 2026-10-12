@@ -8,7 +8,15 @@ type SelectedPolicies = keyof Pick<
 >;
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.policy.title ?? ''}`}];
+  const policy = data?.policy;
+  const title = `${policy?.title ?? ''} — Victor So Professional`;
+  const plainBody = (policy?.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  const canonical = `https://www.victorso.es/policies/${policy?.handle ?? ''}`;
+  return [
+    {title},
+    ...(plainBody ? [{name: 'description', content: plainBody}] : []),
+    {tagName: 'link', rel: 'canonical', href: canonical},
+  ];
 };
 
 export async function loader({params, context}: Route.LoaderArgs) {

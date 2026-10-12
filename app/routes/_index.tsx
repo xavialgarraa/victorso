@@ -11,7 +11,19 @@ import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales'}];
+  const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
+  const description =
+    'Tienda física y online en Lloret de Mar desde 1987: equipos DJ, sonido profesional, iluminación y material audiovisual. Tienda autorizada Pioneer DJ y AlphaTheta. Envío gratis desde 149€.';
+  return [
+    {title},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: 'https://www.victorso.es/'},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: title},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: 'https://www.victorso.es/'},
+    {property: 'og:image', content: 'https://www.victorso.com/victorso/uploads/imagenes/logos/Logo_WEB_Blanco2.png'},
+  ];
 };
 
 export async function loader({context}: Route.LoaderArgs) {

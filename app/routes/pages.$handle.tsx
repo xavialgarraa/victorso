@@ -3,7 +3,15 @@ import type {Route} from './+types/pages.$handle';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `Hydrogen | ${data?.page.title ?? ''}`}];
+  const page = data?.page;
+  const title = `${page?.seo?.title || page?.title || ''} — Victor So Professional`;
+  const description = page?.seo?.description || '';
+  const canonical = `https://www.victorso.es/pages/${page?.handle ?? ''}`;
+  return [
+    {title},
+    ...(description ? [{name: 'description', content: description}] : []),
+    {tagName: 'link', rel: 'canonical', href: canonical},
+  ];
 };
 
 export async function loader(args: Route.LoaderArgs) {

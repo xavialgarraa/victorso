@@ -21,12 +21,29 @@ import {getReviews} from '~/lib/productReviews.server';
 import {ProductReviews, ReviewsRatingLine} from '~/components/ProductReviews';
 
 export const meta: Route.MetaFunction = ({data}) => {
+  const product = data?.product;
+  const title = product?.title ?? '';
+  const pageTitle = `${title} — Victor So Professional`;
+  // La descripción real del producto puede venir con HTML o estar vacía
+  // (muchos de los migrados desde LiveCommerce) — se limpia y se recorta al
+  // tamaño que Google muestra, con un fallback genérico si no hay nada.
+  const plainDescription = (product?.description || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  const description = plainDescription || `${title} al mejor precio en Victor So Professional — tienda de equipos DJ y sonido profesional.`;
+  const canonical = `https://www.victorso.es/products/${product?.handle ?? ''}`;
+  const image = product?.images?.nodes?.[0]?.url;
+
   return [
-    {title: `${data?.product.title ?? ''} — Victor So Professional`},
-    {
-      rel: 'canonical',
-      href: `/products/${data?.product.handle}`,
-    },
+    {title: pageTitle},
+    {name: 'description', content: description},
+    // Sin tagName: "link" esto se renderiza como <meta rel="canonical">,
+    // que no es HTML válido y Google lo ignora — con esto sí sale como
+    // <link rel="canonical">.
+    {tagName: 'link', rel: 'canonical', href: canonical},
+    {property: 'og:type', content: 'product'},
+    {property: 'og:title', content: pageTitle},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: canonical},
+    ...(image ? [{property: 'og:image', content: image}] : []),
   ];
 };
 

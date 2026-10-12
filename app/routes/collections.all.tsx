@@ -5,7 +5,17 @@ import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: `Todos los productos — Victor So Professional`}];
+  const description =
+    'Todo el catálogo de Victor So Professional: equipos DJ, sonido, iluminación y material audiovisual profesional. Envío gratis en pedidos superiores a 149€.';
+  return [
+    {title: `Todos los productos — Victor So Professional`},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: 'https://www.victorso.es/collections/all'},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: 'Todos los productos — Victor So Professional'},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: 'https://www.victorso.es/collections/all'},
+  ];
 };
 
 const SORT_OPTIONS = [

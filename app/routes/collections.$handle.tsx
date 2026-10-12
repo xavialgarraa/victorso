@@ -8,7 +8,24 @@ import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 import {useI18n} from '~/lib/i18n';
 
 export const meta: Route.MetaFunction = ({data}) => {
-  return [{title: `${data?.collection.title ?? ''} — Victor So Professional`}];
+  const collection = data?.collection;
+  const title = collection?.title ?? '';
+  const pageTitle = `${title} — Victor So Professional`;
+  const plainDescription = (collection?.description || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  const description = plainDescription || `${title} al mejor precio en Victor So Professional — tienda de equipos DJ y sonido profesional en Lloret de Mar.`;
+  const canonical = `https://www.victorso.es/collections/${collection?.handle ?? ''}`;
+  const image = collection?.image?.url;
+
+  return [
+    {title: pageTitle},
+    {name: 'description', content: description},
+    {tagName: 'link', rel: 'canonical', href: canonical},
+    {property: 'og:type', content: 'website'},
+    {property: 'og:title', content: pageTitle},
+    {property: 'og:description', content: description},
+    {property: 'og:url', content: canonical},
+    ...(image ? [{property: 'og:image', content: image}] : []),
+  ];
 };
 
 const SORT_OPTIONS = [
@@ -162,6 +179,9 @@ const COLLECTION_QUERY = `#graphql
       handle
       title
       description
+      image {
+        url
+      }
       products(
         first: $first,
         last: $last,
