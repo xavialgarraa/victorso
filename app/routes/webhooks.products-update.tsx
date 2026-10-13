@@ -43,7 +43,11 @@ export async function action({request, context}: Route.ActionArgs) {
     return new Response('ok', {status: 200});
   }
 
-  const productUrl = `https://${context.env.PUBLIC_STORE_DOMAIN}/products/${payload.handle}`;
+  // OJO: PUBLIC_STORE_DOMAIN es el dominio *.myshopify.com, que para esta
+  // tienda sirve el theme clásico de Shopify (Online Store), no la tienda
+  // Hydrogen real — un enlace con ese dominio llevaría al cliente a una
+  // página distinta a la que compra. El dominio real va fijo aquí mismo.
+  const productUrl = `https://www.victorso.es/products/${payload.handle}`;
   await Promise.all(
     subscribers.map((email) =>
       sendRestockEmail(context.env, {to: email, productTitle: payload.title, productUrl}),
