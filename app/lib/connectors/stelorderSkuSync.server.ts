@@ -103,17 +103,19 @@ export async function buildStelOrderSkuSyncSummary(env: Env): Promise<SkuSyncSum
         : null;
     if (stockChange) stockChangedCount++;
 
+    // StelOrder guarda el precio SIN IVA — siempre comparar/proponer
+    // salesPriceWithTax (con IVA), nunca salesPrice a secas.
     let priceChange: {from: number; to: number} | null = null;
     let priceWarning: string | undefined;
-    if (Math.abs(variant.price - stel.salesPrice) > 0.005) {
-      if (stel.salesPrice < MIN_VALID_PRICE) {
-        priceWarning = `StelOrder manda un precio inválido (${stel.salesPrice}€) — se ignora.`;
+    if (Math.abs(variant.price - stel.salesPriceWithTax) > 0.005) {
+      if (stel.salesPriceWithTax < MIN_VALID_PRICE) {
+        priceWarning = `StelOrder manda un precio inválido (${stel.salesPriceWithTax}€ con IVA) — se ignora.`;
       } else {
-        const ratio = stel.salesPrice / variant.price;
+        const ratio = stel.salesPriceWithTax / variant.price;
         if (ratio < SUSPICIOUS_PRICE_RATIO_LOW || ratio > SUSPICIOUS_PRICE_RATIO_HIGH) {
-          priceWarning = `Salto de precio inusual (${variant.price.toFixed(2)}€ → ${stel.salesPrice.toFixed(2)}€) — revísalo antes de confirmar.`;
+          priceWarning = `Salto de precio inusual (${variant.price.toFixed(2)}€ → ${stel.salesPriceWithTax.toFixed(2)}€ con IVA) — revísalo antes de confirmar.`;
         }
-        priceChange = {from: variant.price, to: stel.salesPrice};
+        priceChange = {from: variant.price, to: stel.salesPriceWithTax};
         pendingPriceChanges++;
       }
     }
@@ -129,7 +131,7 @@ export async function buildStelOrderSkuSyncSummary(env: Env): Promise<SkuSyncSum
       shopifyPrice: variant.price,
       stelorderId: stel.id,
       stelorderStock: stel.realStock,
-      stelorderPrice: stel.salesPrice,
+      stelorderPrice: stel.salesPriceWithTax,
       stockChange,
       priceChange,
       priceWarning,

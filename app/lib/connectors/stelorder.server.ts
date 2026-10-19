@@ -20,7 +20,18 @@ export type StelOrderProduct = {
   description: string | null;
   privateComments: string | null;
   barcode: string;
+  /** Precio SIN IVA tal cual lo manda StelOrder — nunca usar este valor
+   * directamente como precio de venta en Shopify, ver salesPriceWithTax. */
   salesPrice: number;
+  /** % de IVA de este producto en StelOrder (normalmente 21, pero puede
+   * variar por tipo de artículo — por eso se lee de cada producto en vez
+   * de fijarlo a 21 a fuego). */
+  taxPercentage: number;
+  /** Precio de venta real CON IVA incluido — este es el que hay que usar
+   * como precio de Shopify, nunca `salesPrice` a secas (StelOrder guarda
+   * precios sin IVA; Shopify necesita el precio final que paga el
+   * cliente). */
+  salesPriceWithTax: number;
   realStock: number;
   categoryId: number | null;
   images: string[];
@@ -35,6 +46,7 @@ type RawStelOrderProduct = {
   'private-comments': string | null;
   barcode: string | null;
   'sales-price': number;
+  'primary-tax-percentage'?: number;
   'real-stock': number;
   'product-category-id': number | null;
   'item-images'?: Array<{'item-image-path': string}>;
@@ -43,6 +55,10 @@ type RawStelOrderProduct = {
 };
 
 function normalize(raw: RawStelOrderProduct): StelOrderProduct {
+  const salesPrice = raw['sales-price'] ?? 0;
+  // Si StelOrder no manda el % de IVA de este producto en concreto, 21%
+  // (general) es la mejor suposición por defecto antes que asumir 0.
+  const taxPercentage = raw['primary-tax-percentage'] ?? 21;
   return {
     id: raw.id,
     reference: raw.reference,
@@ -51,7 +67,9 @@ function normalize(raw: RawStelOrderProduct): StelOrderProduct {
     description: raw.description,
     privateComments: raw['private-comments'],
     barcode: (raw.barcode || '').trim(),
-    salesPrice: raw['sales-price'] ?? 0,
+    salesPrice,
+    taxPercentage,
+    salesPriceWithTax: Math.round(salesPrice * (1 + taxPercentage / 100) * 100) / 100,
     realStock: raw['real-stock'] ?? 0,
     categoryId: raw['product-category-id'] ?? null,
     images: (raw['item-images'] || []).map((img) => img['item-image-path']).filter(Boolean),

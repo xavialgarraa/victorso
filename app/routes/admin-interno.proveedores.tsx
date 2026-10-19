@@ -562,7 +562,7 @@ export default function AdminProveedores() {
                         <tr key={r.product.barcode}>
                           <td>{r.product.name}</td>
                           <td>{r.category}</td>
-                          <td>{r.product.salesPrice.toFixed(2)}€</td>
+                          <td>{r.product.salesPriceWithTax.toFixed(2)}€</td>
                           <td>{r.product.realStock}</td>
                         </tr>
                       ))}

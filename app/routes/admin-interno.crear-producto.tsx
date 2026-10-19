@@ -166,7 +166,7 @@ export default function AdminCrearProducto({loaderData}: Route.ComponentProps) {
         {lookup?.ok && !found && <p className="admin-msg--error">No se encontró ningún producto con esa referencia en StelOrder.</p>}
         {found && (
           <div className="admin-msg--ok" style={{marginTop: 8}}>
-            Encontrado: <strong>{found.name}</strong> — precio {found.salesPrice.toFixed(2)}€, stock {found.realStock},
+            Encontrado: <strong>{found.name}</strong> — precio {found.salesPriceWithTax.toFixed(2)}€ (IVA incl.), stock {found.realStock},
             EAN {found.barcode || '(sin EAN)'}, {found.images.length} imagen(es). Se ha rellenado el formulario de
             abajo.
           </div>
@@ -175,7 +175,17 @@ export default function AdminCrearProducto({loaderData}: Route.ComponentProps) {
 
       <div className="admin-card">
         <h2 style={{marginTop: 0}}>2. Datos del producto</h2>
-        <Form method="post" encType="multipart/form-data" className="admin-form">
+        <Form
+          method="post"
+          encType="multipart/form-data"
+          className="admin-form"
+          // key fuerza a React a remontar el formulario (y recalcular los
+          // defaultValue de sus campos) cada vez que cambia la búsqueda —
+          // sin esto, tras una búsqueda los campos no controlados (stock
+          // sobre todo) se quedaban con el valor de la carga inicial en
+          // vez del que acaba de llegar de StelOrder.
+          key={lookup?.ok ? lookup.reference : 'sin-busqueda'}
+        >
           <input type="hidden" name="intent" value="create-product" />
           {found?.images.map((url) => (
             <input key={url} type="hidden" name="stelorderImages" value={url} />
@@ -202,8 +212,8 @@ export default function AdminCrearProducto({loaderData}: Route.ComponentProps) {
               <input type="text" name="barcode" defaultValue={found?.barcode ?? ''} />
             </div>
             <div>
-              <label>Precio (€)</label>
-              <input type="text" name="price" defaultValue={found ? found.salesPrice.toFixed(2) : ''} required />
+              <label>Precio (€, IVA incluido)</label>
+              <input type="text" name="price" defaultValue={found ? found.salesPriceWithTax.toFixed(2) : ''} required />
             </div>
             <div>
               <label>Stock</label>

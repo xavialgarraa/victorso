@@ -126,23 +126,26 @@ export async function buildStelOrderSyncSummary(env: Env): Promise<StelOrderSync
 
       // Precios: igual que Walkasse, solo se detectan/avisan — nunca se
       // aplican en automático. Margen de 1 céntimo para no avisar por
-      // ruido de redondeo.
-      if (Math.abs(catalogVariant.price - product.salesPrice) > 0.005) {
+      // ruido de redondeo. StelOrder guarda el precio SIN IVA — hay que
+      // comparar/proponer siempre salesPriceWithTax (con IVA), nunca
+      // salesPrice a secas, o el precio de Shopify saldría un 21% más
+      // barato de lo que debería.
+      if (Math.abs(catalogVariant.price - product.salesPriceWithTax) > 0.005) {
         hasChange = true;
         let priceWarning: string | undefined;
-        if (product.salesPrice < MIN_VALID_PRICE) {
-          priceWarning = `StelOrder manda un precio inválido (${product.salesPrice}€) — se ignora, no se propone cambiarlo.`;
+        if (product.salesPriceWithTax < MIN_VALID_PRICE) {
+          priceWarning = `StelOrder manda un precio inválido (${product.salesPriceWithTax}€ con IVA) — se ignora, no se propone cambiarlo.`;
         } else {
-          const ratio = product.salesPrice / catalogVariant.price;
+          const ratio = product.salesPriceWithTax / catalogVariant.price;
           if (ratio < SUSPICIOUS_PRICE_RATIO_LOW || ratio > SUSPICIOUS_PRICE_RATIO_HIGH) {
-            priceWarning = `Salto de precio inusual (${catalogVariant.price.toFixed(2)}€ → ${product.salesPrice.toFixed(2)}€) — puede ser una promoción aplicada en Shopify, no un cambio real en StelOrder. Revísalo antes de confirmar.`;
+            priceWarning = `Salto de precio inusual (${catalogVariant.price.toFixed(2)}€ → ${product.salesPriceWithTax.toFixed(2)}€ con IVA) — puede ser una promoción aplicada en Shopify, no un cambio real en StelOrder. Revísalo antes de confirmar.`;
           }
         }
         priceChanges.push({
           product,
           catalogVariant,
           priceFrom: catalogVariant.price,
-          priceTo: product.salesPrice,
+          priceTo: product.salesPriceWithTax,
           priceWarning,
         });
       }
@@ -227,7 +230,7 @@ export async function applyStelOrderCreations(
         vendor,
         barcode: product.barcode,
         sku: product.fullReference || product.reference,
-        price: product.salesPrice,
+        price: product.salesPriceWithTax,
         stock: product.realStock,
         images: product.images,
         collectionIds,
