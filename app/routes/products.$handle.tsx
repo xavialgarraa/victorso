@@ -130,6 +130,28 @@ export default function Product() {
             ? 'https://schema.org/InStock'
             : 'https://schema.org/OutOfStock',
           itemCondition: 'https://schema.org/NewCondition',
+          // Campos "opcionales pero recomendados" para que la ficha sea
+          // elegible como "ficha de comerciante" (Google Shopping/free
+          // listings) — política real de la tienda: envío gratis desde
+          // 149€ (si no, 6,99€) y devolución gratuita en 30 días.
+          shippingDetails: {
+            '@type': 'OfferShippingDetails',
+            shippingRate: {'@type': 'MonetaryAmount', value: '6.99', currency: 'EUR'},
+            shippingDestination: {'@type': 'DefinedRegion', addressCountry: 'ES'},
+            deliveryTime: {
+              '@type': 'ShippingDeliveryTime',
+              handlingTime: {'@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY'},
+              transitTime: {'@type': 'QuantitativeValue', minValue: 1, maxValue: 2, unitCode: 'DAY'},
+            },
+          },
+          hasMerchantReturnPolicy: {
+            '@type': 'MerchantReturnPolicy',
+            applicableCountry: 'ES',
+            returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+            merchantReturnDays: 30,
+            returnMethod: 'https://schema.org/ReturnByMail',
+            returnFees: 'https://schema.org/FreeReturn',
+          },
         }
       : undefined,
     ...(reviews.length > 0
