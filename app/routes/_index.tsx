@@ -365,6 +365,27 @@ export default function Homepage() {
       </section>
 
       <Faq items={faq} />
+
+      {/* Sugiere a Google el cuadro de búsqueda bajo el resultado de marca
+          ("sitelinks search box") — los demás sitelinks (enlaces a páginas
+          internas) los decide Google solo según la autoridad del dominio y
+          la estructura del sitio, no hay forma de pedirlos directamente. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            url: 'https://www.victorso.es/',
+            name: 'Victor So Professional',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: 'https://www.victorso.es/search?q={search_term_string}',
+              'query-input': 'required name=search_term_string',
+            },
+          }),
+        }}
+      />
     </div>
   );
 }
