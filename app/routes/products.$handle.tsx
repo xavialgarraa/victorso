@@ -50,10 +50,11 @@ export const meta: Route.MetaFunction = ({data}) => {
 export async function loader(args: Route.LoaderArgs) {
   const deferredData = loadDeferredData(args);
   const criticalData = await loadCriticalData(args);
-  // No se puede pedir por el id del producto hasta tener loadCriticalData,
-  // pero seguimos sin bloquear la respuesta: se pasa como promesa para
-  // <Await>, igual que "related".
-  const reviews = getReviews(args.context.env, criticalData.product.id).catch(() => []);
+  // Antes esto iba deferred (sin esperar) — pero para poder meter la nota
+  // media en los datos estructurados Product/AggregateRating hace falta
+  // tenerla ya en el HTML que ve Google, no solo tras hidratar en el
+  // cliente. Firestore es rápido, así que esperarla aquí no se nota.
+  const reviews = await getReviews(args.context.env, criticalData.product.id).catch(() => []);
   return {...deferredData, ...criticalData, reviews};
 }
 
@@ -110,8 +111,51 @@ export default function Product() {
   const images = product.images.nodes;
   const {t} = useI18n();
 
+  const canonicalUrl = `https://www.victorso.es/products/${product.handle}`;
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: title,
+    description: (product.description || '').replace(/\s+/g, ' ').trim().slice(0, 500) || undefined,
+    image: images.map((img) => img.url),
+    sku: selectedVariant?.sku || undefined,
+    brand: vendor ? {'@type': 'Brand', name: vendor} : undefined,
+    offers: selectedVariant
+      ? {
+          '@type': 'Offer',
+          url: canonicalUrl,
+          priceCurrency: selectedVariant.price.currencyCode,
+          price: selectedVariant.price.amount,
+          availability: selectedVariant.availableForSale
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+          itemCondition: 'https://schema.org/NewCondition',
+        }
+      : undefined,
+    ...(reviews.length > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1),
+            reviewCount: reviews.length,
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {'@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://www.victorso.es/'},
+      {'@type': 'ListItem', position: 2, name: title, item: canonicalUrl},
+    ],
+  };
+
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(productJsonLd)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(breadcrumbJsonLd)}} />
       <div className="breadcrumb container">
         <Link to="/">{t('breadcrumbHome')}</Link> / {title}
       </div>
@@ -121,9 +165,7 @@ export default function Product() {
         <div className="pdp__info">
           {vendor && <div className="pdp__vendor">{vendor}</div>}
           <h1 className="pdp__title">{title}</h1>
-          <Suspense fallback={null}>
-            <Await resolve={reviews}>{(list) => <ReviewsRatingLine reviews={list} />}</Await>
-          </Suspense>
+          <ReviewsRatingLine reviews={reviews} />
 
           <div className="pdp__price" id="pdpPrice">
             <ProductPrice
@@ -172,10 +214,7 @@ export default function Product() {
               type="button"
               onClick={() => setActiveTab('reviews')}
             >
-              {t('tabReviews')}{' '}
-              <Suspense fallback={null}>
-                <Await resolve={reviews}>{(list) => `(${list.length})`}</Await>
-              </Suspense>
+              {t('tabReviews')} ({reviews.length})
             </button>
           </div>
           <div className={`tabs__panel${activeTab === 'description' ? ' active' : ''}`}>
@@ -186,18 +225,12 @@ export default function Product() {
             )}
           </div>
           <div className={`tabs__panel${activeTab === 'reviews' ? ' active' : ''}`}>
-            <Suspense fallback={null}>
-              <Await resolve={reviews}>
-                {(list) => (
-                  <ProductReviews
-                    productId={product.id}
-                    productHandle={product.handle}
-                    productTitle={title}
-                    reviews={list}
-                  />
-                )}
-              </Await>
-            </Suspense>
+            <ProductReviews
+              productId={product.id}
+              productHandle={product.handle}
+              productTitle={title}
+              reviews={reviews}
+            />
           </div>
         </div>
 

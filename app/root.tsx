@@ -242,6 +242,42 @@ export default function App() {
     );
   }
 
+  // LocalBusiness en vez de solo Organization porque hay tienda física real
+  // con dirección — ayuda a la ficha de Google Maps / paquete local, no
+  // solo a la búsqueda de marca. Va en el layout público (no en el panel
+  // interno) para que esté en todas las páginas de la tienda.
+  const localBusinessJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ElectronicsStore',
+    name: 'Victor So Professional',
+    url: 'https://www.victorso.es/',
+    image: 'https://www.victorso.com/victorso/uploads/imagenes/logos/Logo_WEB_Blanco2.png',
+    telephone: '+34972364114',
+    priceRange: '€€',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Avda. Vila de Tossa, 50-52',
+      addressLocality: 'Lloret de Mar',
+      addressRegion: 'Girona',
+      postalCode: '17310',
+      addressCountry: 'ES',
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        opens: '09:00',
+        closes: '13:00',
+      },
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        opens: '15:00',
+        closes: '19:00',
+      },
+    ],
+  };
+
   return (
     <ShopifyProvider {...shopifyProviderProps}>
       <Analytics.Provider
@@ -249,6 +285,10 @@ export default function App() {
         shop={data.shop}
         consent={data.consent}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{__html: JSON.stringify(localBusinessJsonLd)}}
+        />
         <PageLayout {...data}>
           <Outlet />
         </PageLayout>

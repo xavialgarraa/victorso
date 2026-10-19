@@ -114,8 +114,23 @@ export default function Collection() {
     })),
   }));
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {'@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://www.victorso.es/'},
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: collection.title,
+        item: `https://www.victorso.es/collections/${collection.handle}`,
+      },
+    ],
+  };
+
   return (
     <div className="collection">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(breadcrumbJsonLd)}} />
       <div className="breadcrumb container">
         <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
       </div>
