@@ -581,6 +581,18 @@ body.nav-open { overflow: hidden; }
   .storehero__grid, .storehero__brands { display: none; }
 }
 
+/* ---------- Preguntas frecuentes ---------- */
+.faq__list { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+.faq__item { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.faq__question {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 18px; font-weight: 650; font-size: .96rem;
+}
+.faq__question::-webkit-details-marker { display: none; }
+.faq__chevron { flex-shrink: 0; color: var(--text-soft); transition: transform .2s ease; font-size: 1.1rem; }
+.faq__item[open] .faq__chevron { transform: rotate(180deg); }
+.faq__answer { margin: 0; padding: 0 18px 16px; color: var(--text-muted); font-size: .9rem; line-height: 1.55; }
+
 /* ---------- Descubre mas (instalaciones / contacto / conocenos) ---------- */
 .discover { padding-top: 30px; }
 .discover__grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
@@ -1029,6 +1041,8 @@ body.nav-open { overflow: hidden; }
 .footer__col a .icon { font-size: 1rem; opacity: .8; }
 .footer__col p { font-size: .82rem; line-height: 1.5; color: #999; }
 .footer__hours { margin-top: 10px; }
+.footer__review-link .icon { color: #f2b400; opacity: 1; }
+.footer__review-link:hover .icon { color: #f2b400; }
 .footer__social { display: flex; gap: 12px; margin-top: 12px; }
 .footer__social a { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.08); font-size: 1.05rem; }
 .footer__social a:hover { background: var(--red); color: #fff; }

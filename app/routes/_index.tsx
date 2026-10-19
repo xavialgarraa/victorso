@@ -9,6 +9,8 @@ import {RatingBadge, Testimonials} from '~/components/Testimonials';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
+import {listFaqItems} from '~/lib/faq.server';
+import {Faq} from '~/components/Faq';
 
 export const meta: Route.MetaFunction = () => {
   const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
@@ -28,12 +30,13 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({context}: Route.LoaderArgs) {
   const {storefront} = context;
-  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings] =
+  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems] =
     await Promise.all([
       storefront.query(HOME_PRODUCTS_QUERY),
       storefront.query(HOME_COLLECTIONS_QUERY),
       listHeroSlides(context.env),
       getHeroSettings(context.env),
+      listFaqItems(context.env),
     ]);
 
   // Slides del hero vinculados a un producto (ver /admin-interno/hero): el
@@ -89,6 +92,7 @@ export async function loader({context}: Route.LoaderArgs) {
     manualSlides,
     heroSettings,
     linkedProducts,
+    faq: faqItems.map((f) => f.item),
   };
 }
 
@@ -105,7 +109,7 @@ function categoryIcon(title: string): IconName {
 }
 
 export default function Homepage() {
-  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings, linkedProducts} =
+  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings, linkedProducts, faq} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
 
@@ -359,6 +363,8 @@ export default function Homepage() {
           <QuoteForm compact />
         </div>
       </section>
+
+      <Faq items={faq} />
     </div>
   );
 }

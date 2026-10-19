@@ -87,6 +87,15 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
             <Icon name="mail" />
             info@victorso.com
           </a>
+          <a
+            href="https://g.page/r/CRT_6qxQpVGpEBE/review"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer__review-link"
+          >
+            <Icon name="star" />
+            {t('footerReview')}
+          </a>
           <p className="footer__hours">{t('footerHours')}</p>
         </div>
       </div>
