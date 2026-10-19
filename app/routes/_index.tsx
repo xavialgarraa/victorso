@@ -36,6 +36,19 @@ export async function loader({context}: Route.LoaderArgs) {
       getHeroSettings(context.env),
     ]);
 
+  // Slides del hero vinculados a un producto (ver /admin-interno/hero): el
+  // precio (y si está en oferta) se trae en vivo en cada carga de la home,
+  // nunca se guarda fijo — así nunca se queda desactualizado si cambia el
+  // precio en Shopify.
+  const linkedHandles = [...new Set(manualSlides.map((s) => s.slide.productHandle).filter(Boolean))];
+  const linkedProducts = linkedHandles.length
+    ? (
+        await storefront.query(HOME_HERO_LINKED_PRODUCTS_QUERY, {
+          variables: {query: linkedHandles.map((h) => `handle:'${h}'`).join(' OR ')},
+        })
+      ).products.nodes
+    : [];
+
   // "Novedades" del hero: si Iván ha metido productos a mano en la colección
   // "Novedades destacadas (Home)" (Shopify > Colecciones), se usan esos en
   // el orden que él les dé; si la deja vacía, se muestran los 3 productos
@@ -75,6 +88,7 @@ export async function loader({context}: Route.LoaderArgs) {
     collections: collectionsWithProducts,
     manualSlides,
     heroSettings,
+    linkedProducts,
   };
 }
 
@@ -91,38 +105,53 @@ function categoryIcon(title: string): IconName {
 }
 
 export default function Homepage() {
-  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings} =
+  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings, linkedProducts} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
 
+  const linkedByHandle = new Map(linkedProducts.map((p) => [p.handle, p]));
+
+  function manualSlideToHero({id, slide}: (typeof manualSlides)[number]): HeroSlide {
+    const linked = slide.productHandle ? linkedByHandle.get(slide.productHandle) : undefined;
+    const price = linked?.priceRange.minVariantPrice;
+    const compareAtAmount = linked?.compareAtPriceRange?.minVariantPrice?.amount;
+    const onSale = price && compareAtAmount && parseFloat(compareAtAmount) > parseFloat(price.amount);
+
+    return {
+      key: `manual-${id}`,
+      href: slide.href,
+      external: slide.external,
+      image: slide.imageUrl,
+      // Si el producto vinculado está en oferta ahora mismo, la etiqueta
+      // "Oferta" manda sobre la que se guardó al crear el slide — puede
+      // que no estuviera en oferta entonces, o haya dejado de estarlo.
+      badge: onSale ? t('storeHeroOfferBadge') : slide.badge,
+      badgeClass: onSale ? 'storehero__badge--offer' : slide.badgeClass,
+      eyebrow: slide.eyebrow,
+      title: slide.title,
+      priceNode: price ? (
+        <div className="storehero__price">
+          <span className="now">
+            <Money data={price} />
+          </span>
+          {onSale && compareAtAmount && (
+            <span className="was">
+              <Money data={{amount: compareAtAmount, currencyCode: price.currencyCode}} />
+            </span>
+          )}
+        </div>
+      ) : undefined,
+      cta: slide.cta,
+      ctaClass: slide.ctaClass,
+    };
+  }
+
   const manualLeft: HeroSlide[] = manualSlides
     .filter(({slide}) => slide.position === 'left')
-    .map(({id, slide}) => ({
-      key: `manual-${id}`,
-      href: slide.href,
-      external: slide.external,
-      image: slide.imageUrl,
-      badge: slide.badge,
-      badgeClass: slide.badgeClass,
-      eyebrow: slide.eyebrow,
-      title: slide.title,
-      cta: slide.cta,
-      ctaClass: slide.ctaClass,
-    }));
+    .map(manualSlideToHero);
   const manualRight: HeroSlide[] = manualSlides
     .filter(({slide}) => slide.position === 'right')
-    .map(({id, slide}) => ({
-      key: `manual-${id}`,
-      href: slide.href,
-      external: slide.external,
-      image: slide.imageUrl,
-      badge: slide.badge,
-      badgeClass: slide.badgeClass,
-      eyebrow: slide.eyebrow,
-      title: slide.title,
-      cta: slide.cta,
-      ctaClass: slide.ctaClass,
-    }));
+    .map(manualSlideToHero);
 
   const hiddenAutoKeys = heroSettings.hiddenAutoKeys ?? [];
 
@@ -333,6 +362,19 @@ export default function Homepage() {
     </div>
   );
 }
+
+const HOME_HERO_LINKED_PRODUCTS_QUERY = `#graphql
+  query HomeHeroLinkedProducts($query: String!, $country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    products(first: 20, query: $query) {
+      nodes {
+        handle
+        priceRange { minVariantPrice { amount currencyCode } }
+        compareAtPriceRange { minVariantPrice { amount } }
+      }
+    }
+  }
+` as const;
 
 const HOME_PRODUCTS_QUERY = `#graphql
   ${PRODUCT_CARD_FRAGMENT}

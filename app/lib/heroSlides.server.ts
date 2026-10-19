@@ -18,6 +18,12 @@ export type HeroSlide = {
   title: string;
   cta: string;
   ctaClass: 'btn--outline' | 'btn--primary';
+  /** Handle del producto enlazado (vacío si el slide no está vinculado a
+   * ninguno). Si está puesto: el enlace, la imagen (salvo que se suba una
+   * manual) y el precio se sacan del producto real — ver _index.tsx, que
+   * los trae en vivo en cada carga de la home para que nunca queden
+   * desactualizados. */
+  productHandle: string;
 };
 
 const COLLECTION = 'hero_slides';

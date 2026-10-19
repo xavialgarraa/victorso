@@ -30,6 +30,7 @@ export const PRODUCT_CARD_FRAGMENT = `#graphql
     selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {
       id
       availableForSale
+      quantityAvailable
     }
   }
 ` as const;

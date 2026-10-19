@@ -6,6 +6,8 @@ import {useAside} from '~/components/Aside';
 import {Icon} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 
+const LOW_STOCK_THRESHOLD = 3;
+
 export function ProductCard({product}: {product: ProductCardFragment}) {
   const {t} = useI18n();
   const price = product.priceRange.minVariantPrice;
@@ -17,17 +19,23 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
     : 0;
   const variant = product.selectedOrFirstAvailableVariant;
   const {open} = useAside();
+  // quantityAvailable puede venir null si la tienda no tiene activado
+  // "hacer visible el inventario en la Storefront API" — en ese caso no se
+  // muestra el aviso, pero tampoco rompe nada (en vez de 0 falso positivo).
+  const qty = variant?.quantityAvailable;
+  const lowStock = variant?.availableForSale && typeof qty === 'number' && qty > 0 && qty <= LOW_STOCK_THRESHOLD;
 
   return (
     <article className="pcard">
       <Link to={`/products/${product.handle}`} prefetch="intent">
         <div className="pcard__imgwrap">
-          {(hasOffer || !variant?.availableForSale) && (
+          {(hasOffer || !variant?.availableForSale || lowStock) && (
             <div className="pcard__badges">
               {hasOffer && <span className="badge badge--offer">-{pct}%</span>}
               {!variant?.availableForSale && (
                 <span className="badge badge--outlet">{t('outOfStock')}</span>
               )}
+              {lowStock && <span className="badge badge--lowstock">{t('lowStock', qty)}</span>}
             </div>
           )}
           {product.featuredImage && (

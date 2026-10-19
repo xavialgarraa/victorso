@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useRef, useState} from 'react';
 import {Form, data, useActionData, useLoaderData, useNavigation} from 'react-router';
 import type {Route} from './+types/admin-interno.hero';
 import {requireAdminUser} from '~/lib/adminSession.server';
@@ -43,13 +43,60 @@ const ADMIN_HERO_AUTO_QUERY = `#graphql
   }
 ` as const;
 
+export type HeroPickerProduct = {
+  handle: string;
+  title: string;
+  vendor: string;
+  image: string;
+  price: number;
+  compareAtPrice: number | null;
+  currency: string;
+};
+
+// Lista plana de productos para el selector del panel — se trae entera de
+// una vez (primeros 250) en vez de buscar por API en cada tecla, así el
+// autocompletar y la vista previa funcionan al instante en el cliente sin
+// ida y vuelta al servidor.
+const ADMIN_HERO_PRODUCTS_QUERY = `#graphql
+  query AdminHeroProducts($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    products(first: 250, sortKey: TITLE) {
+      nodes {
+        handle
+        title
+        vendor
+        featuredImage { url altText }
+        priceRange { minVariantPrice { amount currencyCode } }
+        compareAtPriceRange { minVariantPrice { amount } }
+      }
+    }
+  }
+` as const;
+
 export async function loader({request, context}: Route.LoaderArgs) {
   const {user, headers} = await requireAdminUser(request, context.env);
-  const [slides, settings, autoData] = await Promise.all([
+  const [slides, settings, autoData, productsData] = await Promise.all([
     listHeroSlides(context.env),
     getHeroSettings(context.env),
     context.storefront.query(ADMIN_HERO_AUTO_QUERY),
+    context.storefront.query(ADMIN_HERO_PRODUCTS_QUERY),
   ]);
+
+  const products: HeroPickerProduct[] = productsData.products.nodes.map((p) => {
+    const price = Number(p.priceRange.minVariantPrice.amount);
+    const compareAt = p.compareAtPriceRange?.minVariantPrice?.amount
+      ? Number(p.compareAtPriceRange.minVariantPrice.amount)
+      : null;
+    return {
+      handle: p.handle,
+      title: p.title,
+      vendor: p.vendor,
+      image: p.featuredImage?.url ?? '',
+      price,
+      compareAtPrice: compareAt && compareAt > price ? compareAt : null,
+      currency: p.priceRange.minVariantPrice.currencyCode,
+    };
+  });
 
   const newest = autoData.featuredHome?.products?.nodes?.length
     ? autoData.featuredHome.products.nodes.slice(0, 3)
@@ -70,7 +117,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
     {key: 'visit', tag: 'Visítanos', title: 'Ven a probar el equipo a la tienda', image: '/assets/tienda-fachada.jpeg'},
   ];
 
-  return data({user, slides, settings, autoLeftCandidates, autoRightCandidates}, {headers});
+  return data({user, slides, settings, autoLeftCandidates, autoRightCandidates, products}, {headers});
 }
 
 type ActionResult =
@@ -83,13 +130,15 @@ type ActionResult =
   | {intent: 'toggle-auto'; ok: true}
   | {intent: 'move-slide'; ok: true};
 
-function slideFromForm(formData: FormData, imageUrl: string): HeroSlide {
+function slideFromForm(formData: FormData, imageUrl: string, productHandle: string): HeroSlide {
   return {
     position: formData.get('position') === 'right' ? 'right' : 'left',
     order: Number(formData.get('order')) || 0,
     imageUrl,
-    href: String(formData.get('href') || '').trim(),
-    external: formData.get('external') === 'on',
+    // Vinculado a un producto: el enlace siempre es el de su ficha, no se
+    // puede escribir uno distinto a mano (ver por qué en el formulario).
+    href: productHandle ? `/products/${productHandle}` : String(formData.get('href') || '').trim(),
+    external: productHandle ? false : formData.get('external') === 'on',
     badge: String(formData.get('badge') || '').trim(),
     badgeClass:
       (formData.get('badgeClass') as HeroSlide['badgeClass']) || 'storehero__badge--new',
@@ -97,7 +146,36 @@ function slideFromForm(formData: FormData, imageUrl: string): HeroSlide {
     title: String(formData.get('title') || '').trim(),
     cta: String(formData.get('cta') || '').trim(),
     ctaClass: (formData.get('ctaClass') as HeroSlide['ctaClass']) || 'btn--primary',
+    productHandle,
   };
+}
+
+/** Si se sube una imagen a mano, esa gana siempre. Si no, y el slide está
+ * vinculado a un producto, se usa la foto real de ese producto — se vuelve
+ * a pedir aquí (no se confía en lo que mande el formulario) para no fiarse
+ * de una URL de imagen que alguien podría manipular en el cliente. */
+async function resolveImageUrl(
+  context: Route.ActionArgs['context'],
+  formData: FormData,
+  productHandle: string,
+  fallbackImageUrl: string,
+): Promise<string> {
+  const file = formData.get('image');
+  if (file instanceof File && file.size > 0) {
+    return uploadImageToShopify(context.env, file);
+  }
+  if (productHandle) {
+    const result = await context.storefront.query(
+      `#graphql
+        query AdminHeroSlideProductImage($handle: String!) {
+          product(handle: $handle) { featuredImage { url } }
+        }
+      `,
+      {variables: {handle: productHandle}},
+    );
+    if (result.product?.featuredImage?.url) return result.product.featuredImage.url;
+  }
+  return fallbackImageUrl;
 }
 
 export async function action({request, context}: Route.ActionArgs) {
@@ -135,12 +213,22 @@ export async function action({request, context}: Route.ActionArgs) {
 
   if (intent === 'add-slide') {
     try {
+      const productHandle = String(formData.get('productHandle') || '').trim();
       const file = formData.get('image');
-      if (!(file instanceof File) || file.size === 0) {
-        return data<ActionResult>({intent: 'add-slide', ok: false, error: 'Elige una imagen.'}, {headers});
+      if (!productHandle && (!(file instanceof File) || file.size === 0)) {
+        return data<ActionResult>(
+          {intent: 'add-slide', ok: false, error: 'Elige una imagen o vincula un producto con foto.'},
+          {headers},
+        );
       }
-      const imageUrl = await uploadImageToShopify(context.env, file);
-      await createHeroSlide(context.env, slideFromForm(formData, imageUrl));
+      const imageUrl = await resolveImageUrl(context, formData, productHandle, '');
+      if (!imageUrl) {
+        return data<ActionResult>(
+          {intent: 'add-slide', ok: false, error: 'Ese producto no tiene foto — sube una imagen a mano.'},
+          {headers},
+        );
+      }
+      await createHeroSlide(context.env, slideFromForm(formData, imageUrl, productHandle));
       return data<ActionResult>({intent: 'add-slide', ok: true}, {headers});
     } catch (error) {
       console.error('[admin-interno/hero] add-slide', error);
@@ -159,11 +247,10 @@ export async function action({request, context}: Route.ActionArgs) {
       const existing = (await listHeroSlides(context.env)).find((s) => s.id === id);
       if (!existing) throw new Error('Ese slide ya no existe.');
 
-      const file = formData.get('image');
-      const imageUrl =
-        file instanceof File && file.size > 0 ? await uploadImageToShopify(context.env, file) : existing.slide.imageUrl;
+      const productHandle = String(formData.get('productHandle') || '').trim();
+      const imageUrl = await resolveImageUrl(context, formData, productHandle, existing.slide.imageUrl);
 
-      await updateHeroSlide(context.env, id, slideFromForm(formData, imageUrl));
+      await updateHeroSlide(context.env, id, slideFromForm(formData, imageUrl, productHandle));
       return data<ActionResult>({intent: 'update-slide', ok: true}, {headers});
     } catch (error) {
       console.error('[admin-interno/hero] update-slide', error);
@@ -197,61 +284,218 @@ function badgeSuffix(badgeClass: HeroSlide['badgeClass']) {
   return badgeClass.replace('storehero__badge--', '');
 }
 
+function formatPrice(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('es-ES', {style: 'currency', currency}).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`;
+  }
+}
+
 /**
- * La foto se estira con "object-fit: cover" y el recuadro del hero cambia
- * de proporción según el dispositivo (más cuadrado en móvil, más ancho en
- * escritorio) — así que un mismo encuadre no se ve igual en todos lados.
- * Esto muestra en vivo qué parte de la foto se recorta en cada tamaño,
- * antes de guardarla, para poder elegir/centrar bien la imagen.
+ * Todos los campos editables de un slide (vincular a producto, imagen,
+ * textos/botón) más la vista previa en vivo — se usa igual para "Añadir"
+ * que para "Editar", pasando los valores iniciales en cada caso.
+ *
+ * Vincular a un producto hace tres cosas solas: fija el enlace a su ficha
+ * (no hace falta escribirlo), usa su foto real si no se sube una a mano, y
+ * -lo más visible- pinta el precio en la vista previa; si el producto está
+ * en oferta (precio comparado más alto) y no se ha escrito una etiqueta a
+ * mano, sugiere "Oferta" sola.
  */
-function HeroImageCropPreview({initialUrl}: {initialUrl?: string}) {
-  const [src, setSrc] = useState<string | null>(initialUrl ?? null);
+function SlideFields({
+  products,
+  initial,
+}: {
+  products: HeroPickerProduct[];
+  initial?: {
+    imageUrl?: string;
+    href?: string;
+    external?: boolean;
+    badge?: string;
+    badgeClass?: HeroSlide['badgeClass'];
+    eyebrow?: string;
+    title?: string;
+    cta?: string;
+    ctaClass?: HeroSlide['ctaClass'];
+    order?: number;
+    productHandle?: string;
+  };
+}) {
+  const [productHandle, setProductHandle] = useState(initial?.productHandle ?? '');
+  const [manualImageSrc, setManualImageSrc] = useState<string | null>(null);
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [badge, setBadge] = useState(initial?.badge ?? '');
+  const [badgeClass, setBadgeClass] = useState<HeroSlide['badgeClass']>(
+    initial?.badgeClass ?? 'storehero__badge--new',
+  );
+  const [eyebrow, setEyebrow] = useState(initial?.eyebrow ?? '');
+  const [cta, setCta] = useState(initial?.cta ?? '');
+  const [ctaClass, setCtaClass] = useState<HeroSlide['ctaClass']>(initial?.ctaClass ?? 'btn--primary');
+  const lastAppliedHandle = useRef<string | null>(null);
+
+  const product = products.find((p) => p.handle === productHandle.trim()) ?? null;
+
+  // Solo autorrellena al ELEGIR un producto (no en cada letra tecleada ni
+  // en renders posteriores) — y solo pisa campos que el admin aún no ha
+  // tocado a mano, para no borrarle algo que ya haya escrito.
+  if (product && lastAppliedHandle.current !== product.handle) {
+    lastAppliedHandle.current = product.handle;
+    if (!title) setTitle(product.title);
+    if (!eyebrow) setEyebrow(product.vendor);
+    if (!badge && product.compareAtPrice) {
+      setBadge('Oferta');
+      setBadgeClass('storehero__badge--offer');
+    }
+  }
+
+  const previewImage = manualImageSrc ?? product?.image ?? initial?.imageUrl ?? '';
+  const href = product ? `/products/${product.handle}` : (initial?.href ?? '');
 
   return (
-    <>
-      <input
-        type="file"
-        name="image"
-        accept="image/*"
-        required={!initialUrl}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) {
-            setSrc(initialUrl ?? null);
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = () => setSrc(String(reader.result));
-          reader.readAsDataURL(file);
-        }}
-      />
-      {src && (
-        <div className="hero-admin__crop-preview">
-          <p className="admin-hint" style={{margin: '8px 0 6px'}}>
-            Así se recortará según la pantalla — procura que lo importante quede centrado:
+    <div className="hero-admin__editor">
+      <div className="hero-admin__editor-fields">
+        <label>Vincular a un producto (opcional)</label>
+        <input
+          type="text"
+          name="productHandle"
+          list="hero-products-list"
+          value={productHandle}
+          placeholder="Escribe el nombre del producto…"
+          onChange={(e) => setProductHandle(e.target.value)}
+        />
+        {productHandle && !product && (
+          <p className="admin-hint" style={{color: 'var(--red, #c0392b)'}}>
+            No es un producto de la lista — elige uno de las sugerencias o borra el campo.
           </p>
-          <div className="hero-admin__crop-row">
-            <div className="hero-admin__crop-box hero-admin__crop-box--mobile">
-              <img src={src} alt="" />
-              <span className="hero-admin__crop-label">Móvil</span>
-            </div>
-            <div className="hero-admin__crop-box hero-admin__crop-box--tablet">
-              <img src={src} alt="" />
-              <span className="hero-admin__crop-label">Tablet</span>
-            </div>
-            <div className="hero-admin__crop-box hero-admin__crop-box--desktop">
-              <img src={src} alt="" />
-              <span className="hero-admin__crop-label">Escritorio</span>
-            </div>
+        )}
+        {product && (
+          <p className="admin-hint">
+            Enlazado a <strong>{product.title}</strong> — enlace, foto (si no subes una) y precio salen de ahí
+            solos.
+          </p>
+        )}
+
+        <label>{product ? 'Imagen (opcional — sin esto se usa la del producto)' : 'Imagen'}</label>
+        <input
+          type="file"
+          name="image"
+          accept="image/*"
+          required={!product && !initial?.imageUrl}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) {
+              setManualImageSrc(null);
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => setManualImageSrc(String(reader.result));
+            reader.readAsDataURL(file);
+          }}
+        />
+
+        {!product && (
+          <>
+            <label>Enlace</label>
+            <input type="text" name="href" defaultValue={initial?.href} />
+            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+              <input type="checkbox" name="external" defaultChecked={initial?.external} style={{width: 'auto'}} />
+              Enlace externo
+            </label>
+          </>
+        )}
+
+        <div className="hero-admin__field-grid">
+          <div>
+            <label>Etiqueta (badge)</label>
+            <input type="text" name="badge" value={badge} onChange={(e) => setBadge(e.target.value)} />
+          </div>
+          <div>
+            <label>Tipo de etiqueta</label>
+            <select name="badgeClass" value={badgeClass} onChange={(e) => setBadgeClass(e.target.value as HeroSlide['badgeClass'])}>
+              {BADGE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="hero-admin__field-grid--full">
+            <label>Texto pequeño (eyebrow)</label>
+            <input type="text" name="eyebrow" value={eyebrow} onChange={(e) => setEyebrow(e.target.value)} />
+          </div>
+          <div className="hero-admin__field-grid--full">
+            <label>Título</label>
+            <input type="text" name="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <label>Texto del botón</label>
+            <input type="text" name="cta" value={cta} onChange={(e) => setCta(e.target.value)} />
+          </div>
+          <div>
+            <label>Estilo del botón</label>
+            <select name="ctaClass" value={ctaClass} onChange={(e) => setCtaClass(e.target.value as HeroSlide['ctaClass'])}>
+              {CTA_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label>Orden</label>
+            <input type="number" name="order" defaultValue={initial?.order ?? 0} />
           </div>
         </div>
-      )}
-    </>
+
+        {previewImage && (
+          <div className="hero-admin__crop-preview">
+            <p className="admin-hint" style={{margin: '8px 0 6px'}}>
+              Así se recortará según la pantalla — procura que lo importante quede centrado:
+            </p>
+            <div className="hero-admin__crop-row">
+              <div className="hero-admin__crop-box hero-admin__crop-box--mobile">
+                <img src={previewImage} alt="" />
+                <span className="hero-admin__crop-label">Móvil</span>
+              </div>
+              <div className="hero-admin__crop-box hero-admin__crop-box--tablet">
+                <img src={previewImage} alt="" />
+                <span className="hero-admin__crop-label">Tablet</span>
+              </div>
+              <div className="hero-admin__crop-box hero-admin__crop-box--desktop">
+                <img src={previewImage} alt="" />
+                <span className="hero-admin__crop-label">Escritorio</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hero-admin__editor-preview">
+        <span className="admin-hint" style={{display: 'block', marginBottom: 8}}>
+          Vista previa
+        </span>
+        <div className="storehero__slide hero-admin__live-preview">
+          {previewImage && <img className="storehero__slide-img" src={previewImage} alt="" />}
+          {badge && <span className={`storehero__badge ${badgeClass}`}>{badge}</span>}
+          <div className="storehero__info">
+            {eyebrow && <div className="storehero__eyebrow">{eyebrow}</div>}
+            <h2 className="storehero__title">{title || 'Título del slide'}</h2>
+            {product && (
+              <div className="storehero__price">
+                <span className="now">{formatPrice(product.price, product.currency)}</span>
+                {product.compareAtPrice && (
+                  <span className="was">{formatPrice(product.compareAtPrice, product.currency)}</span>
+                )}
+              </div>
+            )}
+            <span className={`btn ${ctaClass}`}>{cta || 'Botón'}</span>
+          </div>
+        </div>
+        {href && <p className="admin-hint">Enlace: {href}</p>}
+      </div>
+    </div>
   );
 }
 
 export default function AdminHero() {
-  const {user, slides, settings, autoLeftCandidates, autoRightCandidates} = useLoaderData<typeof loader>();
+  const {user, slides, settings, autoLeftCandidates, autoRightCandidates, products} = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isBusy = navigation.state !== 'idle';
@@ -269,6 +513,12 @@ export default function AdminHero() {
         <code>/blogs/noticias/mi-articulo</code> para llevar a una entrada del blog) o externo marcando "Enlace
         externo".
       </p>
+
+      <datalist id="hero-products-list">
+        {products.map((p) => (
+          <option key={p.handle} value={p.handle} label={`${p.title} — ${p.vendor}`} />
+        ))}
+      </datalist>
 
       <div className="admin-card">
         <h2 style={{marginTop: 0}}>Relleno automático</h2>
@@ -355,42 +605,28 @@ export default function AdminHero() {
                       </summary>
                       <div
                         className="hero-admin__add-form"
-                        style={{position: 'absolute', right: 0, top: 36, zIndex: 5, width: 320, boxShadow: 'var(--shadow-lg)'}}
+                        style={{position: 'absolute', right: 0, top: 36, zIndex: 5, width: 640, maxWidth: '90vw', boxShadow: 'var(--shadow-lg)'}}
                       >
-                        <Form method="post" encType="multipart/form-data" className="admin-form">
+                        <Form method="post" encType="multipart/form-data" className="admin-form" key={id}>
                           <input type="hidden" name="intent" value="update-slide" />
                           <input type="hidden" name="id" value={id} />
                           <input type="hidden" name="position" value={slide.position} />
-                          <label>Nueva imagen (opcional)</label>
-                          <HeroImageCropPreview initialUrl={slide.imageUrl} />
-                          <label>Enlace</label>
-                          <input type="text" name="href" defaultValue={slide.href} />
-                          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-                            <input type="checkbox" name="external" defaultChecked={slide.external} style={{width: 'auto'}} />
-                            Enlace externo
-                          </label>
-                          <label>Etiqueta (badge)</label>
-                          <input type="text" name="badge" defaultValue={slide.badge} />
-                          <label>Tipo de etiqueta</label>
-                          <select name="badgeClass" defaultValue={slide.badgeClass}>
-                            {BADGE_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                          </select>
-                          <label>Texto pequeño (eyebrow)</label>
-                          <input type="text" name="eyebrow" defaultValue={slide.eyebrow} />
-                          <label>Título</label>
-                          <input type="text" name="title" defaultValue={slide.title} />
-                          <label>Texto del botón</label>
-                          <input type="text" name="cta" defaultValue={slide.cta} />
-                          <label>Estilo del botón</label>
-                          <select name="ctaClass" defaultValue={slide.ctaClass}>
-                            {CTA_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                          </select>
-                          <label>Orden</label>
-                          <input type="number" name="order" defaultValue={slide.order} />
+                          <SlideFields
+                            products={products}
+                            initial={{
+                              imageUrl: slide.imageUrl,
+                              href: slide.href,
+                              external: slide.external,
+                              badge: slide.badge,
+                              badgeClass: slide.badgeClass,
+                              eyebrow: slide.eyebrow,
+                              title: slide.title,
+                              cta: slide.cta,
+                              ctaClass: slide.ctaClass,
+                              order: slide.order,
+                              productHandle: slide.productHandle,
+                            }}
+                          />
                           <button type="submit" className="admin-btn admin-btn--outline" style={{marginTop: 8}} disabled={isBusy}>
                             Guardar cambios
                           </button>
@@ -456,58 +692,11 @@ export default function AdminHero() {
               <summary className="hero-admin__add-tile">
                 + Añadir slide en el panel {position === 'left' ? 'izquierdo' : 'derecho'}
               </summary>
-              <div className="hero-admin__add-form">
+              <div className="hero-admin__add-form" style={{width: 640, maxWidth: '90vw'}}>
                 <Form method="post" encType="multipart/form-data" className="admin-form">
                   <input type="hidden" name="intent" value="add-slide" />
                   <input type="hidden" name="position" value={position} />
-                  <label>Imagen</label>
-                  <HeroImageCropPreview />
-                  <div className="hero-admin__field-grid">
-                    <div className="hero-admin__field-grid--full">
-                      <label>Enlace (ej. /blogs/noticias/mi-articulo, /collections/dj, https://...)</label>
-                      <input type="text" name="href" required />
-                    </div>
-                    <div>
-                      <label>Etiqueta (badge)</label>
-                      <input type="text" name="badge" placeholder="Ej. Nuevo" />
-                    </div>
-                    <div>
-                      <label>Tipo de etiqueta</label>
-                      <select name="badgeClass" defaultValue="storehero__badge--new">
-                        {BADGE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="hero-admin__field-grid--full">
-                      <label>Texto pequeño (eyebrow)</label>
-                      <input type="text" name="eyebrow" placeholder="Ej. Recién llegado" />
-                    </div>
-                    <div className="hero-admin__field-grid--full">
-                      <label>Título</label>
-                      <input type="text" name="title" placeholder="Título grande del slide" />
-                    </div>
-                    <div>
-                      <label>Texto del botón</label>
-                      <input type="text" name="cta" placeholder="Ej. Descubrir" />
-                    </div>
-                    <div>
-                      <label>Estilo del botón</label>
-                      <select name="ctaClass" defaultValue="btn--primary">
-                        {CTA_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label>Orden</label>
-                      <input type="number" name="order" defaultValue={0} />
-                    </div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 6, marginTop: 24}}>
-                      <input type="checkbox" name="external" style={{width: 'auto'}} />
-                      <label style={{margin: 0}}>Enlace externo (pestaña nueva)</label>
-                    </div>
-                  </div>
+                  <SlideFields products={products} />
                   <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
                     {isBusy ? 'Subiendo…' : 'Añadir slide'}
                   </button>
