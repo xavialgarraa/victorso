@@ -24,6 +24,9 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
   const currency = cart?.cost?.subtotalAmount?.currencyCode || 'EUR';
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const progressPct = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
+  // Mismo motivo que el <ShopifyProvider> de root.tsx: formato español
+  // (1.234,56 €) siempre, sea cual sea el idioma elegido en la web.
+  const remainingFormatted = new Intl.NumberFormat('es-ES', {style: 'currency', currency}).format(remaining);
 
   return (
     <div className={layout === 'page' ? 'cart-summary' : 'cart-summary cart-summary--aside'}>
@@ -32,7 +35,7 @@ export function CartSummary({cart, layout}: CartSummaryProps) {
       <div className="shipping-progress">
         <p>
           {remaining > 0
-            ? t('shippingProgress', `${remaining.toFixed(2)} ${currency}`)
+            ? t('shippingProgress', remainingFormatted)
             : t('shippingReached')}
         </p>
         <div className="shipping-progress__bar">

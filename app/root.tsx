@@ -1,4 +1,7 @@
 import {Analytics, getShopAnalytics, useNonce} from '@shopify/hydrogen';
+// ShopifyProvider no lo reexporta @shopify/hydrogen en esta versión (solo
+// hydrogen-react lo expone) — ver comentario junto a su uso más abajo.
+import {ShopifyProvider} from '@shopify/hydrogen-react';
 import {
   Outlet,
   useRouteError,
@@ -105,6 +108,11 @@ export async function loader(args: Route.LoaderArgs) {
     ...deferredData,
     ...criticalData,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
+    // Público por diseño (de ahí el nombre) — necesario en el cliente para
+    // <ShopifyProvider>, que es quien hace que <Money>/useMoney formateen
+    // los precios en es-ES (1.234,56 €) en vez de caer en el locale por
+    // defecto de Hydrogen (en-US) cuando no hay ningún <ShopifyProvider>.
+    storefrontApiToken: env.PUBLIC_STOREFRONT_API_TOKEN,
     shop: getShopAnalytics({
       storefront,
       publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
@@ -211,24 +219,41 @@ export default function App() {
     return <Outlet />;
   }
 
+  // countryIsoCode/languageIsoCode fijos a España (no al idioma elegido en
+  // el selector) a propósito: la moneda es siempre EUR y los clientes son
+  // de España pase lo que pase en qué idioma estén leyendo la web — fijarlo
+  // así garantiza el formato 1.234,56 € siempre, incluso en inglés (donde
+  // Intl usaría coma de miles si se le diera "en" como idioma del locale).
+  const shopifyProviderProps = {
+    storeDomain: `https://${data.publicStoreDomain}`,
+    storefrontToken: data.storefrontApiToken,
+    storefrontApiVersion: '2026-04',
+    countryIsoCode: 'ES' as const,
+    languageIsoCode: 'ES' as const,
+  };
+
   if (isBareLayout) {
     return (
-      <Analytics.Provider cart={data.cart} shop={data.shop} consent={data.consent}>
-        <Outlet />
-      </Analytics.Provider>
+      <ShopifyProvider {...shopifyProviderProps}>
+        <Analytics.Provider cart={data.cart} shop={data.shop} consent={data.consent}>
+          <Outlet />
+        </Analytics.Provider>
+      </ShopifyProvider>
     );
   }
 
   return (
-    <Analytics.Provider
-      cart={data.cart}
-      shop={data.shop}
-      consent={data.consent}
-    >
-      <PageLayout {...data}>
-        <Outlet />
-      </PageLayout>
-    </Analytics.Provider>
+    <ShopifyProvider {...shopifyProviderProps}>
+      <Analytics.Provider
+        cart={data.cart}
+        shop={data.shop}
+        consent={data.consent}
+      >
+        <PageLayout {...data}>
+          <Outlet />
+        </PageLayout>
+      </Analytics.Provider>
+    </ShopifyProvider>
   );
 }
 
