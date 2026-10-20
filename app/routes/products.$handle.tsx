@@ -19,6 +19,7 @@ import {Icon} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 import {getReviews} from '~/lib/productReviews.server';
 import {ProductReviews, ReviewsRatingLine} from '~/components/ProductReviews';
+import {jsonLdHtml} from '~/lib/jsonLd';
 
 export const meta: Route.MetaFunction = ({data}) => {
   const product = data?.product;
@@ -176,8 +177,8 @@ export default function Product() {
 
   return (
     <div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(productJsonLd)}} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(breadcrumbJsonLd)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdHtml(productJsonLd)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdHtml(breadcrumbJsonLd)}} />
       <div className="breadcrumb container">
         <Link to="/">{t('breadcrumbHome')}</Link> / {title}
       </div>

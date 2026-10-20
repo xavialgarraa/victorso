@@ -6,6 +6,7 @@ import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 import {useI18n} from '~/lib/i18n';
+import {jsonLdHtml} from '~/lib/jsonLd';
 
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
@@ -130,7 +131,7 @@ export default function Collection() {
 
   return (
     <div className="collection">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(breadcrumbJsonLd)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdHtml(breadcrumbJsonLd)}} />
       <div className="breadcrumb container">
         <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
       </div>

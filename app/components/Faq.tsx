@@ -1,5 +1,6 @@
 import type {FaqItem} from '~/lib/faq.server';
 import {useI18n} from '~/lib/i18n';
+import {jsonLdHtml} from '~/lib/jsonLd';
 
 /**
  * Acordeón de preguntas frecuentes + datos estructurados FAQPage (JSON-LD)
@@ -44,7 +45,7 @@ export function Faq({items}: {items: FaqItem[]}) {
           ))}
         </div>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(jsonLd)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdHtml(jsonLd)}} />
     </section>
   );
 }

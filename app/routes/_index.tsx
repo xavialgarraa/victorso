@@ -11,6 +11,7 @@ import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
 import {listFaqItems} from '~/lib/faq.server';
 import {Faq} from '~/components/Faq';
+import {jsonLdHtml} from '~/lib/jsonLd';
 
 export const meta: Route.MetaFunction = () => {
   const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
@@ -373,7 +374,7 @@ export default function Homepage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLdHtml({
             '@context': 'https://schema.org',
             '@type': 'WebSite',
             url: 'https://www.victorso.es/',

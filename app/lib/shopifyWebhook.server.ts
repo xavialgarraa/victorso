@@ -16,10 +16,24 @@ export async function verifyShopifyWebhook(
     new TextEncoder().encode(secret),
     {name: 'HMAC', hash: 'SHA-256'},
     false,
-    ['sign'],
+    ['verify'],
   );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
-  const computedHmac = btoa(String.fromCharCode(...new Uint8Array(signature)));
 
-  return computedHmac === hmacHeader;
+  let signatureBytes: Uint8Array;
+  try {
+    const binary = atob(hmacHeader);
+    signatureBytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) signatureBytes[i] = binary.charCodeAt(i);
+  } catch {
+    return false;
+  }
+
+  // crypto.subtle.verify hace la comparación en tiempo constante, a
+  // diferencia de comparar dos strings con === (vulnerable a timing attack).
+  return crypto.subtle.verify(
+    'HMAC',
+    key,
+    signatureBytes as BufferSource,
+    new TextEncoder().encode(rawBody),
+  );
 }

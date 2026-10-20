@@ -19,6 +19,7 @@ import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import {PageLayout} from './components/PageLayout';
+import {jsonLdHtml} from '~/lib/jsonLd';
 
 export type RootLoader = typeof loader;
 
@@ -287,7 +288,7 @@ export default function App() {
       >
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{__html: JSON.stringify(localBusinessJsonLd)}}
+          dangerouslySetInnerHTML={{__html: jsonLdHtml(localBusinessJsonLd)}}
         />
         <PageLayout {...data}>
           <Outlet />
