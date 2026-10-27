@@ -461,6 +461,21 @@ function HeaderSearch() {
                   <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
                     <Icon name="search" />
                   </button>
+                  {/* Abre el asistente de IA ya existente (burbuja de
+                      chat), pasándole lo que haya escrito como primera
+                      pregunta — no es un buscador aparte, es el mismo. */}
+                  <button
+                    type="button"
+                    className="search-ai-btn"
+                    onClick={() => {
+                      const query = inputRef.current?.value ?? '';
+                      window.dispatchEvent(new CustomEvent('open-chat-assistant', {detail: {query}}));
+                      closeOverlay();
+                    }}
+                  >
+                    <Icon name="sparkle" />
+                    <span>{t('searchAiMode')}</span>
+                  </button>
                 </>
               )}
             </SearchFormPredictive>

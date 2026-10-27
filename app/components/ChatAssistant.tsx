@@ -29,6 +29,12 @@ export function ChatAssistant() {
   const isLoading = fetcher.state !== 'idle';
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // El listener de "open-chat-assistant" de abajo se registra una sola vez
+  // (deps []), así que no puede llamar a submitText directamente — vería
+  // siempre los "messages"/"isLoading" del primer render (closure
+  // obsoleta) y reiniciaría la conversación cada vez. Este ref se
+  // actualiza en cada render para que siempre apunte a la versión fresca.
+  const submitTextRef = useRef<(text: string) => void>(() => {});
 
   useEffect(() => {
     if (listRef.current) {
@@ -46,10 +52,16 @@ export function ChatAssistant() {
   }, [open]);
 
   // Permite abrir el chat desde otros sitios de la web (ej. "sin
-  // resultados de búsqueda, pregúntale al asistente") sin acoplarse
-  // directamente a este componente.
+  // resultados de búsqueda, pregúntale al asistente", o el botón "Modo IA"
+  // del buscador) sin acoplarse directamente a este componente. Si el
+  // evento trae un "query" en el detail, se manda directa como primera
+  // pregunta en vez de dejar el chat a la espera.
   useEffect(() => {
-    const openChat = () => setOpen(true);
+    const openChat = (e: Event) => {
+      setOpen(true);
+      const query = (e as CustomEvent<{query?: string}>).detail?.query?.trim();
+      if (query) submitTextRef.current(query);
+    };
     window.addEventListener('open-chat-assistant', openChat);
     return () => window.removeEventListener('open-chat-assistant', openChat);
   }, []);
@@ -81,6 +93,10 @@ export function ChatAssistant() {
       {method: 'post', action: '/api/chat', encType: 'application/json'},
     );
   }
+
+  useEffect(() => {
+    submitTextRef.current = submitText;
+  });
 
   // Nueva función para vaciar el chat
   function clearChat() {
