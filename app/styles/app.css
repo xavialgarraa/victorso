@@ -1436,6 +1436,13 @@ aside li { margin-bottom: .125rem; }
 .overlay.expanded { opacity: 1; pointer-events: auto; visibility: visible; }
 .overlay.expanded aside { transform: translateX(calc(var(--aside-width) * -1)); }
 
+/* El carrito es más ancho en escritorio para poder enseñar "Completa tu
+   pedido" a la derecha de las líneas del carrito, cuando hay hueco. En
+   pantallas pequeñas conserva el ancho normal de cualquier aside. */
+@media (min-width: 1100px) {
+  .overlay--cart { --aside-width: 760px; }
+}
+
 /* ---------- Menu movil (contenido del Aside type="mobile") ---------- */
 .mobile-menu { display: flex; flex-direction: column; }
 .mobile-menu__item { padding: 14px 4px; border-bottom: 1px solid var(--nav-border); color: var(--nav-text); font-weight: 600; font-size: .95rem; }
@@ -1464,6 +1471,24 @@ aside li { margin-bottom: .125rem; }
 
 /* ---------- Carrito: drawer lateral y detalles de Hydrogen ---------- */
 .cart-drawer { display: flex; flex-direction: column; gap: 20px; }
+@media (min-width: 1100px) {
+  .cart-drawer { flex-direction: row; align-items: flex-start; gap: 28px; }
+  .cart-drawer__main { width: 380px; flex-shrink: 0; }
+}
+.cart-recs { display: none; }
+@media (min-width: 1100px) {
+  .cart-recs { display: block; flex: 1; min-width: 0; border-left: 1px solid var(--aside-border); padding-left: 28px; }
+}
+.cart-recs h4 { margin: 0 0 14px; font-family: var(--font-display); font-size: .95rem; color: var(--text); }
+.cart-recs__list { display: flex; flex-direction: column; gap: 14px; }
+.cart-recs__item { display: flex; align-items: center; gap: 10px; }
+.cart-recs__img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; background: var(--img-bg); flex-shrink: 0; }
+.cart-recs__info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cart-recs__title { font-size: .82rem; color: var(--text); text-decoration: none; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cart-recs__title:hover { color: var(--red); }
+.cart-recs__price { font-size: .8rem; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
+.cart-recs__add { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--red); color: #fff; font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.cart-recs__add:hover { background: var(--red-dark); }
 .cart-summary--aside { position: static; top: auto; animation: cart-panel-in .35s .05s var(--ease) both; }
 .cart-summary__actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .cart-discount-section { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }

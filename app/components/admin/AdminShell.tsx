@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   {to: '/admin-interno/crear-producto', label: 'Crear producto', end: false},
   {to: '/admin-interno/hero', label: 'Hero', end: false},
   {to: '/admin-interno/descripcion', label: 'Descripción de producto', end: false},
+  {to: '/admin-interno/recomendaciones', label: 'Recomendaciones carrito', end: false},
   {to: '/admin-interno/instalaciones', label: 'Instalaciones', end: false},
   {to: '/admin-interno/instagram', label: 'Instagram', end: false},
   {to: '/admin-interno/faq', label: 'Preguntas frecuentes', end: false},

@@ -4,6 +4,7 @@ import type {CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {CartLineItem, type CartLine} from '~/components/CartLineItem';
 import {CartSummary} from './CartSummary';
+import {CartRecommendations} from './CartRecommendations';
 import {useI18n} from '~/lib/i18n';
 
 export type CartLayout = 'page' | 'aside';
@@ -50,17 +51,20 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
 
   return (
     <div className={layout === 'page' ? 'cart-page' : 'cart-drawer'}>
-      <div>
-        {(cart?.lines?.nodes ?? []).map((line) => {
-          if ('parentRelationship' in line && line.parentRelationship?.parent) {
-            return null;
-          }
-          return (
-            <CartLineItem key={line.id} line={line} layout={layout} childrenMap={childrenMap} />
-          );
-        })}
+      <div className="cart-drawer__main">
+        <div>
+          {(cart?.lines?.nodes ?? []).map((line) => {
+            if ('parentRelationship' in line && line.parentRelationship?.parent) {
+              return null;
+            }
+            return (
+              <CartLineItem key={line.id} line={line} layout={layout} childrenMap={childrenMap} />
+            );
+          })}
+        </div>
+        <CartSummary cart={cart} layout={layout} />
       </div>
-      <CartSummary cart={cart} layout={layout} />
+      {layout === 'aside' && cart && <CartRecommendations cart={cart} />}
     </div>
   );
 }
