@@ -101,7 +101,15 @@ export default function Product() {
     getAdjacentAndFirstAvailableVariants(product),
   );
 
-  useSelectedOptionInUrlParam(selectedVariant.selectedOptions);
+  // Igual que en getVariantUrl (app/lib/variants.ts): "Title: Default Title"
+  // es el placeholder interno de Shopify para productos sin variantes
+  // reales — no debe aparecer en la URL. Sin este filtro, el hook de
+  // Hydrogen lo metía solo al cargar la página, aunque se entrara por un
+  // enlace limpio.
+  const urlSelectedOptions = selectedVariant.selectedOptions.filter(
+    (o) => !(o.name === 'Title' && o.value === 'Default Title'),
+  );
+  useSelectedOptionInUrlParam(urlSelectedOptions);
 
   const productOptions = getProductOptions({
     ...product,
