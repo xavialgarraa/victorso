@@ -607,7 +607,10 @@ export type AdminDescriptionProductsQueryVariables = StorefrontAPI.Exact<{
 export type AdminDescriptionProductsQuery = {
   products: {
     nodes: Array<
-      Pick<StorefrontAPI.Product, 'id' | 'handle' | 'title'> & {
+      Pick<
+        StorefrontAPI.Product,
+        'id' | 'handle' | 'title' | 'descriptionHtml'
+      > & {
         featuredImage?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Image, 'url' | 'altText'>
         >;
@@ -1660,7 +1663,7 @@ interface GeneratedQueryTypes {
     return: HomeCollectionsQuery;
     variables: HomeCollectionsQueryVariables;
   };
-  '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n      }\n    }\n  }\n': {
+  '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n        descriptionHtml\n      }\n    }\n  }\n': {
     return: AdminDescriptionProductsQuery;
     variables: AdminDescriptionProductsQueryVariables;
   };

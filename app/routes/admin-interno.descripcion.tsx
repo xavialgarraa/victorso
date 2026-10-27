@@ -6,6 +6,7 @@ import {AdminShell} from '~/components/admin/AdminShell';
 import {adminQuery} from '~/lib/shopifyAdmin.server';
 import {
   buildProductDescriptionHtml,
+  parseProductDescriptionHtml,
   type DescriptionFeature,
   type DescriptionSpec,
 } from '~/lib/productDescriptionTemplate';
@@ -19,10 +20,13 @@ type PickerProduct = {
   handle: string;
   title: string;
   image: string;
+  descriptionHtml: string;
 };
 
 // Lista plana para el selector (mismo patrón que el buscador del hero) —
 // se trae entera de una vez para que el autocompletar vaya al instante.
+// Incluye descriptionHtml para poder precargar el formulario si el
+// producto ya tiene una descripción hecha con esta misma plantilla.
 const ADMIN_DESCRIPTION_PRODUCTS_QUERY = `#graphql
   query AdminDescriptionProducts {
     products(first: 250, sortKey: TITLE) {
@@ -31,6 +35,7 @@ const ADMIN_DESCRIPTION_PRODUCTS_QUERY = `#graphql
         handle
         title
         featuredImage { url altText }
+        descriptionHtml
       }
     }
   }
@@ -45,6 +50,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
     handle: p.handle,
     title: p.title,
     image: p.featuredImage?.url ?? '',
+    descriptionHtml: p.descriptionHtml ?? '',
   }));
 
   return data({user, products}, {headers});
@@ -77,11 +83,11 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 
   const intro = String(formData.get('intro') || '');
-  const videoUrl = String(formData.get('videoUrl') || '');
+  const videos = parseJsonArray<string>(formData, 'videosJson');
   const features = parseJsonArray<DescriptionFeature>(formData, 'featuresJson');
   const specs = parseJsonArray<DescriptionSpec>(formData, 'specsJson');
 
-  const html = buildProductDescriptionHtml({intro, features, specs, videoUrl});
+  const html = buildProductDescriptionHtml({intro, features, specs, videos});
 
   try {
     // Sin el comentario "#graphql" a propósito — va contra la Admin API, no
@@ -126,8 +132,9 @@ export default function AdminDescripcion() {
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PickerProduct | null>(null);
+  const [hadUnrecognizedDescription, setHadUnrecognizedDescription] = useState(false);
   const [intro, setIntro] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videos, setVideos] = useState<string[]>(['']);
   const [features, setFeatures] = useState<DescriptionFeature[]>([{...EMPTY_FEATURE}]);
   const [specs, setSpecs] = useState<DescriptionSpec[]>([{...EMPTY_SPEC}]);
 
@@ -136,9 +143,29 @@ export default function AdminDescripcion() {
       ? products.filter((p) => p.title.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
       : [];
 
+  function selectProduct(p: PickerProduct) {
+    setSelected(p);
+    setQuery('');
+
+    const parsed = parseProductDescriptionHtml(p.descriptionHtml);
+    if (parsed) {
+      setIntro(parsed.intro);
+      setFeatures(parsed.features.length > 0 ? parsed.features : [{...EMPTY_FEATURE}]);
+      setSpecs(parsed.specs.length > 0 ? parsed.specs : [{...EMPTY_SPEC}]);
+      setVideos(parsed.videos.length > 0 ? parsed.videos : ['']);
+      setHadUnrecognizedDescription(false);
+    } else {
+      setIntro('');
+      setFeatures([{...EMPTY_FEATURE}]);
+      setSpecs([{...EMPTY_SPEC}]);
+      setVideos(['']);
+      setHadUnrecognizedDescription(Boolean(p.descriptionHtml.trim()));
+    }
+  }
+
   const previewHtml = buildProductDescriptionHtml({
     intro,
-    videoUrl,
+    videos,
     features: features.filter((f) => f.title.trim() || f.text.trim()),
     specs: specs.filter((s) => s.label.trim() || s.value.trim()),
   });
@@ -148,8 +175,8 @@ export default function AdminDescripcion() {
       <h1>Descripción de producto</h1>
       <p style={{color: 'var(--text-muted)', fontSize: '.9rem', maxWidth: 640}}>
         Rellena los campos y se genera automáticamente con el mismo diseño de la web (tipografía,
-        colores, modo claro/oscuro) — no hace falta escribir HTML a mano. Al guardar, se sobrescribe la
-        descripción actual del producto en Shopify.
+        colores, modo claro/oscuro) — no hace falta escribir HTML a mano ni usa ninguna IA, siempre es la
+        misma plantilla. Al guardar, se sobrescribe la descripción actual del producto en Shopify.
       </p>
 
       <div className="admin-card" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32}}>
@@ -190,10 +217,7 @@ export default function AdminDescripcion() {
                     <button
                       type="button"
                       key={p.id}
-                      onClick={() => {
-                        setSelected(p);
-                        setQuery('');
-                      }}
+                      onClick={() => selectProduct(p)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px',
                         background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer',
@@ -210,6 +234,14 @@ export default function AdminDescripcion() {
             </div>
           )}
 
+          {hadUnrecognizedDescription && (
+            <p className="admin-hint" style={{marginBottom: 14}}>
+              Este producto ya tiene una descripción, pero no se generó con este formulario (viene de
+              otro sitio, como una IA externa o el ERP) — no se puede precargar. Si guardas aquí, la
+              sustituye por completo.
+            </p>
+          )}
+
           <h2>2. Introducción</h2>
           <textarea
             rows={3}
@@ -219,11 +251,14 @@ export default function AdminDescripcion() {
           />
 
           <h2>3. Características destacadas</h2>
+          <p className="admin-hint" style={{marginTop: -4}}>
+            El icono es opcional — si lo dejas vacío sale un punto de acento en vez de un emoji.
+          </p>
           {features.map((f, i) => (
             <div key={i} style={{display: 'grid', gridTemplateColumns: '60px 1fr auto', gap: 8, marginBottom: 8}}>
               <input
                 type="text"
-                placeholder="🎛️"
+                placeholder="(opcional)"
                 value={f.icon}
                 onChange={(e) => {
                   const next = [...features];
@@ -271,13 +306,36 @@ export default function AdminDescripcion() {
             + Añadir característica
           </button>
 
-          <h2>4. Vídeo de YouTube (opcional)</h2>
-          <input
-            type="text"
-            placeholder="Pega la URL del vídeo (youtube.com/watch?v=... o youtu.be/...)"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-          />
+          <h2>4. Vídeos de YouTube (opcional)</h2>
+          {videos.map((v, i) => (
+            <div key={i} style={{display: 'flex', gap: 8, marginBottom: 8}}>
+              <input
+                type="text"
+                placeholder="youtube.com/watch?v=... o youtu.be/..."
+                value={v}
+                onChange={(e) => {
+                  const next = [...videos];
+                  next[i] = e.target.value;
+                  setVideos(next);
+                }}
+                style={{flex: 1}}
+              />
+              <button
+                type="button"
+                className="admin-btn admin-btn--outline"
+                onClick={() => setVideos(videos.filter((_, idx) => idx !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="admin-btn admin-btn--outline"
+            onClick={() => setVideos([...videos, ''])}
+          >
+            + Añadir vídeo
+          </button>
 
           <h2>5. Especificaciones técnicas</h2>
           {specs.map((s, i) => (
@@ -324,7 +382,7 @@ export default function AdminDescripcion() {
             <input type="hidden" name="productHandle" value={selected?.handle ?? ''} />
             <input type="hidden" name="productTitle" value={selected?.title ?? ''} />
             <input type="hidden" name="intro" value={intro} />
-            <input type="hidden" name="videoUrl" value={videoUrl} />
+            <input type="hidden" name="videosJson" value={JSON.stringify(videos)} />
             <input type="hidden" name="featuresJson" value={JSON.stringify(features)} />
             <input type="hidden" name="specsJson" value={JSON.stringify(specs)} />
             <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy || !selected}>
