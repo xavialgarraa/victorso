@@ -435,50 +435,53 @@ function HeaderSearch() {
       {active && (
         <div className="search-backdrop" onClick={closeOverlay}>
           <div className="search-modal" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="search-modal__close" aria-label="Cerrar buscador" onClick={closeOverlay}>
-              <Icon name="close" />
-            </button>
-            <SearchFormPredictive className="search search-modal__form">
-              {({fetchResults, inputRef}) => (
-                <>
-                  <Icon name="search" className="search-modal__lead-icon" />
-                  <input
-                    name="q"
-                    type="search"
-                    placeholder={t('searchPlaceholder')}
-                    aria-label="Buscar"
-                    autoComplete="off"
-                    autoFocus
-                    ref={inputRef}
-                    onChange={(e) => {
-                      setOpen(Boolean(e.target.value));
-                      fetchResults(e);
-                    }}
-                  />
-                  {/* type="submit": el Enter del teclado y este botón hacen
-                      lo mismo (envían el <form>, que ya navega a /search —
-                      ver SearchFormPredictive). */}
-                  <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
-                    <Icon name="search" />
-                  </button>
-                  {/* Abre el asistente de IA ya existente (burbuja de
-                      chat), pasándole lo que haya escrito como primera
-                      pregunta — no es un buscador aparte, es el mismo. */}
-                  <button
-                    type="button"
-                    className="search-ai-btn"
-                    onClick={() => {
-                      const query = inputRef.current?.value ?? '';
-                      window.dispatchEvent(new CustomEvent('open-chat-assistant', {detail: {query}}));
-                      closeOverlay();
-                    }}
-                  >
-                    <Icon name="sparkle" />
-                    <span>{t('searchAiMode')}</span>
-                  </button>
-                </>
-              )}
-            </SearchFormPredictive>
+            <div className="search-modal__topbar">
+              <SearchFormPredictive className="search search-modal__form">
+                {({fetchResults, inputRef}) => (
+                  <>
+                    <Icon name="search" className="search-modal__lead-icon" />
+                    <input
+                      name="q"
+                      type="search"
+                      placeholder={t('searchPlaceholder')}
+                      aria-label="Buscar"
+                      autoComplete="off"
+                      autoFocus
+                      ref={inputRef}
+                      onChange={(e) => {
+                        setOpen(Boolean(e.target.value));
+                        fetchResults(e);
+                      }}
+                    />
+                    {/* type="submit": el Enter del teclado y este botón
+                        hacen lo mismo (envían el <form>, que ya navega a
+                        /search — ver SearchFormPredictive). */}
+                    <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
+                      <Icon name="search" />
+                    </button>
+                    {/* Abre el asistente de IA ya existente (burbuja de
+                        chat), pasándole lo que haya escrito como primera
+                        pregunta — no es un buscador aparte, es el mismo. */}
+                    <button
+                      type="button"
+                      className="search-ai-btn"
+                      onClick={() => {
+                        const query = inputRef.current?.value ?? '';
+                        window.dispatchEvent(new CustomEvent('open-chat-assistant', {detail: {query}}));
+                        closeOverlay();
+                      }}
+                    >
+                      <Icon name="sparkle" />
+                      <span>{t('searchAiMode')}</span>
+                    </button>
+                  </>
+                )}
+              </SearchFormPredictive>
+              <button type="button" className="search-modal__close" aria-label="Cerrar buscador" onClick={closeOverlay}>
+                <Icon name="close" />
+              </button>
+            </div>
+            <p className="search-ai-hint">{t('searchAiHint')}</p>
 
             <div className="search-overlay-body">
           {open ? (
