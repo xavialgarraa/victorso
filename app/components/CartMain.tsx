@@ -49,22 +49,37 @@ export function CartMain({layout, cart: originalCart}: CartMainProps) {
     return <CartEmpty layout={layout} />;
   }
 
-  return (
-    <div className={layout === 'page' ? 'cart-page' : 'cart-drawer'}>
-      <div className="cart-drawer__main">
-        <div>
-          {(cart?.lines?.nodes ?? []).map((line) => {
-            if ('parentRelationship' in line && line.parentRelationship?.parent) {
-              return null;
-            }
-            return (
-              <CartLineItem key={line.id} line={line} layout={layout} childrenMap={childrenMap} />
-            );
-          })}
-        </div>
-        <CartSummary cart={cart} layout={layout} />
+  const lines = (
+    <div className={layout === 'page' ? 'cart-items-card' : undefined}>
+      {(cart?.lines?.nodes ?? []).map((line) => {
+        if ('parentRelationship' in line && line.parentRelationship?.parent) {
+          return null;
+        }
+        return <CartLineItem key={line.id} line={line} layout={layout} childrenMap={childrenMap} />;
+      })}
+    </div>
+  );
+  const summary = <CartSummary cart={cart} layout={layout} />;
+
+  // El layout "page" (/cart) usa el grid de .cart-page, que espera estas
+  // dos piezas como hijos directos (líneas + resumen en dos columnas) — no
+  // envolverlas en un div extra aquí o se rompe esa maquetación.
+  if (layout === 'page') {
+    return (
+      <div className="cart-page">
+        {lines}
+        {summary}
       </div>
-      {layout === 'aside' && cart && <CartRecommendations cart={cart} />}
+    );
+  }
+
+  return (
+    <div className="cart-drawer">
+      <div className="cart-drawer__main">
+        {lines}
+        {summary}
+      </div>
+      {cart && <CartRecommendations cart={cart} />}
     </div>
   );
 }

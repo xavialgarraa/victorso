@@ -876,7 +876,7 @@ body.nav-open { overflow: hidden; }
 .breadcrumb a:hover { color: var(--red); }
 
 /* ---------- Product page ---------- */
-.pdp { padding: 16px; display: grid; gap: 26px; grid-template-columns: minmax(0, 1fr); }
+.pdp { max-width: var(--maxw); margin: 0 auto; padding: 16px; display: grid; gap: 26px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 900px) { .pdp { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); padding: 24px 56px; align-items: start; } }
 @media (min-width: 1280px) { .pdp { grid-template-columns: minmax(0, 500px) minmax(0, 1fr); } }
 
@@ -999,9 +999,17 @@ body.nav-open { overflow: hidden; }
 .related { grid-column: 1 / -1; margin-top: 20px; }
 
 /* ---------- Cart page ---------- */
-.cart-page { padding: 20px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; }
-@media (min-width: 900px) { .cart-page { grid-template-columns: minmax(0, 1fr) 340px; padding: 30px 24px; align-items: start; } }
+/* Columnas acotadas (no 1fr suelto) y centradas dentro del .container —
+   en pantallas muy anchas antes se estiraba hasta ocupar todo el hueco,
+   dejando la fila de producto pegada a la izquierda con un vacío enorme
+   antes del resumen. */
+.cart-page { padding: 20px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 26px; max-width: 760px; margin: 0 auto; }
+@media (min-width: 900px) {
+  .cart-page { grid-template-columns: minmax(0, 620px) minmax(280px, 360px); max-width: 1020px; padding: 30px 0; align-items: start; gap: 40px; }
+}
+.cart-items-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px 20px; }
 .cart-item { display: grid; grid-template-columns: 64px 1fr; grid-template-areas: "img info" "img right"; column-gap: 12px; row-gap: 10px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.cart-item:last-child { border-bottom: none; }
 .cart-item img { grid-area: img; width: 64px; height: 64px; object-fit: cover; border-radius: 8px; background: var(--img-bg); }
 .cart-item__info { grid-area: info; min-width: 0; }
 .cart-item__title { font-weight: 700; font-size: .9rem; color: var(--text); }
