@@ -478,7 +478,10 @@ body.nav-open { overflow: hidden; }
 .storehero {
   position: relative;
   display: flex; flex-direction: column; justify-content: flex-start;
-  box-sizing: border-box; padding: 10px 0; gap: 18px;
+  /* Sin padding abajo a propósito: la siguiente sección (.section) ya
+     trae su propio padding-top de 44px — con los dos sumados quedaba un
+     hueco enorme entre "sigue bajando" y el contenido de después. */
+  box-sizing: border-box; padding: 10px 0 0; gap: 18px;
 }
 .storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
@@ -636,7 +639,7 @@ body.nav-open { overflow: hidden; }
    anterior (ancho, paneles, botones, marcas...) sea cual sea el ancho, y
    así el aviso de "sigue bajando" siempre quepa sin hacer scroll. */
 @media (max-height: 700px) {
-  .storehero { padding: 6px 0; gap: 8px; }
+  .storehero { padding: 6px 0 0; gap: 8px; }
   .storehero__grid { margin-top: 0; }
   .storehero__scrollhint { margin-top: 0; }
   .storehero__slide { max-height: 150px; }
@@ -702,6 +705,10 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Sections ---------- */
 .section { padding: 44px 16px; }
+/* La sección justo después del hero no necesita los 44px de padding-top
+   normales — "sigue bajando" ya hace de separador visual, sumarle el
+   padding de encima dejaba un hueco enorme entre los dos. */
+.storehero + .section { padding-top: 16px; }
 /* El botón "Comprar por categoría" del hero hace scrollIntoView aquí — sin
    esto, el header sticky tapa el título de la sección al aterrizar, dando
    la sensación de que el scroll "se pasa" de las categorías. */
