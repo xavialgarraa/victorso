@@ -470,11 +470,6 @@ body.nav-open { overflow: hidden; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
 /* ---------- Store hero (banner panorámico + categorías) ---------- */
-/* Ya no fuerza una altura mínima casi a pantalla completa (lo necesitaba
-   la versión vieja, con las marcas dentro del hero y el banner sin
-   aspect-ratio) — ahora el banner tiene su propio tamaño por
-   aspect-ratio y el bloque entero se queda tan alto como su contenido,
-   que es justo lo que hace que "sigue bajando" quepa sin scroll. */
 .storehero {
   position: relative;
   display: flex; flex-direction: column; justify-content: flex-start;
@@ -482,6 +477,16 @@ body.nav-open { overflow: hidden; }
      trae su propio padding-top de 44px — con los dos sumados quedaba un
      hueco enorme entre "sigue bajando" y el contenido de después. */
   box-sizing: border-box; padding: 10px 0 0; gap: 18px;
+  /* El banner ya no necesita esto para su propio tamaño (eso lo hace el
+     aspect-ratio), pero sigue haciendo falta para que "sigue bajando"
+     sea literalmente lo último visible sin hacer scroll, en CUALQUIER
+     alto de pantalla — por eso sin tope (antes tenía un máximo de
+     760px, pero en pantallas más altas que eso se quedaba corto y se
+     colaba la siguiente sección). Como el banner ya no se estira con
+     el grid (align-items:start más abajo), el espacio sobrante se
+     queda como aire debajo de "sigue bajando", no como banner gigante. */
+  min-height: calc(100vh - var(--topchrome-offset, 140px));
+  min-height: calc(100svh - var(--topchrome-offset, 140px));
 }
 .storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
@@ -494,7 +499,11 @@ body.nav-open { overflow: hidden; }
    centrar todo el bloque en pantalla, y sin esto el grid (flex:1 1 auto)
    crecía para rellenar ese hueco y estiraba el panel más alto que la
    imagen (aspect-ratio), dejando una franja blanca debajo. */
-.storehero__grid { max-width: var(--maxw); width: 100%; margin: 10px auto 0; padding: 0 16px; box-sizing: border-box; display: grid; grid-template-columns: 1fr; align-items: start; gap: 14px; flex: 1 1 auto; min-height: 0; }
+/* Sin flex-grow a propósito: si el grid crece para absorber el espacio
+   sobrante del min-height de .storehero, el hueco se cuela DENTRO del
+   banner (entre la foto y los botones de abajo) en vez de quedarse al
+   final de toda la sección, después de "sigue bajando". */
+.storehero__grid { max-width: var(--maxw); width: 100%; margin: 10px auto 0; padding: 0 16px; box-sizing: border-box; display: grid; grid-template-columns: 1fr; align-items: start; gap: 14px; flex: 0 0 auto; min-height: 0; }
 @media (min-width: 1000px) {
   .storehero__grid { max-width: 940px; }
 }
