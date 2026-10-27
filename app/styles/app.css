@@ -492,7 +492,13 @@ body.nav-open { overflow: hidden; }
 .storehero__scrollhint-text { color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 @keyframes storehero-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .storehero__scrollhint-circle { animation: none; } }
-.storehero__content { display: flex; flex-direction: column; gap: 18px; }
+/* flex:1 para que ocupe todo el hueco disponible por encima de "sigue
+   bajando" (en vez de quedarse a su tamaño natural y dejar el espacio
+   sobrante suelto al lado), y justify-content:space-between para que el
+   banner, los botones y las categorías se repartan dentro de ese hueco
+   en vez de quedarse todos apilados arriba. gap como mínimo de seguridad
+   para cuando no sobra espacio que repartir. */
+.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
 /* Un único banner apaisado (antes eran dos paneles lado a lado) — se
    ensancha en pantallas grandes en vez de duplicarse en columnas. */
 /* align-items:start a propósito: .storehero tiene una altura mínima para
