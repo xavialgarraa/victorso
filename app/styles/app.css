@@ -217,7 +217,7 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
 /* El botón-disparador reutiliza el estilo de .search (misma píldora),
    pero es un <button>, no un input de verdad — el campo real solo
    existe dentro del modal. */
-.search-trigger { cursor: pointer; gap: 10px; }
+.search-trigger { cursor: pointer; gap: 10px; width: 100%; text-align: left; }
 .search-trigger .icon { color: var(--nav-text-soft); font-size: 1rem; }
 .search-trigger__placeholder { color: var(--nav-text-soft); font-size: .9rem; text-align: left; flex: 1; }
 
@@ -253,31 +253,40 @@ body.search-open { overflow: hidden; }
   animation: search-modal-in .18s var(--ease);
 }
 @keyframes search-modal-in { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: none; } }
+/* Fila superior del modal: buscador + X, en el mismo flex row para que
+   la X se centre siempre con la altura real del input (antes la X
+   estaba posicionada absoluta respecto a todo el modal y no cuadraba
+   con el campo de texto). */
+.search-modal__topbar { display: flex; align-items: center; gap: 8px; padding: 16px 16px 0; }
 .search-modal__close {
-  position: absolute; top: 14px; right: 14px; z-index: 1; background: none; border: none;
-  color: var(--text-soft); font-size: 1.2rem; padding: 6px; line-height: 1;
+  flex-shrink: 0; background: none; border: none;
+  color: var(--text-soft); font-size: 1.2rem; padding: 8px; line-height: 1;
 }
 .search-modal__close:hover { color: var(--text); }
 .search-modal__form {
-  max-width: none; margin: 20px 50px 0 20px; padding: 10px 10px 10px 18px; flex: 0 0 auto;
+  max-width: none; margin: 0; flex: 1; min-width: 0; flex-wrap: wrap;
   --nav-surface: var(--surface-alt); --nav-border: var(--border);
   --nav-text: var(--text); --nav-text-soft: var(--text-muted); --nav-surface-hover: var(--surface-alt);
   gap: 10px;
 }
 .search-modal__lead-icon { color: var(--text-soft); font-size: 1.1rem; }
-.search-modal__form input { font-size: 1rem; }
+.search-modal__form input { font-size: 1rem; min-width: 80px; }
 .search-ai-btn {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0; width: auto !important;
-  border-radius: 20px !important; padding: 0 14px !important; height: 32px;
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0;
+  width: auto !important; border-radius: 20px !important; padding: 0 14px !important; height: 32px;
   background: var(--text) !important; color: var(--bg) !important; font-size: .8rem; font-weight: 700;
   white-space: nowrap;
 }
 .search-ai-btn:hover { opacity: .85; }
 .search-ai-btn .icon { font-size: .85rem; }
+/* En pantallas estrechas el icono+input+botón de lupa no dejan sitio al
+   pill de "Modo IA" en la misma fila — en vez de encogerlo hasta que
+   desaparezca (lo que pasaba antes), que baje entero a su propia fila
+   a todo lo ancho, bien visible. */
 @media (max-width: 560px) {
-  .search-ai-btn span { display: none; }
-  .search-ai-btn { padding: 0 !important; width: 32px !important; justify-content: center; }
+  .search-ai-btn { flex: 1 1 100%; margin-top: 2px; }
 }
+.search-ai-hint { margin: 6px 16px 0; font-size: .78rem; color: var(--text-soft); }
 
 .search-overlay-body { flex: 1; overflow-y: auto; padding: 16px 20px 24px; }
 .search-popular h4 { font-family: var(--font-display); font-size: 1rem; color: var(--text); margin: 0 0 16px; }
@@ -460,49 +469,56 @@ body.nav-open { overflow: hidden; }
 .btn--block { width: 100%; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
-/* ---------- Store hero (2 paneles rotando + marcas) ---------- */
-/* min-height reserva justo el resto del viewport bajo la cabecera, para
-   que la franja de marcas sea siempre lo ultimo visible antes de hacer
-   scroll (ni se corta a media franja, ni se ve ya la siguiente sección). */
+/* ---------- Store hero (banner panorámico + categorías) ---------- */
+/* Ya no fuerza una altura mínima casi a pantalla completa (lo necesitaba
+   la versión vieja, con las marcas dentro del hero y el banner sin
+   aspect-ratio) — ahora el banner tiene su propio tamaño por
+   aspect-ratio y el bloque entero se queda tan alto como su contenido,
+   que es justo lo que hace que "sigue bajando" quepa sin scroll. */
 .storehero {
   position: relative;
   display: flex; flex-direction: column; justify-content: flex-start;
-  box-sizing: border-box; padding: 10px 0; gap: 32px;
-  /* min-height: min(...) en vez de min-height + max-height por separado:
-     con los dos por separado, en monitores grandes (100vh - cabecera >
-     820px) la spec de CSS hace que min-height gane y max-height se
-     ignore del todo, así que el hero se quedaba más alto de lo pensado.
-     Pero usar "height" a secas (probado y revertido) rompía el móvil: el
-     contenido apilado en una columna necesita más alto del que cabía en
-     ese tope rígido y se montaba encima de las secciones de alrededor.
-     min-height sigue siendo un suelo, nunca un techo — limita en
-     pantallas grandes sin recortar nada si el contenido necesita más. */
-  min-height: min(calc(100vh - var(--topchrome-offset, 140px)), 820px);
-  min-height: min(calc(100svh - var(--topchrome-offset, 140px)), 820px);
+  box-sizing: border-box; padding: 10px 0; gap: 18px;
 }
 .storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
 .storehero__scrollhint-text { color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 @keyframes storehero-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .storehero__scrollhint-circle { animation: none; } }
-.storehero__grid { max-width: var(--maxw); width: 100%; margin: 10px auto 0; padding: 0 16px; box-sizing: border-box; display: grid; grid-template-columns: 1fr; gap: 14px; flex: 1 1 auto; min-height: 0; }
-.storehero__grid--desktop { display: none; }
+/* Un único banner apaisado (antes eran dos paneles lado a lado) — se
+   ensancha en pantallas grandes en vez de duplicarse en columnas. */
+/* align-items:start a propósito: .storehero tiene una altura mínima para
+   centrar todo el bloque en pantalla, y sin esto el grid (flex:1 1 auto)
+   crecía para rellenar ese hueco y estiraba el panel más alto que la
+   imagen (aspect-ratio), dejando una franja blanca debajo. */
+.storehero__grid { max-width: var(--maxw); width: 100%; margin: 10px auto 0; padding: 0 16px; box-sizing: border-box; display: grid; grid-template-columns: 1fr; align-items: start; gap: 14px; flex: 1 1 auto; min-height: 0; }
 @media (min-width: 1000px) {
-  .storehero__grid { max-width: 1400px; }
-  .storehero__grid--desktop { display: grid; grid-template-columns: repeat(2, minmax(420px, 600px)); justify-content: center; }
-  .storehero__grid--mobile { display: none; }
+  .storehero__grid { max-width: 940px; }
 }
-.storehero__panel { position: relative; overflow: hidden; border-radius: var(--radius); box-shadow: var(--shadow); transition: box-shadow .3s var(--ease), transform .3s var(--ease); height: 100%; }
+.storehero__panel { position: relative; overflow: hidden; border-radius: var(--radius); box-shadow: var(--shadow); transition: box-shadow .3s var(--ease), transform .3s var(--ease); }
 .storehero__panel:hover, .storehero__panel:focus-within { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-.storehero__track { display: flex; height: 100%; transition: transform .5s var(--ease); }
+/* align-items:flex-start a propósito: con height:100% (versión anterior,
+   pensada para min-height explícito) el flex "stretch" por defecto
+   estiraba la pista más de lo que el aspect-ratio de la slide pedía,
+   dejando un hueco blanco debajo de la foto. */
+.storehero__track { display: flex; align-items: flex-start; transition: transform .5s var(--ease); }
+/* Tamaño del banner por aspect-ratio en vez de alturas fijas por punto de
+   corte: así se adapta de forma proporcional al ancho real de cada
+   dispositivo (panorámico en escritorio, menos extremo en tablet, más
+   vertical en móvil para que el texto siga siendo legible) en lugar de
+   saltar entre valores fijos. El max-height evita que en monitores muy
+   anchos el banner se vuelva gigante. */
 .storehero__slide {
   position: relative; flex: 0 0 100%; display: flex; flex-direction: column; justify-content: flex-end;
-  min-height: 210px; height: 100%; overflow: hidden; text-decoration: none;
+  aspect-ratio: 4 / 3; overflow: hidden; text-decoration: none;
 }
 .storehero__slide:focus-visible { outline: 2px solid var(--red); outline-offset: -3px; }
 .storehero__slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .5s var(--ease); }
 .storehero__slide:hover .storehero__slide-img, .storehero__slide:focus-visible .storehero__slide-img { transform: scale(1.08); }
 .storehero__slide::before { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgba(10,10,12,.85) 10%, rgba(10,10,12,.25) 55%, rgba(10,10,12,.1) 100%); z-index: 1; }
+/* "Solo imagen": sin texto que proteger, no hace falta el degradado
+   oscuro — se ve la foto limpia. */
+.storehero__slide--plain::before { display: none; }
 @media (prefers-reduced-motion: reduce) { .storehero__slide-img { transition: none; } }
 .storehero__badge { position: absolute; top: 16px; left: 16px; z-index: 2; padding: 7px 16px; border-radius: 20px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
 .storehero__badge--offer { background: var(--red); }
@@ -525,27 +541,42 @@ body.nav-open { overflow: hidden; }
   .storehero__panel:hover .storehero__dots, .storehero__panel:focus-within .storehero__dots { opacity: 1; }
 }
 @media (min-width: 640px) {
-  .storehero__slide { min-height: 300px; }
+  .storehero__slide { aspect-ratio: 2.3 / 1; }
   .storehero__title { font-size: 1.7rem; }
   .storehero__info { padding: 28px; max-width: 500px; }
   .storehero__price .now { font-size: 1.7rem; }
 }
-@media (min-width: 900px) and (min-height: 920px) {
-  .storehero__slide { min-height: 400px; }
+@media (min-width: 1000px) {
+  /* El formato panorámico de verdad: ancho tipo banner de campaña, no
+     la caja casi cuadrada de antes. max-height evita que en monitores
+     muy anchos (donde el ancho disponible es enorme) se dispare de alto. */
+  .storehero__slide { aspect-ratio: 3.2 / 1; max-height: 380px; }
   .storehero__title { font-size: 2rem; }
   .storehero__eyebrow { font-size: .72rem; letter-spacing: .8px; }
 }
-@media (min-width: 1240px) and (min-height: 900px) {
-  .storehero__slide { min-height: 440px; }
+@media (min-width: 1240px) {
   .storehero__title { font-size: 2.3rem; }
   .storehero__info { padding: 34px; max-width: 560px; }
 }
 @media (prefers-reduced-motion: reduce) { .storehero__track { transition: none; } }
-@media (max-height: 820px) and (min-width: 1000px) {
-  .storehero__slide { min-height: 300px; } .storehero__title { font-size: 1.7rem; } .storehero__info { padding: 22px; } .storehero__brands .ticker__logo { height: 60px; padding: 9px 20px; }
-}
-@media (max-height: 720px) and (min-width: 1000px) { .storehero { gap: 22px; } .storehero__slide { min-height: 250px; } .storehero__brands .ticker__logo { height: 48px; padding: 6px 16px; } }
 @media (max-height: 820px) { .storehero__grid { margin-top: 4px; } .storehero__scrollhint { margin-top: -4px; } }
+/* En portátiles con poca altura de ventana (muy común: 800-900px de alto
+   con la barra del navegador), el hero entero + categorías + "sigue
+   bajando" tiene que caber sin scroll. Con el banner ya panorámico (más
+   bajo de por sí) suele bastar con esto. */
+@media (max-height: 900px) {
+  .storehero { gap: 10px; }
+  .ticker__cat { width: 95px; }
+}
+@media (max-height: 900px) and (min-width: 640px) {
+  .ticker__cat { width: 115px; }
+}
+@media (max-height: 820px) and (min-width: 1000px) {
+  .storehero__slide { max-height: 260px; }
+}
+@media (max-height: 900px) and (min-width: 640px) {
+  .ticker__cat { width: 115px; }
+}
 
 .storehero__ctaWrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 @media (min-width: 480px) { .storehero__ctaWrap { flex-direction: row; justify-content: center; flex-wrap: wrap; } }
@@ -577,14 +608,28 @@ body.nav-open { overflow: hidden; }
 .storehero__ctaBtn-text { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .storehero__ctaBtn, .storehero__ctaBtn::before, .storehero__ctaBtn-arrow { transition: none; } }
 
-.storehero__brands { width: 100%; }
-.storehero__brandsLabel { display: block; text-align: center; color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; }
-.storehero__brands .ticker { padding: 6px 0; }
-.storehero__brands .ticker__track { gap: 14px; }
-.storehero__brands .ticker__pill { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
-/* En modo claro el borde por defecto (gris muy claro) se pierde sobre el
-   fondo blanco de la pagina; se marca mas para que la tarjeta se distinga. */
-.storehero__brands .ticker__logo { height: 86px; padding: 14px 30px; border-color: var(--ticker-logo-border, var(--border-strong)); }
+.storehero__categories { width: 100%; }
+.storehero__categories .ticker { padding: 4px 0; }
+.storehero__categories .ticker__track { gap: 12px; }
+.ticker__cat {
+  position: relative; flex-shrink: 0; width: 135px; aspect-ratio: 4/3; border-radius: var(--radius);
+  overflow: hidden; box-shadow: var(--shadow); text-decoration: none; background: var(--img-bg);
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.ticker__cat:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.ticker__cat img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
+.ticker__cat:hover img { transform: scale(1.08); }
+/* Capa oscura uniforme (no solo un degradado desde abajo) para que la
+   foto quede difuminada de fondo y el nombre de la categoría destaque
+   bien centrado encima, en vez de competir con el detalle de la foto. */
+.ticker__cat::after { content: ""; position: absolute; inset: 0; background: rgba(8,8,10,.48); transition: background .2s ease; }
+.ticker__cat:hover::after { background: rgba(8,8,10,.58); }
+.ticker__cat-label {
+  position: absolute; inset: 0; z-index: 1; color: #fff; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 0 14px; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+  line-height: 1.25; text-shadow: 0 2px 10px rgba(0,0,0,.5);
+}
+@media (min-width: 640px) { .ticker__cat { width: 165px; } .ticker__cat-label { font-size: 1.15rem; } }
 
 /* Viewports bajos (móvil en horizontal, ventanas de escritorio poco altas):
    van al final de toda la sección del hero para ganarle a cualquier regla
@@ -594,27 +639,27 @@ body.nav-open { overflow: hidden; }
   .storehero { padding: 6px 0; gap: 8px; }
   .storehero__grid { margin-top: 0; }
   .storehero__scrollhint { margin-top: 0; }
-  .storehero__slide { min-height: 150px; }
+  .storehero__slide { max-height: 150px; }
   .storehero__badge { top: 8px; left: 8px; padding: 4px 10px; font-size: .6rem; }
   .storehero__info { padding: 6px 14px; }
   .storehero__title { font-size: 1rem; }
   .storehero__ctaWrap { gap: 4px; }
-  .storehero__brands .ticker__logo { height: 48px; padding: 6px 16px; }
-  .storehero__brands .ticker { padding: 4px 0; }
-  .storehero__brandsLabel { margin-bottom: 2px; }
 }
 @media (max-height: 520px) {
   .storehero { gap: 4px; }
-  .storehero__slide { min-height: 90px; }
+  .storehero__slide { max-height: 90px; }
   .storehero__badge, .storehero__eyebrow, .storehero__price { display: none; }
   .storehero__ctaBtn--outline { display: none; }
 }
 @media (max-height: 420px) {
-  .storehero__grid, .storehero__brands { display: none; }
+  .storehero__grid, .storehero__categories { display: none; }
 }
 
 /* ---------- Preguntas frecuentes ---------- */
-.faq__list { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+/* Antes tenía un max-width sin centrar: se quedaba pegada a la izquierda
+   con medio contenedor vacío a la derecha ("cortada a la mitad"). Ahora
+   ocupa todo el ancho del container, como el resto de secciones. */
+.faq__list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .faq__item { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .faq__question {
   list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -649,6 +694,11 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Shipping banner ---------- */
 .shipband { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--red); color: #fff; text-align: center; padding: 12px 16px; font-weight: 700; font-size: .9rem; letter-spacing: .3px; }
+
+/* Banner de confianza (distribuidor oficial) — oscuro en vez de rojo,
+   para que no se confunda con el de envío gratis que viene justo después. */
+
+.testimonials__cta { display: inline-flex; margin-top: 24px; }
 
 /* ---------- Sections ---------- */
 .section { padding: 44px 16px; }
@@ -875,7 +925,10 @@ body.nav-open { overflow: hidden; }
 .ticker:hover .ticker__track { animation-play-state: paused; }
 .ticker__pill { flex-shrink: 0; padding: 10px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 30px; font-weight: 700; font-size: .85rem; color: var(--text-muted); transition: transform .2s var(--ease), border-color .2s ease, color .2s ease, box-shadow .2s ease; }
 .ticker__pill:hover { transform: translateY(-4px) scale(1.05); border-color: var(--red); color: var(--red); box-shadow: 0 10px 18px rgba(0,0,0,.18); }
-.ticker__logo { display: flex; align-items: center; justify-content: center; padding: 12px 28px; background: #fff; border: 1px solid var(--border); border-radius: 12px; height: 68px; box-sizing: border-box; transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
+/* En modo claro el borde por defecto (gris muy claro) se pierde sobre el
+   fondo blanco de la tarjeta; --ticker-logo-border lo marca más fuerte
+   cuando hace falta (se define en el tema oscuro vía data-theme). */
+.ticker__logo { display: flex; align-items: center; justify-content: center; padding: 14px 30px; background: #fff; border: 1px solid var(--ticker-logo-border, var(--border-strong)); border-radius: 12px; height: 86px; box-sizing: border-box; transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
 .ticker__logo:hover { transform: translateY(-4px) scale(1.06); box-shadow: 0 12px 22px rgba(0,0,0,.22); }
 .ticker__logo--all { font-weight: 700; font-size: .85rem; color: var(--text-muted); white-space: nowrap; text-decoration: none; }
 .ticker__logo--all:hover { color: var(--red); border-color: var(--red); }

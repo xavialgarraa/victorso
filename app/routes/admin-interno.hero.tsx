@@ -146,6 +146,7 @@ function slideFromForm(formData: FormData, imageUrl: string, productHandle: stri
     title: String(formData.get('title') || '').trim(),
     cta: String(formData.get('cta') || '').trim(),
     ctaClass: (formData.get('ctaClass') as HeroSlide['ctaClass']) || 'btn--primary',
+    hideOverlay: formData.get('hideOverlay') === 'on',
     productHandle,
   };
 }
@@ -320,10 +321,12 @@ function SlideFields({
     ctaClass?: HeroSlide['ctaClass'];
     order?: number;
     productHandle?: string;
+    hideOverlay?: boolean;
   };
 }) {
   const [productHandle, setProductHandle] = useState(initial?.productHandle ?? '');
   const [manualImageSrc, setManualImageSrc] = useState<string | null>(null);
+  const [hideOverlay, setHideOverlay] = useState(initial?.hideOverlay ?? false);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [badge, setBadge] = useState(initial?.badge ?? '');
   const [badgeClass, setBadgeClass] = useState<HeroSlide['badgeClass']>(
@@ -405,39 +408,57 @@ function SlideFields({
           </>
         )}
 
+        <label style={{display: 'flex', alignItems: 'center', gap: 6, marginTop: 10}}>
+          <input
+            type="checkbox"
+            name="hideOverlay"
+            checked={hideOverlay}
+            onChange={(e) => setHideOverlay(e.target.checked)}
+            style={{width: 'auto'}}
+          />
+          Solo imagen (sin texto ni botón encima)
+        </label>
+        <p className="admin-hint" style={{margin: '2px 0 0'}}>
+          Sigue siendo clicable — va al enlace o producto de arriba igual que cualquier slide.
+        </p>
+
+        {!hideOverlay && (
+          <div className="hero-admin__field-grid">
+            <div>
+              <label>Etiqueta (badge)</label>
+              <input type="text" name="badge" value={badge} onChange={(e) => setBadge(e.target.value)} />
+            </div>
+            <div>
+              <label>Tipo de etiqueta</label>
+              <select name="badgeClass" value={badgeClass} onChange={(e) => setBadgeClass(e.target.value as HeroSlide['badgeClass'])}>
+                {BADGE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="hero-admin__field-grid--full">
+              <label>Texto pequeño (eyebrow)</label>
+              <input type="text" name="eyebrow" value={eyebrow} onChange={(e) => setEyebrow(e.target.value)} />
+            </div>
+            <div className="hero-admin__field-grid--full">
+              <label>Título</label>
+              <input type="text" name="title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div>
+              <label>Texto del botón</label>
+              <input type="text" name="cta" value={cta} onChange={(e) => setCta(e.target.value)} />
+            </div>
+            <div>
+              <label>Estilo del botón</label>
+              <select name="ctaClass" value={ctaClass} onChange={(e) => setCtaClass(e.target.value as HeroSlide['ctaClass'])}>
+                {CTA_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
         <div className="hero-admin__field-grid">
-          <div>
-            <label>Etiqueta (badge)</label>
-            <input type="text" name="badge" value={badge} onChange={(e) => setBadge(e.target.value)} />
-          </div>
-          <div>
-            <label>Tipo de etiqueta</label>
-            <select name="badgeClass" value={badgeClass} onChange={(e) => setBadgeClass(e.target.value as HeroSlide['badgeClass'])}>
-              {BADGE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="hero-admin__field-grid--full">
-            <label>Texto pequeño (eyebrow)</label>
-            <input type="text" name="eyebrow" value={eyebrow} onChange={(e) => setEyebrow(e.target.value)} />
-          </div>
-          <div className="hero-admin__field-grid--full">
-            <label>Título</label>
-            <input type="text" name="title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div>
-            <label>Texto del botón</label>
-            <input type="text" name="cta" value={cta} onChange={(e) => setCta(e.target.value)} />
-          </div>
-          <div>
-            <label>Estilo del botón</label>
-            <select name="ctaClass" value={ctaClass} onChange={(e) => setCtaClass(e.target.value as HeroSlide['ctaClass'])}>
-              {CTA_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
           <div>
             <label>Orden</label>
             <input type="number" name="order" defaultValue={initial?.order ?? 0} />
@@ -471,22 +492,26 @@ function SlideFields({
         <span className="admin-hint" style={{display: 'block', marginBottom: 8}}>
           Vista previa
         </span>
-        <div className="storehero__slide hero-admin__live-preview">
+        <div className={`storehero__slide hero-admin__live-preview${hideOverlay ? ' storehero__slide--plain' : ''}`}>
           {previewImage && <img className="storehero__slide-img" src={previewImage} alt="" />}
-          {badge && <span className={`storehero__badge ${badgeClass}`}>{badge}</span>}
-          <div className="storehero__info">
-            {eyebrow && <div className="storehero__eyebrow">{eyebrow}</div>}
-            <h2 className="storehero__title">{title || 'Título del slide'}</h2>
-            {product && (
-              <div className="storehero__price">
-                <span className="now">{formatPrice(product.price, product.currency)}</span>
-                {product.compareAtPrice && (
-                  <span className="was">{formatPrice(product.compareAtPrice, product.currency)}</span>
+          {!hideOverlay && (
+            <>
+              {badge && <span className={`storehero__badge ${badgeClass}`}>{badge}</span>}
+              <div className="storehero__info">
+                {eyebrow && <div className="storehero__eyebrow">{eyebrow}</div>}
+                <h2 className="storehero__title">{title || 'Título del slide'}</h2>
+                {product && (
+                  <div className="storehero__price">
+                    <span className="now">{formatPrice(product.price, product.currency)}</span>
+                    {product.compareAtPrice && (
+                      <span className="was">{formatPrice(product.compareAtPrice, product.currency)}</span>
+                    )}
+                  </div>
                 )}
+                <span className={`btn ${ctaClass}`}>{cta || 'Botón'}</span>
               </div>
-            )}
-            <span className={`btn ${ctaClass}`}>{cta || 'Botón'}</span>
-          </div>
+            </>
+          )}
         </div>
         {href && <p className="admin-hint">Enlace: {href}</p>}
       </div>

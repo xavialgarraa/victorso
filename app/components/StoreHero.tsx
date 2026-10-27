@@ -1,7 +1,6 @@
-import {useEffect, useRef, useState} from 'react';
+import {Fragment, useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
 import {Icon} from '~/lib/icons';
-import {BrandsTicker} from '~/components/BrandsTicker';
 import {useI18n} from '~/lib/i18n';
 
 export type HeroSlide = {
@@ -16,6 +15,9 @@ export type HeroSlide = {
   priceNode?: React.ReactNode;
   cta: string;
   ctaClass: 'btn--outline' | 'btn--primary';
+  /** Solo la imagen, sin badge/texto/botón encima — sigue llevando a
+   * "href" al clicar. */
+  hideOverlay?: boolean;
 };
 
 function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSlide[]; intervalMs?: number}) {
@@ -76,10 +78,12 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
               swiped.current = false;
             }
           };
-          const content = (
+          const content = s.hideOverlay ? (
+            <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
+          ) : (
             <>
               <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
-              <span className={`storehero__badge ${s.badgeClass}`}>{s.badge}</span>
+              {s.badge && <span className={`storehero__badge ${s.badgeClass}`}>{s.badge}</span>}
               <div className="storehero__info">
                 <div className="storehero__eyebrow">{s.eyebrow}</div>
                 <h2 className="storehero__title">{s.title}</h2>
@@ -88,7 +92,7 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
               </div>
             </>
           );
-          const className = `storehero__slide${i === index ? ' active' : ''}`;
+          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}`;
           return s.external ? (
             <a
               key={s.key}
@@ -126,24 +130,27 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
   );
 }
 
+export type HeroCategory = {id: string; handle: string; title: string; photo: string | null};
+
 export function StoreHero({
   leftSlides,
   rightSlides,
+  categories = [],
 }: {
   leftSlides: HeroSlide[];
   rightSlides: HeroSlide[];
+  categories?: HeroCategory[];
 }) {
   const {t} = useI18n();
-  const mobileSlides = [...leftSlides, ...rightSlides];
+  // Un único banner apaisado con todas las slides (antes eran dos paneles
+  // lado a lado) — el panel admin sigue distinguiendo "izquierda/derecha"
+  // al configurar el hero, pero aquí se combinan en un solo carrusel.
+  const allSlides = [...leftSlides, ...rightSlides];
 
   return (
     <section className="storehero">
-      <div className="storehero__grid storehero__grid--desktop">
-        <HeroPanel id="storeHeroLeft" slides={leftSlides} />
-        <HeroPanel id="storeHeroRight" slides={rightSlides} />
-      </div>
-      <div className="storehero__grid storehero__grid--mobile">
-        <HeroPanel id="storeHeroMobile" slides={mobileSlides} />
+      <div className="storehero__grid">
+        <HeroPanel id="storeHeroMain" slides={allSlides} />
       </div>
 
       <div className="storehero__ctaWrap">
@@ -163,10 +170,24 @@ export function StoreHero({
         </button>
       </div>
 
-      <div className="storehero__brands">
-        <span className="storehero__brandsLabel">{t('brandsLabel')}</span>
-        <BrandsTicker />
-      </div>
+      {categories.length > 0 && (
+        <div className="storehero__categories">
+          <div className="ticker">
+            <div className="ticker__track">
+              {[0, 1].map((rep) => (
+                <Fragment key={rep}>
+                  {categories.map((c) => (
+                    <Link key={`${rep}-${c.id}`} className="ticker__cat" to={`/collections/${c.handle}`}>
+                      {c.photo && <img src={c.photo} alt="" loading="lazy" />}
+                      <span className="ticker__cat-label">{c.title}</span>
+                    </Link>
+                  ))}
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="storehero__scrollhint">
         <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>

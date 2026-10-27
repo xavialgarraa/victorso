@@ -5,11 +5,13 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {QuoteForm} from '~/components/QuoteForm';
-import {RatingBadge, Testimonials} from '~/components/Testimonials';
+import {GOOGLE_REVIEWS_URL, RatingBadge, Testimonials} from '~/components/Testimonials';
+import {BrandsTicker} from '~/components/BrandsTicker';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
 import {listFaqItems} from '~/lib/faq.server';
+import {listCategoryCovers} from '~/lib/categoryCovers.server';
 import {Faq} from '~/components/Faq';
 import {jsonLdHtml} from '~/lib/jsonLd';
 
@@ -31,13 +33,14 @@ export const meta: Route.MetaFunction = () => {
 
 export async function loader({context}: Route.LoaderArgs) {
   const {storefront} = context;
-  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems] =
+  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers] =
     await Promise.all([
       storefront.query(HOME_PRODUCTS_QUERY),
       storefront.query(HOME_COLLECTIONS_QUERY),
       listHeroSlides(context.env),
       getHeroSettings(context.env),
       listFaqItems(context.env),
+      listCategoryCovers(context.env),
     ]);
 
   // Slides del hero vinculados a un producto (ver /admin-interno/hero): el
@@ -75,6 +78,12 @@ export async function loader({context}: Route.LoaderArgs) {
   // uso interno (elige qué sale en el hero) y tampoco debe listarse como
   // categoría. Solo mostramos categorías que ya tienen productos asignados
   // en el catálogo actual.
+  // La carátula de cada categoría: si hay una elegida a mano desde
+  // /admin-interno/categorias se usa esa; si no, una foto aleatoria de un
+  // producto real de esa categoría (nunca la imagen nativa de la colección
+  // en Shopify Admin — todo se gestiona desde nuestro panel). Se elige aquí,
+  // en el servidor, una sola vez por petición, así el HTML que recibe el
+  // cliente ya trae la foto decidida — no hay re-sorteo en el navegador.
   const collectionsWithProducts = collections.nodes
     .filter(
       (c) =>
@@ -82,7 +91,21 @@ export async function loader({context}: Route.LoaderArgs) {
         c.handle !== 'novedades-destacadas-home' &&
         c.products.nodes.length > 0,
     )
-    .slice(0, 9);
+    .slice(0, 9)
+    .map((c) => {
+      const override = categoryCovers[c.handle];
+      const withPhoto = c.products.nodes.filter((p) => p.featuredImage);
+      const randomPhoto = withPhoto.length
+        ? withPhoto[Math.floor(Math.random() * withPhoto.length)].featuredImage
+        : null;
+      return {
+        id: c.id,
+        handle: c.handle,
+        title: c.title,
+        photo: override ? {url: override, altText: c.title} : randomPhoto,
+        hasCustomCover: Boolean(override),
+      };
+    });
 
   return {
     newest,
@@ -116,6 +139,16 @@ export default function Homepage() {
 
   const linkedByHandle = new Map(linkedProducts.map((p) => [p.handle, p]));
 
+  // Misma foto que las tarjetas de "Categorías" de más abajo (resuelta ya
+  // en el loader: override del admin o aleatoria) — para que el carrusel
+  // del hero y la cuadrícula se vean consistentes.
+  const heroCategories = collections.map((c) => ({
+    id: c.id,
+    handle: c.handle,
+    title: c.title,
+    photo: c.photo?.url ?? null,
+  }));
+
   function manualSlideToHero({id, slide}: (typeof manualSlides)[number]): HeroSlide {
     const linked = slide.productHandle ? linkedByHandle.get(slide.productHandle) : undefined;
     const price = linked?.priceRange.minVariantPrice;
@@ -148,6 +181,7 @@ export default function Homepage() {
       ) : undefined,
       cta: slide.cta,
       ctaClass: slide.ctaClass,
+      hideOverlay: slide.hideOverlay,
     };
   }
 
@@ -228,8 +262,58 @@ export default function Homepage() {
 
   return (
     <div className="home">
-      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} />
+      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} categories={heroCategories} />
 
+      {/* 1. Lo más valorado */}
+      <section className="section reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>{t('sectionBestsellers')}</h2>
+          </div>
+          <div className="prodgrid">
+            {bestsellers.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Carrusel de marcas */}
+      <section className="section reveal">
+        <div className="container">
+          <div className="section__head">
+            <h2>{t('brandsLabel')}</h2>
+          </div>
+        </div>
+        <BrandsTicker />
+      </section>
+
+      {/* Banda de envío gratis, de separador entre Marcas y Ofertas */}
+      <div className="shipband">
+        <Icon name="truck" />
+        <span>{t('shipBar')} 149€</span>
+      </div>
+
+      {/* 3. Ofertas destacadas */}
+      {offers.length > 0 && (
+        <section className="section section--muted reveal">
+          <div className="container">
+            <div className="section__head">
+              <h2>{t('sectionOffers')}</h2>
+              <Link to="/collections/outlet">
+                {t('sectionOffersLink')} <Icon name="arrowRight" />
+              </Link>
+            </div>
+            <div className="prodgrid">
+              {offers.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 4. Compra por categoría, en grande */}
       <section className="section reveal" id="categorySection">
         <div className="container">
           <div className="section__head">
@@ -237,15 +321,13 @@ export default function Homepage() {
           </div>
           <div className="catgrid">
             {collections.map((c) => {
-              // Usamos la foto de portada de la colección si el admin la ha
-              // subido; si no, la del primer producto real de esa categoría,
-              // para que las categorías nuevas ya se vean bien sin configurar nada.
-              const photo = c.image ?? c.products.nodes[0]?.featuredImage;
-              // Las fotos de portada que sube el admin ya suelen llevar el
-              // nombre de la categoría escrito encima (diseñadas a mano);
-              // la del producto de relleno no, así que ahí sí hace falta
-              // el rótulo por código para que la tarjeta no se quede muda.
-              const hasCustomCover = Boolean(c.image);
+              const photo = c.photo;
+              // Las carátulas elegidas a mano desde /admin-interno/categorias
+              // ya suelen llevar el nombre de la categoría escrito encima
+              // (diseñadas a mano); la foto aleatoria de un producto no, así
+              // que ahí sí hace falta el rótulo por código para que la
+              // tarjeta no se quede muda.
+              const hasCustomCover = c.hasCustomCover;
               return (
                 <Link
                   key={c.id}
@@ -262,6 +344,7 @@ export default function Homepage() {
         </div>
       </section>
 
+      {/* 5. Descubre más de Victor So */}
       <section className="section discover reveal">
         <div className="container">
           <div className="section__head">
@@ -309,42 +392,7 @@ export default function Homepage() {
         </div>
       </section>
 
-      <div className="shipband">
-        <Icon name="truck" />
-        <span>{t('shipBar')} 149€</span>
-      </div>
-
-      {offers.length > 0 && (
-        <section className="section section--muted reveal">
-          <div className="container">
-            <div className="section__head">
-              <h2>{t('sectionOffers')}</h2>
-              <Link to="/collections/outlet">
-                {t('sectionOffersLink')} <Icon name="arrowRight" />
-              </Link>
-            </div>
-            <div className="prodgrid">
-              {offers.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="section reveal">
-        <div className="container">
-          <div className="section__head">
-            <h2>{t('sectionBestsellers')}</h2>
-          </div>
-          <div className="prodgrid">
-            {bestsellers.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </div>
-      </section>
-
+      {/* 6. Reseñas, con botón para dejar una opinión en Google */}
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
@@ -352,9 +400,18 @@ export default function Homepage() {
             <RatingBadge compact />
           </div>
           <Testimonials />
+          <a
+            className="btn btn--outline testimonials__cta"
+            href={GOOGLE_REVIEWS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="star" /> {t('writeReviewCta')}
+          </a>
         </div>
       </section>
 
+      {/* 7. Solicita presupuesto + Preguntas frecuentes */}
       <section className="section section--muted reveal">
         <div className="container quoteform-section">
           <div className="quoteform-section__info">
@@ -436,11 +493,7 @@ const HOME_COLLECTIONS_QUERY = `#graphql
         id
         handle
         title
-        image {
-          url
-          altText
-        }
-        products(first: 1) {
+        products(first: 10) {
           nodes {
             id
             featuredImage {

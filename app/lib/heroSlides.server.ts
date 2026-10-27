@@ -18,6 +18,10 @@ export type HeroSlide = {
   title: string;
   cta: string;
   ctaClass: 'btn--outline' | 'btn--primary';
+  /** Si está activo, el slide muestra solo la imagen — sin badge, texto
+   * ni botón encima. Sigue siendo clicable (usa "href" o el producto
+   * vinculado igual que cualquier otro slide). */
+  hideOverlay: boolean;
   /** Handle del producto enlazado (vacío si el slide no está vinculado a
    * ninguno). Si está puesto: el enlace, la imagen (salvo que se suba una
    * manual) y el precio se sacan del producto real — ver _index.tsx, que

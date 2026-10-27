@@ -583,9 +583,6 @@ export type HomeCollectionsQuery = {
   collections: {
     nodes: Array<
       Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'> & {
-        image?: StorefrontAPI.Maybe<
-          Pick<StorefrontAPI.Image, 'url' | 'altText'>
-        >;
         products: {
           nodes: Array<
             Pick<StorefrontAPI.Product, 'id'> & {
@@ -594,6 +591,26 @@ export type HomeCollectionsQuery = {
               >;
             }
           >;
+        };
+      }
+    >;
+  };
+};
+
+export type AdminCategoriesQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type AdminCategoriesQuery = {
+  collections: {
+    nodes: Array<
+      Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'> & {
+        products: {
+          nodes: Array<{
+            featuredImage?: StorefrontAPI.Maybe<
+              Pick<StorefrontAPI.Image, 'url'>
+            >;
+          }>;
         };
       }
     >;
@@ -1738,9 +1755,13 @@ interface GeneratedQueryTypes {
     return: HomeProductsQuery;
     variables: HomeProductsQueryVariables;
   };
-  '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        image {\n          url\n          altText\n        }\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 10) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: HomeCollectionsQuery;
     variables: HomeCollectionsQueryVariables;
+  };
+  '#graphql\n  query AdminCategories {\n    collections(first: 30, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 1) {\n          nodes { featuredImage { url } }\n        }\n      }\n    }\n  }\n': {
+    return: AdminCategoriesQuery;
+    variables: AdminCategoriesQueryVariables;
   };
   '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n        descriptionHtml\n      }\n    }\n  }\n': {
     return: AdminDescriptionProductsQuery;
