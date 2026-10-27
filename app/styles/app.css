@@ -498,7 +498,11 @@ body.nav-open { overflow: hidden; }
    banner, los botones y las categorías se repartan dentro de ese hueco
    en vez de quedarse todos apilados arriba. gap como mínimo de seguridad
    para cuando no sobra espacio que repartir. */
-.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; }
+/* padding arriba/abajo para que el banner no toque justo el borde de la
+   cabecera ni las categorías queden pegadas a "sigue bajando" — queda
+   fuera del space-between, así siempre se respeta pase lo que pase con
+   el reparto del resto del espacio. */
+.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 20px 0; }
 /* Un único banner apaisado (antes eran dos paneles lado a lado) — se
    ensancha en pantallas grandes en vez de duplicarse en columnas. */
 /* align-items:start a propósito: .storehero tiene una altura mínima para
@@ -655,7 +659,7 @@ body.nav-open { overflow: hidden; }
    así el aviso de "sigue bajando" siempre quepa sin hacer scroll. */
 @media (max-height: 700px) {
   .storehero { padding: 6px 0 0; }
-  .storehero__content { gap: 8px; }
+  .storehero__content { gap: 8px; padding: 10px 0; }
   .storehero__grid { margin-top: 0; }
   .storehero__scrollhint { margin-top: 0; }
   .storehero__slide { max-height: 150px; }
@@ -665,7 +669,7 @@ body.nav-open { overflow: hidden; }
   .storehero__ctaWrap { gap: 4px; }
 }
 @media (max-height: 520px) {
-  .storehero__content { gap: 4px; }
+  .storehero__content { gap: 4px; padding: 6px 0; }
   .storehero__slide { max-height: 90px; }
   .storehero__badge, .storehero__eyebrow, .storehero__price { display: none; }
   .storehero__ctaBtn--outline { display: none; }
