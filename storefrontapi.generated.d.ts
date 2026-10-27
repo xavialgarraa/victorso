@@ -600,6 +600,22 @@ export type HomeCollectionsQuery = {
   };
 };
 
+export type AdminDescriptionProductsQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type AdminDescriptionProductsQuery = {
+  products: {
+    nodes: Array<
+      Pick<StorefrontAPI.Product, 'id' | 'handle' | 'title'> & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText'>
+        >;
+      }
+    >;
+  };
+};
+
 export type AdminHeroAutoQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
@@ -1643,6 +1659,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        image {\n          url\n          altText\n        }\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: HomeCollectionsQuery;
     variables: HomeCollectionsQueryVariables;
+  };
+  '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n      }\n    }\n  }\n': {
+    return: AdminDescriptionProductsQuery;
+    variables: AdminDescriptionProductsQueryVariables;
   };
   '#graphql\n  query AdminHeroAuto($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    products(first: 1, sortKey: BEST_SELLING) {\n      nodes { id title vendor featuredImage { url altText } }\n    }\n    newest: products(first: 3, sortKey: CREATED_AT, reverse: true) {\n      nodes { id title vendor featuredImage { url altText } }\n    }\n    featuredHome: collectionByHandle(handle: "novedades-destacadas-home") {\n      products(first: 3) {\n        nodes { id title vendor featuredImage { url altText } }\n      }\n    }\n  }\n': {
     return: AdminHeroAutoQuery;
