@@ -25,6 +25,13 @@ export function ProductForm({
   const {open} = useAside();
   const {t} = useI18n();
   const [qty, setQty] = useState(1);
+
+  // quantityAvailable viene null/undefined si el inventario no está
+  // rastreado para esta variante — en ese caso no hay límite que aplicar.
+  const stock = selectedVariant?.quantityAvailable;
+  const hasStockLimit = typeof stock === 'number' && stock > 0;
+  const atStockLimit = hasStockLimit && qty >= stock;
+
   return (
     <div className="product-form">
       {productOptions.map((option) => {
@@ -116,11 +123,23 @@ export function ProductForm({
             <Icon name="minus" />
           </button>
           <span>{qty}</span>
-          <button type="button" aria-label="Sumar" onClick={() => setQty((q) => q + 1)}>
+          <button
+            type="button"
+            aria-label="Sumar"
+            disabled={atStockLimit}
+            onClick={() => setQty((q) => (hasStockLimit ? Math.min(stock, q + 1) : q + 1))}
+          >
             <Icon name="plus" />
           </button>
         </div>
       </div>
+
+      {atStockLimit && (
+        <p className="stock-msg stock-msg--limit">
+          <Icon name="close" />
+          <span>{t('stockLimitReached', stock)}</span>
+        </p>
+      )}
 
       <p className={`stock-msg ${selectedVariant?.availableForSale ? 'in' : 'out'}`}>
         <Icon name={selectedVariant?.availableForSale ? 'checkCircle' : 'close'} />

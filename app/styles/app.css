@@ -913,6 +913,7 @@ body.nav-open { overflow: hidden; }
 .stock-msg { display: flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 700; margin-bottom: 18px; }
 .stock-msg.in { color: #1a8a3d; }
 .stock-msg.out { color: var(--red); }
+.stock-msg--limit { color: #b9780a; margin-bottom: 8px; }
 
 .notify-me { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-top: 4px; }
 .notify-me__label { display: block; font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }

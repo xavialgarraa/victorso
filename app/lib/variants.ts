@@ -37,6 +37,10 @@ export function getVariantUrl({
     : `/products/${handle}`;
 
   selectedOptions?.forEach((option) => {
+    // Shopify pone "Title: Default Title" como opción interna en productos
+    // sin variantes reales (una sola combinación) — no es información útil
+    // para el usuario, no debe aparecer en la URL.
+    if (option.name === 'Title' && option.value === 'Default Title') return;
     searchParams.set(option.name, option.value);
   });
 
