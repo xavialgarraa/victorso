@@ -481,7 +481,7 @@ body.nav-open { overflow: hidden; }
   /* Sin padding abajo a propósito: la siguiente sección (.section) ya
      trae su propio padding-top de 44px — con los dos sumados quedaba un
      hueco enorme entre "sigue bajando" y el contenido de después. */
-  box-sizing: border-box; padding: 10px 0 0;
+  box-sizing: border-box; padding: 10px 0 12px;
   /* Sin tope (antes 760px): en pantallas más altas que eso se quedaba
      corto y se colaba la siguiente sección en el primer pantallazo. */
   min-height: calc(100vh - var(--topchrome-offset, 140px));
@@ -502,7 +502,7 @@ body.nav-open { overflow: hidden; }
    cabecera ni las categorías queden pegadas a "sigue bajando" — queda
    fuera del space-between, así siempre se respeta pase lo que pase con
    el reparto del resto del espacio. */
-.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 20px 0; }
+.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 26px 0 36px; }
 /* Un único banner apaisado (antes eran dos paneles lado a lado) — se
    ensancha en pantallas grandes en vez de duplicarse en columnas. */
 /* align-items:start a propósito: .storehero tiene una altura mínima para
