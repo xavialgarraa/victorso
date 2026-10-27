@@ -16,7 +16,7 @@ const I18N = {
   es: {
     shipBar: 'Envío gratis Península desde',
     searchPlaceholder: 'Buscar productos, marcas...',
-    searchSeeAll: 'Ver todos los resultados',
+    searchSeeAll: 'Ver todos los resultados', searchPopularTitle: 'Productos populares',
     searchNoMatches: 'Sin resultados',
     searchLabel: 'Búsqueda',
     searchEmptyHint: 'Sin resultados. Prueba con otra búsqueda.',
@@ -158,7 +158,7 @@ const I18N = {
   en: {
     shipBar: 'Free shipping mainland Spain from',
     searchPlaceholder: 'Search products, brands...',
-    searchSeeAll: 'See all results',
+    searchSeeAll: 'See all results', searchPopularTitle: 'Popular products',
     searchNoMatches: 'No matches',
     searchLabel: 'Search',
     searchEmptyHint: 'No results. Try another search.',
@@ -300,7 +300,7 @@ const I18N = {
   fr: {
     shipBar: 'Livraison gratuite Espagne péninsulaire dès',
     searchPlaceholder: 'Rechercher produits, marques...',
-    searchSeeAll: 'Voir tous les résultats',
+    searchSeeAll: 'Voir tous les résultats', searchPopularTitle: 'Produits populaires',
     searchNoMatches: 'Aucun résultat',
     searchLabel: 'Recherche',
     searchEmptyHint: 'Aucun résultat. Essayez une autre recherche.',
@@ -442,7 +442,7 @@ const I18N = {
   pt: {
     shipBar: 'Envio grátis Península desde',
     searchPlaceholder: 'Pesquisar produtos, marcas...',
-    searchSeeAll: 'Ver todos os resultados',
+    searchSeeAll: 'Ver todos os resultados', searchPopularTitle: 'Produtos populares',
     searchNoMatches: 'Sem resultados',
     searchLabel: 'Pesquisa',
     searchEmptyHint: 'Sem resultados. Tente outra pesquisa.',
@@ -584,7 +584,7 @@ const I18N = {
   ca: {
     shipBar: 'Enviament gratuït Península des de',
     searchPlaceholder: 'Cerca productes, marques...',
-    searchSeeAll: 'Veure tots els resultats',
+    searchSeeAll: 'Veure tots els resultats', searchPopularTitle: 'Productes populars',
     searchNoMatches: 'Sense resultats',
     searchLabel: 'Cerca',
     searchEmptyHint: 'Sense resultats. Prova amb una altra cerca.',

@@ -1,5 +1,5 @@
 import {Suspense, useEffect, useRef, useState} from 'react';
-import {Await, Link, NavLink, useAsyncValue, useLocation, useNavigate} from 'react-router';
+import {Await, Link, NavLink, useAsyncValue, useFetcher, useLocation, useNavigate} from 'react-router';
 import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
@@ -11,6 +11,7 @@ import {
   SearchFormPredictive,
 } from '~/components/SearchFormPredictive';
 import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
+import type {PopularProduct} from '~/routes/api.popular-products';
 
 interface HeaderProps {
   header: HeaderQuery;
@@ -378,39 +379,54 @@ function MainNavPanel({
 function HeaderSearch() {
   const {t} = useI18n();
   const [open, setOpen] = useState(false);
-  // En móvil, al tocar el buscador se pasa a pantalla completa (solo
-  // buscador + teclado) en vez de dejar que el navegador haga zoom sobre
-  // el input pequeño de la cabecera, que es lo que se rompía antes.
-  const [mobileActive, setMobileActive] = useState(false);
+  // "active" = overlay de pantalla completa abierto, en cualquier tamaño
+  // de pantalla (antes solo pasaba en móvil; ahora también en escritorio,
+  // con "Productos populares" sugeridos antes de escribir nada).
+  const [active, setActive] = useState(false);
   const location = useLocation();
+  const popularFetcher = useFetcher<{products: PopularProduct[]}>();
 
   useEffect(() => {
-    document.body.classList.toggle('search-open', mobileActive);
+    document.body.classList.toggle('search-open', active);
     return () => document.body.classList.remove('search-open');
-  }, [mobileActive]);
+  }, [active]);
 
-  // Cierra la pantalla completa del buscador al navegar (buscar con
-  // Enter, tocar una sugerencia, o "ver todos los resultados").
+  // Cierra el buscador al navegar (buscar con Enter, tocar una sugerencia,
+  // una popular, o "ver todos los resultados").
   useEffect(() => {
-    setMobileActive(false);
+    setActive(false);
     setOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
 
-  function closeMobile() {
-    setMobileActive(false);
+  function openOverlay() {
+    setActive(true);
+    if (popularFetcher.state === 'idle' && !popularFetcher.data) {
+      popularFetcher.load('/api/popular-products');
+    }
+  }
+
+  function closeOverlay() {
+    setActive(false);
     setOpen(false);
   }
 
+  useEffect(() => {
+    if (!active) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeOverlay();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  const popularProducts = popularFetcher.data?.products ?? [];
+
   return (
-    <div
-      className={`search-wrap${mobileActive ? ' search-wrap--active-mobile' : ''}`}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
-      }}
-    >
-      {mobileActive && (
-        <button type="button" className="search-wrap__close" aria-label="Cerrar buscador" onClick={closeMobile}>
+    <div className={`search-wrap${active ? ' search-wrap--active' : ''}`}>
+      {active && (
+        <button type="button" className="search-wrap__close" aria-label="Cerrar buscador" onClick={closeOverlay}>
           <Icon name="close" />
         </button>
       )}
@@ -430,67 +446,105 @@ function HeaderSearch() {
               }}
               onFocus={(e) => {
                 setOpen(Boolean(e.target.value));
-                setMobileActive(true);
+                openOverlay();
               }}
             />
             {/* type="submit": el Enter del teclado y este botón hacen lo
                 mismo (envían el <form>, que ya navega a /search — ver
-                SearchFormPredictive). Aquí solo hace falta cerrar la
-                vista de pantalla completa de móvil. */}
-            <button type="submit" aria-label="Buscar" onClick={closeMobile}>
+                SearchFormPredictive). Aquí solo hace falta cerrar el
+                overlay. */}
+            <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
               <Icon name="search" />
             </button>
           </>
         )}
       </SearchFormPredictive>
 
-      <div className={`search-suggest${open ? ' open' : ''}`}>
-        <SearchResultsPredictive>
-          {({items, total, term, state, closeSearch}) => {
-            if (!total) {
-              if (state === 'loading' && term.current) {
-                return <div className="search-suggest__empty">Buscando…</div>;
-              }
-              return term.current ? (
-                <div className="search-suggest__empty">{t('searchNoMatches')}</div>
-              ) : null;
-            }
-            return (
-              <>
-                {items.products.slice(0, 6).map((product) => {
-                  const price = product.selectedOrFirstAvailableVariant?.price;
-                  const image = product.selectedOrFirstAvailableVariant?.image;
-                  return (
+      {active && (
+        <div className="search-overlay-body">
+          {open ? (
+            <SearchResultsPredictive>
+              {({items, total, term, state, closeSearch}) => {
+                if (!total) {
+                  if (state === 'loading' && term.current) {
+                    return <div className="search-suggest__empty">Buscando…</div>;
+                  }
+                  return term.current ? (
+                    <div className="search-suggest__empty">{t('searchNoMatches')}</div>
+                  ) : null;
+                }
+                return (
+                  <>
+                    <div className="search-cards">
+                      {items.products.slice(0, 10).map((product) => {
+                        const price = product.selectedOrFirstAvailableVariant?.price;
+                        const image = product.selectedOrFirstAvailableVariant?.image;
+                        return (
+                          <Link
+                            key={product.id}
+                            to={`/products/${product.handle}`}
+                            className="search-card"
+                            onClick={() => {
+                              closeSearch();
+                              closeOverlay();
+                            }}
+                          >
+                            <div className="search-card__imgwrap">
+                              {image && <Image data={image} width={160} height={160} />}
+                            </div>
+                            <span className="search-card__title">{product.title}</span>
+                            {price && (
+                              <span className="search-card__price">
+                                <Money data={price} />
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
                     <Link
-                      key={product.id}
-                      to={`/products/${product.handle}`}
-                      className="search-suggest__item"
+                      className="search-suggest__all"
+                      to={`${SEARCH_ENDPOINT}?q=${term.current}`}
                       onClick={() => {
                         closeSearch();
-                        setOpen(false);
+                        closeOverlay();
                       }}
                     >
-                      {image && <Image data={image} width={34} height={34} />}
-                      <span className="search-suggest__title">{product.title}</span>
-                      {price && <span className="search-suggest__price"><Money data={price} /></span>}
+                      {t('searchSeeAll')}
                     </Link>
-                  );
-                })}
-                <Link
-                  className="search-suggest__all"
-                  to={`${SEARCH_ENDPOINT}?q=${term.current}`}
-                  onClick={() => {
-                    closeSearch();
-                    setOpen(false);
-                  }}
-                >
-                  {t('searchSeeAll')}
-                </Link>
-              </>
-            );
-          }}
-        </SearchResultsPredictive>
-      </div>
+                  </>
+                );
+              }}
+            </SearchResultsPredictive>
+          ) : (
+            popularProducts.length > 0 && (
+              <div className="search-popular">
+                <h4>{t('searchPopularTitle')}</h4>
+                <div className="search-cards search-cards--scroll">
+                  {popularProducts.map((product) => (
+                    <Link
+                      key={product.handle}
+                      to={`/products/${product.handle}`}
+                      className="search-card"
+                      onClick={closeOverlay}
+                    >
+                      <div className="search-card__imgwrap">
+                        {product.image && <img src={product.image} alt="" width={160} height={160} />}
+                      </div>
+                      <span className="search-card__title">{product.title}</span>
+                      <span className="search-card__price">
+                        {new Intl.NumberFormat('es-ES', {style: 'currency', currency: product.currency}).format(
+                          product.price,
+                        )}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

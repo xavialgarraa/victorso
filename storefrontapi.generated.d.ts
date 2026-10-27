@@ -749,6 +749,28 @@ export type CartRecommendationsByHandleQuery = {
   };
 };
 
+export type PopularProductsQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type PopularProductsQuery = {
+  products: {
+    nodes: Array<
+      Pick<StorefrontAPI.Product, 'handle' | 'title'> & {
+        featuredImage?: StorefrontAPI.Maybe<
+          Pick<StorefrontAPI.Image, 'url' | 'altText'>
+        >;
+        priceRange: {
+          minVariantPrice: Pick<
+            StorefrontAPI.MoneyV2,
+            'amount' | 'currencyCode'
+          >;
+        };
+      }
+    >;
+  };
+};
+
 export type ArticleQueryVariables = StorefrontAPI.Exact<{
   articleHandle: StorefrontAPI.Scalars['String']['input'];
   blogHandle: StorefrontAPI.Scalars['String']['input'];
@@ -1743,6 +1765,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query CartRecommendationsByHandle($query: String!) {\n    products(first: 10, query: $query) {\n      nodes {\n        handle\n        title\n        featuredImage { url altText }\n        priceRange { minVariantPrice { amount currencyCode } }\n        compareAtPriceRange { minVariantPrice { amount } }\n        selectedOrFirstAvailableVariant {\n          id\n          availableForSale\n        }\n      }\n    }\n  }\n': {
     return: CartRecommendationsByHandleQuery;
     variables: CartRecommendationsByHandleQueryVariables;
+  };
+  '#graphql\n  query PopularProducts {\n    products(first: 10, sortKey: BEST_SELLING, query: "available_for_sale:true") {\n      nodes {\n        handle\n        title\n        featuredImage { url altText }\n        priceRange { minVariantPrice { amount currencyCode } }\n      }\n    }\n  }\n': {
+    return: PopularProductsQuery;
+    variables: PopularProductsQueryVariables;
   };
   '#graphql\n  query Article(\n    $articleHandle: String!\n    $blogHandle: String!\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    blog(handle: $blogHandle) {\n      handle\n      articleByHandle(handle: $articleHandle) {\n        handle\n        title\n        contentHtml\n        publishedAt\n        author: authorV2 {\n          name\n        }\n        image {\n          id\n          altText\n          url\n          width\n          height\n        }\n        seo {\n          description\n          title\n        }\n      }\n    }\n  }\n': {
     return: ArticleQuery;
