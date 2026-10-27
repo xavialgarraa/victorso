@@ -2,6 +2,7 @@ import {useEffect} from 'react';
 import {useFetcher} from 'react-router';
 import type {CartRecommendedProduct} from '~/routes/api.cart-recommendations';
 import {AddToCartButton} from './AddToCartButton';
+import {useAside} from './Aside';
 import {useI18n} from '~/lib/i18n';
 
 // Forma mínima que necesitamos del carrito — evitamos atarnos al tipo
@@ -21,6 +22,7 @@ type MinimalCart = {
  * pantallas estrechas en vez de no pedir los datos, para mantenerlo simple. */
 export function CartRecommendations({cart}: {cart: MinimalCart}) {
   const {t} = useI18n();
+  const {setCartWide} = useAside();
   const fetcher = useFetcher<{products: CartRecommendedProduct[]}>();
 
   const lines = cart.lines?.nodes ?? [];
@@ -42,6 +44,13 @@ export function CartRecommendations({cart}: {cart: MinimalCart}) {
   }, [seedId, seedHandle, excludeKey]);
 
   const products = fetcher.data?.products ?? [];
+
+  useEffect(() => {
+    setCartWide(products.length > 0);
+    return () => setCartWide(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length]);
+
   if (products.length === 0) return null;
 
   return (

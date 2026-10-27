@@ -424,44 +424,48 @@ function HeaderSearch() {
   const popularProducts = popularFetcher.data?.products ?? [];
 
   return (
-    <div className={`search-wrap${active ? ' search-wrap--active' : ''}`}>
-      {active && (
-        <button type="button" className="search-wrap__close" aria-label="Cerrar buscador" onClick={closeOverlay}>
-          <Icon name="close" />
-        </button>
-      )}
-      <SearchFormPredictive className="search">
-        {({fetchResults, inputRef}) => (
-          <>
-            <input
-              name="q"
-              type="search"
-              placeholder={t('searchPlaceholder')}
-              aria-label="Buscar"
-              autoComplete="off"
-              ref={inputRef}
-              onChange={(e) => {
-                setOpen(Boolean(e.target.value));
-                fetchResults(e);
-              }}
-              onFocus={(e) => {
-                setOpen(Boolean(e.target.value));
-                openOverlay();
-              }}
-            />
-            {/* type="submit": el Enter del teclado y este botón hacen lo
-                mismo (envían el <form>, que ya navega a /search — ver
-                SearchFormPredictive). Aquí solo hace falta cerrar el
-                overlay. */}
-            <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
-              <Icon name="search" />
-            </button>
-          </>
-        )}
-      </SearchFormPredictive>
+    <div className="search-wrap">
+      {/* Botón, no input: el input de verdad solo existe dentro del modal,
+          para no duplicar el mismo campo en dos sitios a la vez. */}
+      <button type="button" className="search search-trigger" onClick={openOverlay} aria-label="Buscar">
+        <Icon name="search" />
+        <span className="search-trigger__placeholder">{t('searchPlaceholder')}</span>
+      </button>
 
       {active && (
-        <div className="search-overlay-body">
+        <div className="search-backdrop" onClick={closeOverlay}>
+          <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="search-modal__close" aria-label="Cerrar buscador" onClick={closeOverlay}>
+              <Icon name="close" />
+            </button>
+            <SearchFormPredictive className="search search-modal__form">
+              {({fetchResults, inputRef}) => (
+                <>
+                  <Icon name="search" className="search-modal__lead-icon" />
+                  <input
+                    name="q"
+                    type="search"
+                    placeholder={t('searchPlaceholder')}
+                    aria-label="Buscar"
+                    autoComplete="off"
+                    autoFocus
+                    ref={inputRef}
+                    onChange={(e) => {
+                      setOpen(Boolean(e.target.value));
+                      fetchResults(e);
+                    }}
+                  />
+                  {/* type="submit": el Enter del teclado y este botón hacen
+                      lo mismo (envían el <form>, que ya navega a /search —
+                      ver SearchFormPredictive). */}
+                  <button type="submit" aria-label="Buscar" onClick={closeOverlay}>
+                    <Icon name="search" />
+                  </button>
+                </>
+              )}
+            </SearchFormPredictive>
+
+            <div className="search-overlay-body">
           {open ? (
             <SearchResultsPredictive>
               {({items, total, term, state, closeSearch}) => {
@@ -543,6 +547,8 @@ function HeaderSearch() {
               </div>
             )
           )}
+            </div>
+          </div>
         </div>
       )}
     </div>

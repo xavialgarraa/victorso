@@ -12,6 +12,11 @@ type AsideContextValue = {
   type: AsideType;
   open: (mode: AsideType) => void;
   close: () => void;
+  // El carrito solo se ensancha para dejar sitio a "Completa tu pedido"
+  // cuando de verdad hay algo que mostrar ahí — si no, se quedaría un
+  // hueco vacío a la derecha de las líneas del carrito.
+  cartWide: boolean;
+  setCartWide: (wide: boolean) => void;
 };
 
 /**
@@ -33,7 +38,7 @@ export function Aside({
   type: AsideType;
   heading: React.ReactNode;
 }) {
-  const {type: activeType, close} = useAside();
+  const {type: activeType, close, cartWide} = useAside();
   const expanded = type === activeType;
   const id = useId();
   useEffect(() => {
@@ -56,7 +61,7 @@ export function Aside({
   return (
     <div
       aria-modal
-      className={`overlay ${expanded ? 'expanded' : ''}${type === 'cart' ? ' overlay--cart' : ''}`}
+      className={`overlay ${expanded ? 'expanded' : ''}${type === 'cart' && cartWide ? ' overlay--cart' : ''}`}
       role="dialog"
       aria-labelledby={id}
     >
@@ -78,6 +83,7 @@ const AsideContext = createContext<AsideContextValue | null>(null);
 
 Aside.Provider = function AsideProvider({children}: {children: ReactNode}) {
   const [type, setType] = useState<AsideType>('closed');
+  const [cartWide, setCartWide] = useState(false);
 
   return (
     <AsideContext.Provider
@@ -85,6 +91,8 @@ Aside.Provider = function AsideProvider({children}: {children: ReactNode}) {
         type,
         open: setType,
         close: () => setType('closed'),
+        cartWide,
+        setCartWide,
       }}
     >
       {children}
