@@ -422,6 +422,7 @@ function HeaderSearch() {
               type="search"
               placeholder={t('searchPlaceholder')}
               aria-label="Buscar"
+              autoComplete="off"
               ref={inputRef}
               onChange={(e) => {
                 setOpen(Boolean(e.target.value));
