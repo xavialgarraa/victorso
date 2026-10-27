@@ -472,19 +472,18 @@ body.nav-open { overflow: hidden; }
 /* ---------- Store hero (banner panorámico + categorías) ---------- */
 .storehero {
   position: relative;
-  display: flex; flex-direction: column; justify-content: flex-start;
+  /* space-between con solo dos hijos directos (.storehero__content y
+     .storehero__scrollhint): el hueco sobrante del min-height se reparte
+     en UN solo sitio, entre el bloque de contenido y el aviso de abajo
+     — así "sigue bajando" queda pegado de verdad al final disponible,
+     en vez de quedarse un hueco suelto después de él. */
+  display: flex; flex-direction: column; justify-content: space-between;
   /* Sin padding abajo a propósito: la siguiente sección (.section) ya
      trae su propio padding-top de 44px — con los dos sumados quedaba un
      hueco enorme entre "sigue bajando" y el contenido de después. */
-  box-sizing: border-box; padding: 10px 0 0; gap: 18px;
-  /* El banner ya no necesita esto para su propio tamaño (eso lo hace el
-     aspect-ratio), pero sigue haciendo falta para que "sigue bajando"
-     sea literalmente lo último visible sin hacer scroll, en CUALQUIER
-     alto de pantalla — por eso sin tope (antes tenía un máximo de
-     760px, pero en pantallas más altas que eso se quedaba corto y se
-     colaba la siguiente sección). Como el banner ya no se estira con
-     el grid (align-items:start más abajo), el espacio sobrante se
-     queda como aire debajo de "sigue bajando", no como banner gigante. */
+  box-sizing: border-box; padding: 10px 0 0;
+  /* Sin tope (antes 760px): en pantallas más altas que eso se quedaba
+     corto y se colaba la siguiente sección en el primer pantallazo. */
   min-height: calc(100vh - var(--topchrome-offset, 140px));
   min-height: calc(100svh - var(--topchrome-offset, 140px));
 }
@@ -493,6 +492,7 @@ body.nav-open { overflow: hidden; }
 .storehero__scrollhint-text { color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 @keyframes storehero-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .storehero__scrollhint-circle { animation: none; } }
+.storehero__content { display: flex; flex-direction: column; gap: 18px; }
 /* Un único banner apaisado (antes eran dos paneles lado a lado) — se
    ensancha en pantallas grandes en vez de duplicarse en columnas. */
 /* align-items:start a propósito: .storehero tiene una altura mínima para
@@ -577,7 +577,7 @@ body.nav-open { overflow: hidden; }
    bajando" tiene que caber sin scroll. Con el banner ya panorámico (más
    bajo de por sí) suele bastar con esto. */
 @media (max-height: 900px) {
-  .storehero { gap: 10px; }
+  .storehero__content { gap: 10px; }
   .ticker__cat { width: 95px; }
 }
 @media (max-height: 900px) and (min-width: 640px) {
@@ -648,7 +648,8 @@ body.nav-open { overflow: hidden; }
    anterior (ancho, paneles, botones, marcas...) sea cual sea el ancho, y
    así el aviso de "sigue bajando" siempre quepa sin hacer scroll. */
 @media (max-height: 700px) {
-  .storehero { padding: 6px 0 0; gap: 8px; }
+  .storehero { padding: 6px 0 0; }
+  .storehero__content { gap: 8px; }
   .storehero__grid { margin-top: 0; }
   .storehero__scrollhint { margin-top: 0; }
   .storehero__slide { max-height: 150px; }
@@ -658,7 +659,7 @@ body.nav-open { overflow: hidden; }
   .storehero__ctaWrap { gap: 4px; }
 }
 @media (max-height: 520px) {
-  .storehero { gap: 4px; }
+  .storehero__content { gap: 4px; }
   .storehero__slide { max-height: 90px; }
   .storehero__badge, .storehero__eyebrow, .storehero__price { display: none; }
   .storehero__ctaBtn--outline { display: none; }

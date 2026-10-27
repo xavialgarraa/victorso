@@ -149,45 +149,52 @@ export function StoreHero({
 
   return (
     <section className="storehero">
-      <div className="storehero__grid">
-        <HeroPanel id="storeHeroMain" slides={allSlides} />
-      </div>
+      {/* Todo menos "sigue bajando" va agrupado en un solo bloque: el
+          espacio sobrante del alto mínimo de .storehero se reparte entre
+          este bloque y el aviso de abajo (justify-content: space-between
+          en .storehero), así "sigue bajando" queda pegado al final de
+          verdad en vez de dejar un hueco suelto después de él. */}
+      <div className="storehero__content">
+        <div className="storehero__grid">
+          <HeroPanel id="storeHeroMain" slides={allSlides} />
+        </div>
 
-      <div className="storehero__ctaWrap">
-        <Link className="storehero__ctaBtn" to="/collections/all">
-          <span className="storehero__ctaBtn-text">{t('storeHeroCtaBtn')}</span>
-          <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
-        </Link>
-        <button
-          type="button"
-          className="storehero__ctaBtn storehero__ctaBtn--outline"
-          onClick={() =>
-            document.getElementById('categorySection')?.scrollIntoView({behavior: 'smooth', block: 'start'})
-          }
-        >
-          <span className="storehero__ctaBtn-text">{t('storeHeroCatBtn')}</span>
-          <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
-        </button>
-      </div>
+        <div className="storehero__ctaWrap">
+          <Link className="storehero__ctaBtn" to="/collections/all">
+            <span className="storehero__ctaBtn-text">{t('storeHeroCtaBtn')}</span>
+            <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
+          </Link>
+          <button
+            type="button"
+            className="storehero__ctaBtn storehero__ctaBtn--outline"
+            onClick={() =>
+              document.getElementById('categorySection')?.scrollIntoView({behavior: 'smooth', block: 'start'})
+            }
+          >
+            <span className="storehero__ctaBtn-text">{t('storeHeroCatBtn')}</span>
+            <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
+          </button>
+        </div>
 
-      {categories.length > 0 && (
-        <div className="storehero__categories">
-          <div className="ticker">
-            <div className="ticker__track">
-              {[0, 1].map((rep) => (
-                <Fragment key={rep}>
-                  {categories.map((c) => (
-                    <Link key={`${rep}-${c.id}`} className="ticker__cat" to={`/collections/${c.handle}`}>
-                      {c.photo && <img src={c.photo} alt="" loading="lazy" />}
-                      <span className="ticker__cat-label">{c.title}</span>
-                    </Link>
-                  ))}
-                </Fragment>
-              ))}
+        {categories.length > 0 && (
+          <div className="storehero__categories">
+            <div className="ticker">
+              <div className="ticker__track">
+                {[0, 1].map((rep) => (
+                  <Fragment key={rep}>
+                    {categories.map((c) => (
+                      <Link key={`${rep}-${c.id}`} className="ticker__cat" to={`/collections/${c.handle}`}>
+                        {c.photo && <img src={c.photo} alt="" loading="lazy" />}
+                        <span className="ticker__cat-label">{c.title}</span>
+                      </Link>
+                    ))}
+                  </Fragment>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="storehero__scrollhint">
         <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>
