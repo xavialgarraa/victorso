@@ -33,8 +33,10 @@ export default async function handleRequest(
       'https://www.instagram.com',
     ],
     // Necesario para el embed de TikTok en /instalaciones (script + iframe),
-    // el mapa de Google Maps en /quienes-somos (iframe), y los embeds de
-    // Instagram que se puedan pegar en artículos del blog (iframe + script).
+    // el mapa de Google Maps en /quienes-somos (iframe), los embeds de
+    // Instagram que se puedan pegar en artículos del blog (iframe + script),
+    // y los vídeos de YouTube embebidos (iframe, dominio youtube-nocookie
+    // incluido porque es el que genera el embed "privacy-enhanced").
     scriptSrc: [
       "'self'",
       'https://cdn.shopify.com',
@@ -42,7 +44,14 @@ export default async function handleRequest(
       'https://www.tiktok.com',
       'https://www.instagram.com',
     ],
-    frameSrc: ["'self'", 'https://www.tiktok.com', 'https://www.google.com', 'https://www.instagram.com'],
+    frameSrc: [
+      "'self'",
+      'https://www.tiktok.com',
+      'https://www.google.com',
+      'https://www.instagram.com',
+      'https://www.youtube.com',
+      'https://www.youtube-nocookie.com',
+    ],
     connectSrc: ['https://www.tiktok.com', 'https://www.instagram.com'],
   });
 
