@@ -7,6 +7,7 @@ import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {QuoteForm} from '~/components/QuoteForm';
 import {GOOGLE_REVIEWS_URL, RatingBadge, Testimonials} from '~/components/Testimonials';
 import {BrandsTicker} from '~/components/BrandsTicker';
+import {FeaturedProducts} from '~/components/FeaturedProducts';
 import {Icon, type IconName} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
@@ -14,6 +15,7 @@ import {listFaqItems} from '~/lib/faq.server';
 import {listCategoryCovers} from '~/lib/categoryCovers.server';
 import {Faq} from '~/components/Faq';
 import {jsonLdHtml} from '~/lib/jsonLd';
+import {findBrandLogoByVendor} from '~/lib/brands';
 
 export const meta: Route.MetaFunction = () => {
   const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
@@ -79,11 +81,10 @@ export async function loader({context}: Route.LoaderArgs) {
   // categoría. Solo mostramos categorías que ya tienen productos asignados
   // en el catálogo actual.
   // La carátula de cada categoría: si hay una elegida a mano desde
-  // /admin-interno/categorias se usa esa; si no, una foto aleatoria de un
+  // /admin-interno/categorias se usa esa; si no, la foto del primer
   // producto real de esa categoría (nunca la imagen nativa de la colección
-  // en Shopify Admin — todo se gestiona desde nuestro panel). Se elige aquí,
-  // en el servidor, una sola vez por petición, así el HTML que recibe el
-  // cliente ya trae la foto decidida — no hay re-sorteo en el navegador.
+  // en Shopify Admin — todo se gestiona desde nuestro panel), siempre la
+  // misma mientras no cambie el catálogo o se fije una carátula manual.
   const collectionsWithProducts = collections.nodes
     .filter(
       (c) =>
@@ -95,14 +96,12 @@ export async function loader({context}: Route.LoaderArgs) {
     .map((c) => {
       const override = categoryCovers[c.handle];
       const withPhoto = c.products.nodes.filter((p) => p.featuredImage);
-      const randomPhoto = withPhoto.length
-        ? withPhoto[Math.floor(Math.random() * withPhoto.length)].featuredImage
-        : null;
+      const firstPhoto = withPhoto.length ? withPhoto[0].featuredImage : null;
       return {
         id: c.id,
         handle: c.handle,
         title: c.title,
-        photo: override ? {url: override, altText: c.title} : randomPhoto,
+        photo: override ? {url: override, altText: c.title} : firstPhoto,
         hasCustomCover: Boolean(override),
       };
     });
@@ -139,24 +138,18 @@ export default function Homepage() {
 
   const linkedByHandle = new Map(linkedProducts.map((p) => [p.handle, p]));
 
-  // Misma foto que las tarjetas de "Categorías" de más abajo (resuelta ya
-  // en el loader: override del admin o aleatoria) — para que el carrusel
-  // del hero y la cuadrícula se vean consistentes.
-  const heroCategories = collections.map((c) => ({
-    id: c.id,
-    handle: c.handle,
-    title: c.title,
-    photo: c.photo?.url ?? null,
-  }));
-
   function manualSlideToHero({id, slide}: (typeof manualSlides)[number]): HeroSlide {
     const linked = slide.productHandle ? linkedByHandle.get(slide.productHandle) : undefined;
     const price = linked?.priceRange.minVariantPrice;
     const compareAtAmount = linked?.compareAtPriceRange?.minVariantPrice?.amount;
     const onSale = price && compareAtAmount && parseFloat(compareAtAmount) > parseFloat(price.amount);
+    const variant = linked?.selectedOrFirstAvailableVariant;
 
     return {
       key: `manual-${id}`,
+      description: linked?.description,
+      brandLogo: linked?.vendor ? findBrandLogoByVendor(linked.vendor) : null,
+      addToCart: variant?.availableForSale ? {merchandiseId: variant.id} : undefined,
       href: slide.href,
       external: slide.external,
       image: slide.imageUrl,
@@ -203,8 +196,13 @@ export default function Homepage() {
       badgeClass: 'storehero__badge--new' as const,
       eyebrow: p.vendor,
       title: p.title,
+      description: p.description,
+      brandLogo: findBrandLogoByVendor(p.vendor),
       cta: t('storeHeroNewCta'),
       ctaClass: 'btn--outline' as const,
+      addToCart: p.selectedOrFirstAvailableVariant?.availableForSale
+        ? {merchandiseId: p.selectedOrFirstAvailableVariant.id}
+        : undefined,
     }))
     .filter((s) => !hiddenAutoKeys.includes(s.key));
   const leftSlides: HeroSlide[] = [...manualLeft, ...(heroSettings.leftAutoFallback ? autoLeft : [])];
@@ -219,6 +217,8 @@ export default function Homepage() {
       badgeClass: 'storehero__badge--offer',
       eyebrow: bestselling.vendor,
       title: bestselling.title,
+      description: bestselling.description,
+      brandLogo: findBrandLogoByVendor(bestselling.vendor),
       priceNode: (
         <div className="storehero__price">
           <span className="now">
@@ -228,6 +228,9 @@ export default function Homepage() {
       ),
       cta: t('storeHeroBestsellerCta'),
       ctaClass: 'btn--primary',
+      addToCart: bestselling.selectedOrFirstAvailableVariant?.availableForSale
+        ? {merchandiseId: bestselling.selectedOrFirstAvailableVariant.id}
+        : undefined,
     });
   }
   autoRight.push(
@@ -262,23 +265,60 @@ export default function Homepage() {
 
   return (
     <div className="home">
-      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} categories={heroCategories} />
+      <StoreHero leftSlides={leftSlides} rightSlides={rightSlides} />
 
-      {/* 1. Lo más valorado */}
-      <section className="section reveal">
+      {/* La franja de confianza ya va integrada en el propio hero
+          (storehero__trustbar) — no hace falta repetirla aquí debajo. */}
+
+      {/* 1. Accesos directos: ver todo el catálogo o ir directamente a
+          categorías (antes vivían dentro del propio hero). */}
+      <div className="hero-ctaRow">
+        <Link className="storehero__ctaBtn" to="/collections/all">
+          <span className="storehero__ctaBtn-text">{t('storeHeroCtaBtn')}</span>
+          <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
+        </Link>
+        <a href="#categorySection" className="storehero__ctaBtn storehero__ctaBtn--outline">
+          <span className="storehero__ctaBtn-text">{t('storeHeroCatBtn')}</span>
+          <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
+        </a>
+      </div>
+
+      {/* 2. Encuentra tu equipo: fila compacta de categorías, justo
+          después del banner (sustituye a la cuadrícula grande de "Compra
+          por categoría"). */}
+      <section className="section reveal" id="categorySection">
         <div className="container">
           <div className="section__head">
-            <h2>{t('sectionBestsellers')}</h2>
+            <h2>{t('findEquipmentTitle')}</h2>
+            <Link to="/collections">
+              {t('viewAllCategories')} <Icon name="arrowRight" />
+            </Link>
           </div>
-          <div className="prodgrid">
-            {bestsellers.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+          <div className="catrow">
+            {collections.map((c) => {
+              const photo = c.photo;
+              const hasCustomCover = c.hasCustomCover;
+              return (
+                <Link
+                  key={c.id}
+                  className={`catrow__card${hasCustomCover ? '' : ' catrow__card--plain'}`}
+                  to={`/collections/${c.handle}`}
+                >
+                  <Icon name={categoryIcon(c.title)} className="catrow__icon" />
+                  {photo && <img src={photo.url} alt={photo.altText ?? c.title} loading="lazy" />}
+                  <span className="catrow__label">{c.title}</span>
+                  <Icon name="arrowRight" className="catrow__arrow" />
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 2. Carrusel de marcas */}
+      {/* 3. Productos destacados, con pestañas (sustituye a "Más valorados" + "Ofertas") */}
+      <FeaturedProducts bestsellers={bestsellers} newest={newest} offers={offers} />
+
+      {/* 4. Carrusel de marcas */}
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
@@ -293,56 +333,6 @@ export default function Homepage() {
         <Icon name="truck" />
         <span>{t('shipBar')} 149€</span>
       </div>
-
-      {/* 3. Ofertas destacadas */}
-      {offers.length > 0 && (
-        <section className="section section--muted reveal">
-          <div className="container">
-            <div className="section__head">
-              <h2>{t('sectionOffers')}</h2>
-              <Link to="/collections/outlet">
-                {t('sectionOffersLink')} <Icon name="arrowRight" />
-              </Link>
-            </div>
-            <div className="prodgrid">
-              {offers.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 4. Compra por categoría, en grande */}
-      <section className="section reveal" id="categorySection">
-        <div className="container">
-          <div className="section__head">
-            <h2>{t('sectionCategories')}</h2>
-          </div>
-          <div className="catgrid">
-            {collections.map((c) => {
-              const photo = c.photo;
-              // Las carátulas elegidas a mano desde /admin-interno/categorias
-              // ya suelen llevar el nombre de la categoría escrito encima
-              // (diseñadas a mano); la foto aleatoria de un producto no, así
-              // que ahí sí hace falta el rótulo por código para que la
-              // tarjeta no se quede muda.
-              const hasCustomCover = c.hasCustomCover;
-              return (
-                <Link
-                  key={c.id}
-                  className={`catcard${hasCustomCover ? '' : ' catcard--plain'}`}
-                  to={`/collections/${c.handle}`}
-                >
-                  <Icon name={categoryIcon(c.title)} className="catcard__icon" />
-                  {photo && <img src={photo.url} alt={photo.altText ?? c.title} loading="lazy" />}
-                  {!hasCustomCover && <span className="catcard__label">{c.title}</span>}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* 5. Descubre más de Victor So */}
       <section className="section discover reveal">
@@ -454,8 +444,14 @@ const HOME_HERO_LINKED_PRODUCTS_QUERY = `#graphql
     products(first: 20, query: $query) {
       nodes {
         handle
+        vendor
+        description(truncateAt: 140)
         priceRange { minVariantPrice { amount currencyCode } }
         compareAtPriceRange { minVariantPrice { amount } }
+        selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {
+          id
+          availableForSale
+        }
       }
     }
   }

@@ -6,6 +6,7 @@ import type {
   HeaderQuery,
 } from 'storefrontapi.generated';
 import {Aside} from '~/components/Aside';
+import {BottomNav} from '~/components/BottomNav';
 import {Footer} from '~/components/Footer';
 import {Header} from '~/components/Header';
 import {CartMain} from '~/components/CartMain';
@@ -53,6 +54,7 @@ export function PageLayout({
           publicStoreDomain={publicStoreDomain}
         />
         <ChatAssistant />
+        <BottomNav />
       </Aside.Provider>
     </I18nProvider>
   );

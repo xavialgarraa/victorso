@@ -146,6 +146,16 @@ export function findBrand(slug: string): Brand | undefined {
   return BRANDS.find((b) => b.slug === slug);
 }
 
+const BRANDS_BY_NAME = new Map(BRANDS.map((b) => [b.name, b]));
+
+/** Logo de marca a partir del `vendor` en crudo de un producto (ej. para
+ * el distintivo de marca del hero) — null si no hay marca reconocida o no
+ * tiene logo cargado. */
+export function findBrandLogoByVendor(raw: string): string | null {
+  const canonical = normalizeVendorName(raw);
+  return BRANDS_BY_NAME.get(canonical)?.logo ?? null;
+}
+
 // StelOrder (y otros proveedores) mandan el nombre de marca en su propio
 // formato (todo mayúsculas, abreviado distinto...) que nunca hace match
 // exacto con el `name` canónico de arriba — sin esto, "PIONEER" y

@@ -411,6 +411,17 @@ function HeaderSearch() {
     setOpen(false);
   }
 
+  // Para abrir el buscador desde fuera (ej. el botón "Buscar" de la barra
+  // inferior en móvil), sin tener que levantar este estado más arriba.
+  useEffect(() => {
+    function onOpenSearch() {
+      openOverlay();
+    }
+    window.addEventListener('open-search-overlay', onOpenSearch);
+    return () => window.removeEventListener('open-search-overlay', onOpenSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!active) return;
     function onKeyDown(e: KeyboardEvent) {

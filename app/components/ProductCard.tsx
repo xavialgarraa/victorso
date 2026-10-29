@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Link} from 'react-router';
 import {Image, Money} from '@shopify/hydrogen';
 import type {ProductCardFragment} from 'storefrontapi.generated';
@@ -5,11 +6,15 @@ import {AddToCartButton} from '~/components/AddToCartButton';
 import {useAside} from '~/components/Aside';
 import {Icon} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
+import {parseReviewStats} from '~/lib/reviewStats';
 
 const LOW_STOCK_THRESHOLD = 3;
 
 export function ProductCard({product}: {product: ProductCardFragment}) {
   const {t} = useI18n();
+  // Corazón de favoritos: solo de cara al usuario, sin guardar nada — no
+  // hay backend de lista de deseos todavía, es puramente decorativo.
+  const [wishlisted, setWishlisted] = useState(false);
   const price = product.priceRange.minVariantPrice;
   const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
   const hasOffer =
@@ -24,9 +29,22 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
   // muestra el aviso, pero tampoco rompe nada (en vez de 0 falso positivo).
   const qty = variant?.quantityAvailable;
   const lowStock = variant?.availableForSale && typeof qty === 'number' && qty > 0 && qty <= LOW_STOCK_THRESHOLD;
+  const stats = parseReviewStats(product.reviewsMetafield?.value);
 
   return (
     <article className="pcard">
+      <button
+        type="button"
+        className={`pcard__wishlist${wishlisted ? ' active' : ''}`}
+        aria-label={t(wishlisted ? 'removeFromWishlist' : 'addToWishlist')}
+        aria-pressed={wishlisted}
+        onClick={(e) => {
+          e.preventDefault();
+          setWishlisted((v) => !v);
+        }}
+      >
+        <Icon name="heart" />
+      </button>
       <Link to={`/products/${product.handle}`} prefetch="intent">
         <div className="pcard__imgwrap">
           {(hasOffer || !variant?.availableForSale || lowStock) && (
@@ -49,6 +67,16 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
         <div className="pcard__body">
           {product.vendor && <div className="pcard__vendor">{product.vendor}</div>}
           <div className="pcard__title">{product.title}</div>
+          {stats && (
+            <div className="pcard__rating">
+              <span className="stars">
+                {Array.from({length: 5}).map((_, i) => (
+                  <Icon key={i} name="star" className={i < Math.round(stats.average) ? 'is-on' : 'is-off'} />
+                ))}
+              </span>
+              <span className="pcard__reviews">({stats.count})</span>
+            </div>
+          )}
           {product.description && <p className="pcard__desc">{product.description}</p>}
         </div>
       </Link>

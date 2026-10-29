@@ -103,7 +103,12 @@
 
 * { box-sizing: border-box; }
 input[type=checkbox], input[type=radio] { accent-color: var(--red); }
-html { scroll-behavior: smooth; }
+/* overflow-x (no overflow a secas, que rompería el header position:sticky
+   al convertir <html> en un contenedor de scroll "normal") en vez de
+   visible: 100vw en .storehero mide el ancho de la ventana CONTANDO la
+   barra de scroll vertical, así que siempre se pasa por esos ~15-17px del
+   ancho real visible y crea scroll horizontal en toda la página. */
+html { scroll-behavior: smooth; overflow-x: clip; }
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -439,7 +444,11 @@ body.nav-open { overflow: hidden; }
 
 
 /* ---------- Buttons ---------- */
-.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 24px; border-radius: 30px; font-weight: 600; font-size: .92rem; border: 2px solid transparent; transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease); }
+/* text-decoration:none explícito: el reset de Hydrogen subraya cualquier
+   <a> al pasar el ratón por encima (a:hover), y los botones a veces son
+   enlaces (Link) por debajo. */
+.btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 24px; border-radius: 30px; font-weight: 600; font-size: .92rem; border: 2px solid transparent; text-decoration: none; transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease); }
+.btn:hover { text-decoration: none; }
 
 /* ---------- Feedback de "añadir al carrito" ---------- */
 .pcard__addbtn, .btn { position: relative; }
@@ -469,139 +478,140 @@ body.nav-open { overflow: hidden; }
 .btn--block { width: 100%; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
-/* ---------- Store hero (banner panorámico + categorías) ---------- */
+/* ---------- Store hero (mockup premium responsive) ---------- */
+/* El hero arranca pegado a la navegación: sin contenedor estrecho ni
+   margen superior. */
+/* El esqueleto de Hydrogen le da a <main> un margen lateral de 1rem en
+   toda la web (reset.css, "body > main"); width:100% aquí solo llenaría
+   ESE hueco, no la pantalla entera. El truco clásico de margen negativo
+   en vw cancela ese margen heredado sin tocar <main> (que sí lo necesita
+   en el resto de páginas). */
 .storehero {
-  position: relative;
-  /* space-between con solo dos hijos directos (.storehero__content y
-     .storehero__scrollhint): el hueco sobrante del min-height se reparte
-     en UN solo sitio, entre el bloque de contenido y el aviso de abajo
-     — así "sigue bajando" queda pegado de verdad al final disponible,
-     en vez de quedarse un hueco suelto después de él. */
-  display: flex; flex-direction: column; justify-content: space-between;
-  /* Sin padding abajo a propósito: la siguiente sección (.section) ya
-     trae su propio padding-top de 44px — con los dos sumados quedaba un
-     hueco enorme entre "sigue bajando" y el contenido de después. */
-  box-sizing: border-box; padding: 10px 0 12px;
-  /* Sin tope (antes 760px): en pantallas más altas que eso se quedaba
-     corto y se colaba la siguiente sección en el primer pantallazo. */
-  min-height: calc(100vh - var(--topchrome-offset, 140px));
-  min-height: calc(100svh - var(--topchrome-offset, 140px));
+  position: relative; width: 100vw; max-width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+  padding: 0; background: var(--bg); overflow: hidden;
 }
-.storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: -10px; }
+/* Widget de "sigue bajando": ya no lo usa la home, pero lo sigue usando
+   la página "Quiénes somos" (about-hero__scrollhint), así que se queda
+   aquí como pieza compartida. */
+.storehero__scrollhint { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .storehero__scrollhint-circle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); font-size: 1.05rem; animation: storehero-bob 1.8s ease-in-out infinite; }
 .storehero__scrollhint-text { color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 @keyframes storehero-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .storehero__scrollhint-circle { animation: none; } }
-/* flex:1 para que ocupe todo el hueco disponible por encima de "sigue
-   bajando" (en vez de quedarse a su tamaño natural y dejar el espacio
-   sobrante suelto al lado), y justify-content:space-between para que el
-   banner, los botones y las categorías se repartan dentro de ese hueco
-   en vez de quedarse todos apilados arriba. gap como mínimo de seguridad
-   para cuando no sobra espacio que repartir. */
-/* padding arriba/abajo para que el banner no toque justo el borde de la
-   cabecera ni las categorías queden pegadas a "sigue bajando" — queda
-   fuera del space-between, así siempre se respeta pase lo que pase con
-   el reparto del resto del espacio. */
-.storehero__content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 26px 0 36px; }
-/* Un único banner apaisado (antes eran dos paneles lado a lado) — se
-   ensancha en pantallas grandes en vez de duplicarse en columnas. */
-/* align-items:start a propósito: .storehero tiene una altura mínima para
-   centrar todo el bloque en pantalla, y sin esto el grid (flex:1 1 auto)
-   crecía para rellenar ese hueco y estiraba el panel más alto que la
-   imagen (aspect-ratio), dejando una franja blanca debajo. */
-/* Sin flex-grow a propósito: si el grid crece para absorber el espacio
-   sobrante del min-height de .storehero, el hueco se cuela DENTRO del
-   banner (entre la foto y los botones de abajo) en vez de quedarse al
-   final de toda la sección, después de "sigue bajando". */
-.storehero__grid { max-width: var(--maxw); width: 100%; margin: 10px auto 0; padding: 0 16px; box-sizing: border-box; display: grid; grid-template-columns: 1fr; align-items: start; gap: 14px; flex: 0 0 auto; min-height: 0; }
-@media (min-width: 1000px) {
-  .storehero__grid { max-width: 940px; }
-}
-.storehero__panel { position: relative; overflow: hidden; border-radius: var(--radius); box-shadow: var(--shadow); transition: box-shadow .3s var(--ease), transform .3s var(--ease); }
-.storehero__panel:hover, .storehero__panel:focus-within { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-/* align-items:flex-start a propósito: con height:100% (versión anterior,
-   pensada para min-height explícito) el flex "stretch" por defecto
-   estiraba la pista más de lo que el aspect-ratio de la slide pedía,
-   dejando un hueco blanco debajo de la foto. */
-.storehero__track { display: flex; align-items: flex-start; transition: transform .5s var(--ease); }
-/* Tamaño del banner por aspect-ratio en vez de alturas fijas por punto de
-   corte: así se adapta de forma proporcional al ancho real de cada
-   dispositivo (panorámico en escritorio, menos extremo en tablet, más
-   vertical en móvil para que el texto siga siendo legible) en lugar de
-   saltar entre valores fijos. El max-height evita que en monitores muy
-   anchos el banner se vuelva gigante. */
+.storehero__panel { position: relative; width: 100%; margin: 0; overflow: hidden; background: #08090b; box-shadow: none; }
+.storehero__track { display: flex; align-items: stretch; transition: transform .55s var(--ease); will-change: transform; }
 .storehero__slide {
   position: relative; flex: 0 0 100%; display: flex; flex-direction: column; justify-content: flex-end;
-  aspect-ratio: 4 / 3; overflow: hidden; text-decoration: none;
+  aspect-ratio: 4.2 / 1; max-height: 420px; min-width: 0; overflow: hidden; isolation: isolate;
+  text-decoration: none; background: #08090b;
 }
 .storehero__slide:focus-visible { outline: 2px solid var(--red); outline-offset: -3px; }
-.storehero__slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transition: transform .5s var(--ease); }
-.storehero__slide:hover .storehero__slide-img, .storehero__slide:focus-visible .storehero__slide-img { transform: scale(1.08); }
-.storehero__slide::before { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgba(10,10,12,.85) 10%, rgba(10,10,12,.25) 55%, rgba(10,10,12,.1) 100%); z-index: 1; }
-/* "Solo imagen": sin texto que proteger, no hace falta el degradado
-   oscuro — se ve la foto limpia. */
+.storehero__slide-img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; transition: transform .65s var(--ease); }
+.storehero__slide:hover .storehero__slide-img, .storehero__slide:focus-visible .storehero__slide-img { transform: scale(1.025); }
+.storehero__slide::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(5,6,8,.97) 0%, rgba(5,6,8,.89) 25%, rgba(5,6,8,.56) 47%, rgba(5,6,8,.08) 76%, rgba(5,6,8,.02) 100%), linear-gradient(0deg, rgba(5,6,8,.25), transparent 32%);
+}
 .storehero__slide--plain::before { display: none; }
 @media (prefers-reduced-motion: reduce) { .storehero__slide-img { transition: none; } }
-.storehero__badge { position: absolute; top: 16px; left: 16px; z-index: 2; padding: 7px 16px; border-radius: 20px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.storehero__badge { position: absolute; top: 28px; left: clamp(24px, 4.2vw, 72px); z-index: 3; padding: 6px 12px; border-radius: 999px; color: #fff; background: var(--red); box-shadow: 0 5px 16px rgba(0,0,0,.18); font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; }
 .storehero__badge--offer { background: var(--red); }
-.storehero__badge--new { background: #1f9d55; }
-.storehero__badge--brand { background: #17171a; border: 1px solid rgba(255,255,255,.3); }
-.storehero__info { position: relative; z-index: 2; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; max-width: 460px; }
-.storehero__eyebrow { font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.8); }
-.storehero__title { font-size: 1.15rem; line-height: 1.18; color: #fff; margin: 0; text-shadow: 0 2px 12px rgba(0,0,0,.45); }
-.storehero__price { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 4px; }
-.storehero__price .now { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; color: #fff; }
-.storehero__price .was { font-size: .9rem; color: rgba(255,255,255,.6); text-decoration: line-through; }
-.storehero__info .btn { align-self: flex-start; padding: 9px 18px; font-size: .85rem; }
-.storehero__info .btn--outline { background: transparent; border-color: rgba(255,255,255,.55); color: #fff; }
-.storehero__info .btn--outline:hover { background: #fff; color: #111; border-color: #fff; }
-.storehero__dots { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 5px; transition: opacity .25s ease; }
-.storehero__dot { width: 5px; height: 5px; border-radius: 3px; border: none; background: rgba(255,255,255,.55); transition: background .2s ease, width .25s var(--ease); }
-.storehero__dot.active { width: 15px; background: #fff; }
-@media (hover: hover) {
-  .storehero__dots { opacity: 0; }
-  .storehero__panel:hover .storehero__dots, .storehero__panel:focus-within .storehero__dots { opacity: 1; }
+.storehero__badge--new { background: #16834a; }
+.storehero__badge--brand { background: rgba(18,18,20,.8); border: 1px solid rgba(255,255,255,.25); }
+.storehero__brandlogo { position: absolute; top: 26px; right: clamp(24px, 4.2vw, 72px); z-index: 3; display: flex; align-items: center; justify-content: center; height: 34px; max-width: 140px; padding: 4px 8px; background: rgba(255,255,255,.96); border-radius: 6px; }
+.storehero__brandlogo img { display: block; width: auto; height: 100%; max-width: 120px; object-fit: contain; }
+.storehero__info { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: min(48%, 660px); padding: 74px clamp(24px, 4.2vw, 72px) 66px; }
+.storehero__eyebrow { color: rgba(255,255,255,.82); font-size: .72rem; font-weight: 750; text-transform: uppercase; letter-spacing: .17em; }
+/* Sin recorte con "…": el título completo manda — se ensancha la columna
+   de texto (max-width en ch) para que quepa en menos líneas en vez de
+   cortarlo a media palabra. */
+.storehero__title {
+  max-width: 24ch; margin: 0; color: #fff; font-size: clamp(1.7rem, 2.6vw, 2.8rem); font-weight: 800;
+  line-height: 1.08; letter-spacing: -.03em; text-shadow: 0 2px 16px rgba(0,0,0,.28);
 }
-@media (min-width: 640px) {
-  .storehero__slide { aspect-ratio: 2.3 / 1; }
-  .storehero__title { font-size: 1.7rem; }
-  .storehero__info { padding: 28px; max-width: 500px; }
-  .storehero__price .now { font-size: 1.7rem; }
+.storehero__desc { max-width: 43ch; margin: 0 0 2px; color: rgba(255,255,255,.82); font-size: .92rem; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.storehero__price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin: 1px 0 5px; }
+.storehero__price .now { color: #fff; font-family: var(--font-display); font-size: clamp(1.55rem, 2.1vw, 2rem); font-weight: 800; letter-spacing: -.025em; }
+.storehero__price .was { color: rgba(255,255,255,.58); font-size: .95rem; text-decoration: line-through; }
+.storehero__ctaRow { display: flex; margin-top: 2px; }
+.storehero__info .btn { align-self: flex-start; min-height: 44px; padding: 12px 22px; border-radius: 999px; font-size: .88rem; font-weight: 750; box-shadow: 0 8px 22px rgba(227,6,19,.25); }
+.storehero__info .btn--outline { color: #fff; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.55); }
+.storehero__info .btn--outline:hover { color: #111; background: #fff; border-color: #fff; }
+.storehero__addbtn { display: inline-flex; align-items: center; gap: 8px; }
+.storehero__bglink { position: absolute; inset: 0; z-index: 1; }
+.storehero__titleLink { color: inherit; text-decoration: none; }
+.storehero__titleLink:hover { text-decoration: none; }
+.storehero__arrow { position: absolute; top: 50%; z-index: 4; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.34); border-radius: 50%; color: #fff; background: rgba(12,12,14,.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+.storehero__arrow:hover { background: rgba(12,12,14,.78); border-color: rgba(255,255,255,.65); }
+.storehero__arrow--prev { left: 18px; }
+.storehero__arrow--next { right: 18px; }
+.storehero__dots { position: absolute; left: 50%; bottom: 16px; z-index: 4; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); }
+.storehero__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.58); transition: background .25s var(--ease), width .25s var(--ease); cursor: pointer; }
+.storehero__dot.active { width: 19px; background: var(--red); }
+
+/* Cuatro beneficios, como en el mockup. */
+.storehero__trustbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; margin: 0; padding: 0 clamp(18px, 3.4vw, 54px); background: var(--surface); border-bottom: 1px solid var(--border); }
+.storehero__trustitem { display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; min-height: 76px; padding: 14px clamp(8px, 1.4vw, 22px); color: var(--text); line-height: 1.3; }
+.storehero__trustitem + .storehero__trustitem { border-left: 1px solid var(--border); }
+.storehero__trustitem > .icon { flex: 0 0 auto; width: 27px; height: 27px; font-size: 1.45rem; color: var(--text); }
+.storehero__trustcopy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.storehero__trustcopy strong { font-size: .82rem; font-weight: 750; line-height: 1.2; }
+.storehero__trustcopy small { color: var(--text-muted); font-size: .69rem; line-height: 1.25; }
+
+/* Tablet: imagen panorámica y beneficios en una cuadrícula 2 x 2. */
+@media (min-width: 561px) and (max-width: 999px) {
+  .storehero__slide { aspect-ratio: 1.85 / 1; max-height: 340px; }
+  .storehero__slide-img { object-position: 61% center; }
+  .storehero__info { width: 58%; padding: 34px 30px 30px; gap: 7px; }
+  .storehero__title { font-size: clamp(1.9rem, 3.6vw, 2.65rem); }
+  .storehero__desc { max-width: 36ch; font-size: .84rem; }
+  .storehero__badge { top: 20px; left: 30px; }
+  .storehero__brandlogo { top: 20px; right: 30px; height: 30px; }
+  .storehero__trustbar { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 22px; }
+  .storehero__trustitem { justify-content: flex-start; min-height: 66px; padding: 12px 16px; }
+  .storehero__trustitem:nth-child(3) { border-left: 0; }
+  .storehero__trustitem:nth-child(n+3) { border-top: 1px solid var(--border); }
 }
 @media (min-width: 1000px) {
-  /* El formato panorámico de verdad: ancho tipo banner de campaña, no
-     la caja casi cuadrada de antes. max-height evita que en monitores
-     muy anchos (donde el ancho disponible es enorme) se dispare de alto. */
-  .storehero__slide { aspect-ratio: 3.2 / 1; max-height: 380px; }
-  .storehero__title { font-size: 2rem; }
-  .storehero__eyebrow { font-size: .72rem; letter-spacing: .8px; }
-}
-@media (min-width: 1240px) {
-  .storehero__title { font-size: 2.3rem; }
-  .storehero__info { padding: 34px; max-width: 560px; }
-}
-@media (prefers-reduced-motion: reduce) { .storehero__track { transition: none; } }
-@media (max-height: 820px) { .storehero__grid { margin-top: 4px; } .storehero__scrollhint { margin-top: -4px; } }
-/* En portátiles con poca altura de ventana (muy común: 800-900px de alto
-   con la barra del navegador), el hero entero + categorías + "sigue
-   bajando" tiene que caber sin scroll. Con el banner ya panorámico (más
-   bajo de por sí) suele bastar con esto. */
-@media (max-height: 900px) {
-  .storehero__content { gap: 10px; }
-  .ticker__cat { width: 95px; }
-}
-@media (max-height: 900px) and (min-width: 640px) {
-  .ticker__cat { width: 115px; }
-}
-@media (max-height: 820px) and (min-width: 1000px) {
-  .storehero__slide { max-height: 260px; }
-}
-@media (max-height: 900px) and (min-width: 640px) {
-  .ticker__cat { width: 115px; }
+  .storehero__slide { aspect-ratio: 4.2 / 1; max-height: 420px; }
+  .storehero__info { width: 49%; padding: 38px clamp(48px, 4.4vw, 82px) 34px; }
+  .storehero__title { font-size: clamp(1.9rem, 2.4vw, 2.5rem); }
+  .storehero__badge { left: clamp(48px, 4.4vw, 82px); }
+  .storehero__brandlogo { right: clamp(48px, 4.4vw, 82px); }
 }
 
-.storehero__ctaWrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-@media (min-width: 480px) { .storehero__ctaWrap { flex-direction: row; justify-content: center; flex-wrap: wrap; } }
+/* Móvil: CTA legible y los cuatro beneficios en dos columnas. */
+@media (max-width: 560px) {
+  .storehero__slide { aspect-ratio: .82 / 1; max-height: 490px; justify-content: flex-start; }
+  .storehero__slide-img { object-position: 64% center; }
+  .storehero__slide::before { background: linear-gradient(90deg, rgba(5,6,8,.92) 0%, rgba(5,6,8,.78) 58%, rgba(5,6,8,.24) 100%), linear-gradient(0deg, rgba(5,6,8,.58) 0%, transparent 50%); }
+  .storehero__badge { top: 14px; left: 16px; padding: 6px 10px; font-size: .59rem; }
+  .storehero__brandlogo { top: 14px; right: 14px; height: 25px; max-width: 94px; padding: 4px 6px; }
+  .storehero__brandlogo img { max-width: 80px; }
+  .storehero__info { width: 91%; max-width: 390px; padding: 56px 16px 54px; gap: 8px; }
+  .storehero__eyebrow { font-size: .58rem; letter-spacing: .13em; }
+  .storehero__title { max-width: 17ch; font-size: clamp(1.55rem, 7vw, 2.05rem); line-height: 1.06; }
+  .storehero__desc { max-width: 32ch; font-size: .76rem; line-height: 1.4; -webkit-line-clamp: 2; }
+  .storehero__price .now { font-size: 1.4rem; }
+  .storehero__price .was { font-size: .78rem; }
+  .storehero__info .btn { min-height: 40px; padding: 10px 15px; font-size: .78rem; }
+  .storehero__arrow { top: auto; bottom: 10px; width: 30px; height: 30px; transform: none; }
+  .storehero__arrow--prev { left: 12px; }
+  .storehero__arrow--next { right: 12px; }
+  .storehero__dots { bottom: 21px; }
+  .storehero__trustbar { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 10px; }
+  .storehero__trustitem { justify-content: flex-start; gap: 8px; min-height: 66px; padding: 10px 7px; }
+  .storehero__trustitem > .icon { width: 22px; height: 22px; font-size: 1.15rem; }
+  .storehero__trustitem:nth-child(3) { border-left: 0; }
+  .storehero__trustitem:nth-child(n+3) { border-top: 1px solid var(--border); }
+  .storehero__trustcopy strong { font-size: .7rem; }
+  .storehero__trustcopy small { font-size: .61rem; }
+}
+@media (prefers-reduced-motion: reduce) { .storehero__track { transition: none; } }
+
+/* Accesos directos "Ver todos los productos" / "Comprar por categoría",
+   justo debajo del hero (antes vivían dentro del propio banner). */
+.hero-ctaRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 28px 16px 0; }
 .storehero__ctaBtn {
   position: relative;
   display: inline-flex; align-items: center; gap: 10px;
@@ -619,7 +629,7 @@ body.nav-open { overflow: hidden; }
   transform: translateX(-120%);
   transition: transform .7s var(--ease);
 }
-.storehero__ctaBtn:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(227,6,19,.48); }
+.storehero__ctaBtn:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(227,6,19,.48); text-decoration: none; }
 .storehero__ctaBtn:hover::before { transform: translateX(120%); }
 .storehero__ctaBtn-arrow { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.2); flex-shrink: 0; transition: transform .3s var(--ease), background .2s ease; }
 .storehero__ctaBtn:hover .storehero__ctaBtn-arrow { transform: translateX(3px); background: rgba(255,255,255,.32); }
@@ -630,52 +640,27 @@ body.nav-open { overflow: hidden; }
 .storehero__ctaBtn-text { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) { .storehero__ctaBtn, .storehero__ctaBtn::before, .storehero__ctaBtn-arrow { transition: none; } }
 
-.storehero__categories { width: 100%; }
-.storehero__categories .ticker { padding: 4px 0; }
-.storehero__categories .ticker__track { gap: 12px; }
-.ticker__cat {
-  position: relative; flex-shrink: 0; width: 135px; aspect-ratio: 4/3; border-radius: var(--radius);
-  overflow: hidden; box-shadow: var(--shadow); text-decoration: none; background: var(--img-bg);
-  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+/* Home: categorías y productos más cerca del hero, sin una franja vacía
+   intermedia. */
+#categorySection.section { padding-top: 24px; padding-bottom: 24px; }
+#categorySection .section__head { margin-bottom: 16px; }
+#categorySection .catrow { gap: 12px; }
+#categorySection .catrow__card { flex: 1 1 0; width: auto; min-width: 0; max-width: 220px; aspect-ratio: 1.12 / 1; }
+@media (min-width: 561px) and (max-width: 999px) {
+  #categorySection .catrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  #categorySection .catrow__card { width: 100%; max-width: none; aspect-ratio: 1.2 / 1; }
 }
-.ticker__cat:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-.ticker__cat img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
-.ticker__cat:hover img { transform: scale(1.08); }
-/* Capa oscura uniforme (no solo un degradado desde abajo) para que la
-   foto quede difuminada de fondo y el nombre de la categoría destaque
-   bien centrado encima, en vez de competir con el detalle de la foto. */
-.ticker__cat::after { content: ""; position: absolute; inset: 0; background: rgba(8,8,10,.48); transition: background .2s ease; }
-.ticker__cat:hover::after { background: rgba(8,8,10,.58); }
-.ticker__cat-label {
-  position: absolute; inset: 0; z-index: 1; color: #fff; display: flex; align-items: center; justify-content: center;
-  text-align: center; padding: 0 14px; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
-  line-height: 1.25; text-shadow: 0 2px 10px rgba(0,0,0,.5);
+@media (max-width: 560px) {
+  #categorySection.section { padding-top: 22px; padding-bottom: 22px; }
+  #categorySection .catrow { display: flex; flex-direction: column; gap: 9px; }
+  #categorySection .catrow__card { flex: none; width: 100%; max-width: none; min-height: 60px; aspect-ratio: auto; }
 }
-@media (min-width: 640px) { .ticker__cat { width: 165px; } .ticker__cat-label { font-size: 1.15rem; } }
-
-/* Viewports bajos (móvil en horizontal, ventanas de escritorio poco altas):
-   van al final de toda la sección del hero para ganarle a cualquier regla
-   anterior (ancho, paneles, botones, marcas...) sea cual sea el ancho, y
-   así el aviso de "sigue bajando" siempre quepa sin hacer scroll. */
-@media (max-height: 700px) {
-  .storehero { padding: 6px 0 0; }
-  .storehero__content { gap: 8px; padding: 10px 0; }
-  .storehero__grid { margin-top: 0; }
-  .storehero__scrollhint { margin-top: 0; }
-  .storehero__slide { max-height: 150px; }
-  .storehero__badge { top: 8px; left: 8px; padding: 4px 10px; font-size: .6rem; }
-  .storehero__info { padding: 6px 14px; }
-  .storehero__title { font-size: 1rem; }
-  .storehero__ctaWrap { gap: 4px; }
-}
-@media (max-height: 520px) {
-  .storehero__content { gap: 4px; padding: 6px 0; }
-  .storehero__slide { max-height: 90px; }
-  .storehero__badge, .storehero__eyebrow, .storehero__price { display: none; }
-  .storehero__ctaBtn--outline { display: none; }
-}
-@media (max-height: 420px) {
-  .storehero__grid, .storehero__categories { display: none; }
+/* La sección de productos destacados queda visualmente unida a las
+   categorías. */
+section:has(.prodgrid--home) { padding-top: 18px; }
+section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
+@media (max-width: 560px) {
+  section:has(.prodgrid--home) { padding-top: 12px; padding-bottom: 28px; }
 }
 
 /* ---------- Preguntas frecuentes ---------- */
@@ -718,6 +703,12 @@ body.nav-open { overflow: hidden; }
 /* ---------- Shipping banner ---------- */
 .shipband { display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--red); color: #fff; text-align: center; padding: 12px 16px; font-weight: 700; font-size: .9rem; letter-spacing: .3px; }
 
+/* ---------- Pestañas de "Productos destacados" ---------- */
+.featured-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.featured-tabs__btn { padding: 9px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-weight: 700; font-size: .85rem; cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease); }
+.featured-tabs__btn:hover { border-color: var(--border-strong); color: var(--text); }
+.featured-tabs__btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+
 /* Banner de confianza (distribuidor oficial) — oscuro en vez de rojo,
    para que no se confunda con el de envío gratis que viene justo después. */
 
@@ -725,13 +716,6 @@ body.nav-open { overflow: hidden; }
 
 /* ---------- Sections ---------- */
 .section { padding: 44px 16px; }
-/* La sección justo después del hero no necesita los 44px de padding-top
-   normales — "sigue bajando" ya hace de separador visual, sumarle el
-   padding de encima dejaba un hueco enorme entre los dos. */
-.storehero + .section { padding-top: 16px; }
-/* El botón "Comprar por categoría" del hero hace scrollIntoView aquí — sin
-   esto, el header sticky tapa el título de la sección al aterrizar, dando
-   la sensación de que el scroll "se pasa" de las categorías. */
 #categorySection { scroll-margin-top: var(--topchrome-offset, 140px); }
 .section__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 8px; }
 .section__head h2 { font-size: 1.5rem; margin: 0; }
@@ -742,16 +726,50 @@ body.nav-open { overflow: hidden; }
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
 .reveal.in-view { opacity: 1; transform: translateY(0); }
 
-/* ---------- Categorías (grid completo) ---------- */
-.catgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.catcard { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4/3; box-shadow: var(--shadow); }
-.catcard img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
-.catcard:hover img { transform: scale(1.07); }
-.catcard--plain::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.05) 60%); }
-.catcard__label { position: absolute; left: 14px; right: 14px; bottom: 12px; color: #fff; font-family: var(--font-display); font-weight: 700; z-index: 2; font-size: 1.15rem; line-height: 1.2; text-shadow: 0 2px 10px rgba(0,0,0,.4); }
-@media (min-width: 640px) { .catcard__label { font-size: 1.3rem; } }
-.catcard__icon { position: absolute; top: 10px; left: 10px; z-index: 2; width: 32px; height: 32px; border-radius: 50%; background: rgba(12,12,14,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #fff; font-size: 1rem; padding: 8px; box-sizing: border-box; }
-@media (min-width: 640px) { .catgrid { grid-template-columns: repeat(4, 1fr); } }
+/* ---------- Categorías (fila compacta "Encuentra tu equipo") ---------- */
+.catrow {
+  display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; padding: 4px 2px 12px;
+  scroll-behavior: smooth; scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: #b8b8bc transparent;
+}
+.catrow::-webkit-scrollbar { height: 5px; }
+.catrow::-webkit-scrollbar-track { background: transparent; }
+.catrow::-webkit-scrollbar-thumb { background: #b8b8bc; border-radius: 10px; }
+.catrow::-webkit-scrollbar-thumb:hover { background: var(--red); }
+.catrow__card { position: relative; flex: 0 0 auto; width: 108px; border-radius: var(--radius); overflow: hidden; aspect-ratio: 1/1; box-shadow: var(--shadow); text-decoration: none; scroll-snap-align: start; }
+.catrow__card img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
+.catrow__card:hover img { transform: scale(1.07); }
+.catrow__card--plain::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.05) 60%); }
+.catrow__label { position: absolute; left: 8px; right: 8px; bottom: 8px; color: #fff; font-family: var(--font-display); font-weight: 700; z-index: 2; font-size: .82rem; line-height: 1.2; text-shadow: 0 2px 10px rgba(0,0,0,.4); }
+/* Las carátulas elegidas a mano ya suelen llevar el nombre escrito
+   encima — el rótulo por código sólo hace falta en las automáticas. */
+.catrow__card:not(.catrow__card--plain) .catrow__label { display: none; }
+.catrow__icon { position: absolute; top: 8px; left: 8px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; background: rgba(12,12,14,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #fff; font-size: .85rem; padding: 6px; box-sizing: border-box; }
+.catrow__arrow { display: none; }
+@media (min-width: 640px) { .catrow__card { width: 136px; } .catrow__label { font-size: .92rem; } }
+
+/* En móvil, "Encuentra tu equipo" pasa de cuadrícula de fotos a una lista
+   de filas apiladas a todo el ancho (como en el mockup): foto oscurecida
+   de fondo, nombre siempre visible y flecha a la derecha. */
+@media (max-width: 560px) {
+  .catrow { flex-direction: column; overflow-x: visible; gap: 10px; }
+  .catrow__card {
+    width: 100%; aspect-ratio: auto; min-height: 60px; display: flex; align-items: center;
+  }
+  /* La foto pasa a ser una capa de fondo (en vez de un elemento de flujo):
+     si no, al quitar el aspect-ratio cuadrado, una foto de producto normal
+     (casi cuadrada) se renderiza a su tamaño natural a todo el ancho de la
+     fila y la deja gigante en vez de una franja de 60px. */
+  .catrow__card img { position: absolute; inset: 0; opacity: .4; }
+  .catrow__card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85), rgba(0,0,0,.55)); }
+  .catrow__icon { display: none; }
+  .catrow__label {
+    position: relative; inset: auto; left: auto; right: auto; bottom: auto; z-index: 2;
+    flex: 1; padding: 12px 16px; font-size: .9rem;
+  }
+  .catrow__card:not(.catrow__card--plain) .catrow__label { display: block; }
+  .catrow__arrow { display: block; position: relative; z-index: 2; margin-right: 16px; color: #fff; font-size: .9rem; flex-shrink: 0; }
+}
 
 /* ---------- Product grid & cards ---------- */
 .prodgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -764,6 +782,10 @@ body.nav-open { overflow: hidden; }
 .pcard__imgwrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
 .pcard:hover .pcard__imgwrap img { transform: scale(1.06); }
 .pcard__badges { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+.pcard__wishlist { position: absolute; top: 8px; right: 8px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: flex; align-items: center; justify-content: center; font-size: .95rem; cursor: pointer; transition: transform .15s var(--ease), color .15s ease; }
+.pcard__wishlist:hover { transform: scale(1.08); }
+.pcard__wishlist.active { color: var(--red); border-color: var(--red); }
+.pcard__wishlist.active .icon svg { fill: currentColor; }
 .badge { font-size: .65rem; font-weight: 800; letter-spacing: .3px; padding: 4px 8px; border-radius: 5px; color: #fff; text-transform: uppercase; }
 .badge--offer { background: var(--red); }
 .badge--outlet { background: var(--text); color: var(--bg); }
@@ -771,8 +793,10 @@ body.nav-open { overflow: hidden; }
 .pcard__body { padding: 12px 12px 8px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .pcard__vendor { font-size: .7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
 .pcard__title { font-size: .88rem; font-weight: 600; line-height: 1.3; min-height: 2.3em; color: var(--text); }
-.pcard__rating { font-size: .75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
-.pcard__rating .stars { color: var(--red); letter-spacing: 1px; font-size: .8rem; }
+.pcard__rating { font-size: .75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin: 1px 0 2px; }
+.pcard__rating .stars { display: inline-flex; gap: 1px; font-size: .8rem; }
+.pcard__rating .stars .is-on { color: #f5a623; }
+.pcard__rating .stars .is-off { color: var(--border-strong); }
 .pcard__reviews { color: var(--text-soft); }
 .pcard__desc { display: none; }
 .pcard__footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 12px 14px; }
@@ -802,6 +826,21 @@ body.nav-open { overflow: hidden; }
   .prodgrid--list .pcard__imgwrap { width: 180px; }
   .prodgrid--list .pcard__desc { -webkit-line-clamp: 2; max-width: 46ch; }
   .prodgrid--list .pcard__footer { flex-direction: row; padding: 16px 20px; gap: 20px; }
+}
+
+/* "Productos destacados" de la home: en móvil pasa a vista lista (como en
+   el mockup, una tarjeta por fila con la foto a la izquierda) en vez de la
+   cuadrícula de 2 columnas que usa el resto del sitio. */
+@media (max-width: 560px) {
+  .prodgrid--home { display: flex; flex-direction: column; gap: 12px; }
+  .prodgrid--home .pcard { flex-direction: row; }
+  .prodgrid--home .pcard > a { display: flex; flex: 1; min-width: 0; }
+  .prodgrid--home .pcard__imgwrap { width: 100px; flex-shrink: 0; aspect-ratio: 1/1; }
+  .prodgrid--home .pcard__body { justify-content: center; }
+  .prodgrid--home .pcard__title { min-height: 0; }
+  .prodgrid--home .pcard__footer { flex-direction: column; align-items: flex-end; justify-content: center; margin-top: 0; padding: 10px 16px; gap: 8px; }
+  .prodgrid--home .pcard__price { flex-direction: row; align-items: baseline; gap: 8px; }
+  .prodgrid--home .pcard__pricebadge { display: inline-block; position: static; }
 }
 
 /* ---------- Vista/paginacion (toolbar del listado) ---------- */
@@ -1352,6 +1391,25 @@ body.nav-open { overflow: hidden; }
 .quoteform-section .quote-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
 @media (min-width: 800px) { .quoteform-section { grid-template-columns: 1fr 1fr; } }
 
+/* ---------- Barra de navegación inferior (solo móvil) ---------- */
+.bottomnav { display: none; }
+@media (max-width: 760px) {
+  .bottomnav {
+    display: flex; justify-content: space-around; position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+    background: var(--dark, #0c0c0e); border-top: 1px solid rgba(255,255,255,.1);
+    padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Hueco al final de la página para que el footer no quede tapado por la
+     barra fija — solo hace falta en los tamaños donde la barra existe. */
+  body { padding-bottom: 58px; }
+}
+.bottomnav__item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none;
+  color: rgba(255,255,255,.55); font-size: .62rem; font-weight: 700; padding: 4px 6px;
+}
+.bottomnav__item .icon { font-size: 1.15rem; }
+.bottomnav__item.active { color: var(--nav-accent, #ff5b62); }
+
 /* ---------- Floating WhatsApp ---------- */
 .whatsapp-float { position: fixed; bottom: 20px; right: 20px; width: 54px; height: 54px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); z-index: 90; transition: transform .2s var(--ease); }
 .whatsapp-float:hover { transform: scale(1.08); }
@@ -1365,6 +1423,9 @@ body.nav-open .whatsapp-float { display: none; }
   z-index: 95; transition: transform .2s var(--ease), background .2s ease;
 }
 .chat-float:hover { transform: scale(1.08); background: var(--red-dark); }
+@media (max-width: 760px) {
+  .whatsapp-float, .chat-float { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+}
 
 .chat-panel {
   position: fixed; bottom: 80px; right: 20px; width: min(320px, calc(100vw - 24px));

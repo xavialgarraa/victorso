@@ -32,6 +32,9 @@ export const PRODUCT_CARD_FRAGMENT = `#graphql
       availableForSale
       quantityAvailable
     }
+    reviewsMetafield: metafield(namespace: "reviews", key: "reviews") {
+      value
+    }
   }
 ` as const;
 

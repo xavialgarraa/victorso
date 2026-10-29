@@ -1,5 +1,7 @@
-import {Fragment, useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
+import {AddToCartButton} from '~/components/AddToCartButton';
+import {useAside} from '~/components/Aside';
 import {Icon} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
 
@@ -12,15 +14,24 @@ export type HeroSlide = {
   badgeClass: 'storehero__badge--new' | 'storehero__badge--offer' | 'storehero__badge--brand';
   eyebrow: string;
   title: string;
+  description?: string;
+  /** Logo de marca (del vendor del producto vinculado), arriba a la
+   * derecha del slide — null si no hay marca reconocida con logo. */
+  brandLogo?: string | null;
   priceNode?: React.ReactNode;
   cta: string;
   ctaClass: 'btn--outline' | 'btn--primary';
+  /** Si el slide está vinculado a un producto en stock, mostramos un botón
+   * "Añadir al carrito" directo en vez del cta de "Descúbrelo". */
+  addToCart?: {merchandiseId: string};
   /** Solo la imagen, sin badge/texto/botón encima — sigue llevando a
    * "href" al clicar. */
   hideOverlay?: boolean;
 };
 
 function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSlide[]; intervalMs?: number}) {
+  const {t} = useI18n();
+  const {open} = useAside();
   const [index, setIndex] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef(0);
@@ -78,39 +89,98 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
               swiped.current = false;
             }
           };
-          const content = s.hideOverlay ? (
-            <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
-          ) : (
-            <>
+          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}`;
+
+          if (s.hideOverlay) {
+            // Sin texto ni botón: el slide entero es un único enlace.
+            return s.external ? (
+              <a key={s.key} className={className} href={s.href} target="_blank" rel="noopener noreferrer" onClickCapture={onClickCapture}>
+                <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
+              </a>
+            ) : (
+              <Link key={s.key} className={className} to={s.href} onClickCapture={onClickCapture}>
+                <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
+              </Link>
+            );
+          }
+
+          // Con texto y botón: el fondo es un enlace a pantalla completa y
+          // el título lleva su propio enlace — así el botón "Añadir al
+          // carrito" puede ser un <button>/<form> real sin quedar anidado
+          // dentro de un <a> (HTML inválido y conflictos de click).
+          const bgProps = {className: 'storehero__bglink', onClickCapture, 'aria-label': s.title};
+          const titleProps = {className: 'storehero__titleLink', onClickCapture};
+          return (
+            <div key={s.key} className={className}>
+              {s.external ? (
+                <a {...bgProps} href={s.href} target="_blank" rel="noopener noreferrer" />
+              ) : (
+                <Link {...bgProps} to={s.href} />
+              )}
               <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
               {s.badge && <span className={`storehero__badge ${s.badgeClass}`}>{s.badge}</span>}
+              {s.brandLogo && (
+                <span className="storehero__brandlogo">
+                  <img src={s.brandLogo} alt="" loading="lazy" />
+                </span>
+              )}
               <div className="storehero__info">
                 <div className="storehero__eyebrow">{s.eyebrow}</div>
-                <h2 className="storehero__title">{s.title}</h2>
+                <h2 className="storehero__title">
+                  {s.external ? (
+                    <a {...titleProps} href={s.href} target="_blank" rel="noopener noreferrer">{s.title}</a>
+                  ) : (
+                    <Link {...titleProps} to={s.href}>{s.title}</Link>
+                  )}
+                </h2>
+                {s.description && <p className="storehero__desc">{s.description}</p>}
                 {s.priceNode}
-                <span className={`btn ${s.ctaClass}`}>{s.cta}</span>
+                <div className="storehero__ctaRow">
+                  {s.addToCart ? (
+                    <AddToCartButton
+                      className="btn btn--primary storehero__addbtn"
+                      lines={[{merchandiseId: s.addToCart.merchandiseId, quantity: 1}]}
+                      onClick={() => open('cart')}
+                    >
+                      <Icon name="cart" /> {t('storeHeroAddToCart')}
+                    </AddToCartButton>
+                  ) : s.external ? (
+                    <a className={`btn ${s.ctaClass}`} href={s.href} target="_blank" rel="noopener noreferrer">{s.cta}</a>
+                  ) : (
+                    <Link className={`btn ${s.ctaClass}`} to={s.href}>{s.cta}</Link>
+                  )}
+                </div>
               </div>
-            </>
-          );
-          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}`;
-          return s.external ? (
-            <a
-              key={s.key}
-              className={className}
-              href={s.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClickCapture={onClickCapture}
-            >
-              {content}
-            </a>
-          ) : (
-            <Link key={s.key} className={className} to={s.href} onClickCapture={onClickCapture}>
-              {content}
-            </Link>
+            </div>
           );
         })}
       </div>
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            className="storehero__arrow storehero__arrow--prev"
+            aria-label={t('storeHeroPrevSlide')}
+            onClick={() => {
+              show(index - 1);
+              restart();
+            }}
+          >
+            <Icon name="chevronLeft" />
+          </button>
+          <button
+            type="button"
+            className="storehero__arrow storehero__arrow--next"
+            aria-label={t('storeHeroNextSlide')}
+            onClick={() => {
+              show(index + 1);
+              restart();
+            }}
+          >
+            <Icon name="chevronRight" />
+          </button>
+        </>
+      )}
       {slides.length > 1 && (
         <div className="storehero__dots">
           {slides.map((s, i) => (
@@ -130,75 +200,48 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
   );
 }
 
-export type HeroCategory = {id: string; handle: string; title: string; photo: string | null};
-
-export function StoreHero({
-  leftSlides,
-  rightSlides,
-  categories = [],
-}: {
-  leftSlides: HeroSlide[];
-  rightSlides: HeroSlide[];
-  categories?: HeroCategory[];
-}) {
-  const {t} = useI18n();
+export function StoreHero({leftSlides, rightSlides}: {leftSlides: HeroSlide[]; rightSlides: HeroSlide[]}) {
   // Un único banner apaisado con todas las slides (antes eran dos paneles
   // lado a lado) — el panel admin sigue distinguiendo "izquierda/derecha"
   // al configurar el hero, pero aquí se combinan en un solo carrusel.
   const allSlides = [...leftSlides, ...rightSlides];
 
+  const {t} = useI18n();
+
+  if (!allSlides.length) return null;
+
   return (
     <section className="storehero">
-      {/* Todo menos "sigue bajando" va agrupado en un solo bloque: el
-          espacio sobrante del alto mínimo de .storehero se reparte entre
-          este bloque y el aviso de abajo (justify-content: space-between
-          en .storehero), así "sigue bajando" queda pegado al final de
-          verdad en vez de dejar un hueco suelto después de él. */}
-      <div className="storehero__content">
-        <div className="storehero__grid">
-          <HeroPanel id="storeHeroMain" slides={allSlides} />
+      <HeroPanel id="storeHeroMain" slides={allSlides} />
+      <div className="storehero__trustbar" aria-label={t('storeHeroTrustbarLabel')}>
+        <div className="storehero__trustitem">
+          <Icon name="truck" />
+          <span className="storehero__trustcopy">
+            <strong>{t('storeHeroPerkShip')}</strong>
+            <small>{t('storeHeroPerkShipText')}</small>
+          </span>
         </div>
-
-        <div className="storehero__ctaWrap">
-          <Link className="storehero__ctaBtn" to="/collections/all">
-            <span className="storehero__ctaBtn-text">{t('storeHeroCtaBtn')}</span>
-            <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
-          </Link>
-          <button
-            type="button"
-            className="storehero__ctaBtn storehero__ctaBtn--outline"
-            onClick={() =>
-              document.getElementById('categorySection')?.scrollIntoView({behavior: 'smooth', block: 'start'})
-            }
-          >
-            <span className="storehero__ctaBtn-text">{t('storeHeroCatBtn')}</span>
-            <span className="storehero__ctaBtn-arrow"><Icon name="arrowRight" /></span>
-          </button>
+        <div className="storehero__trustitem">
+          <Icon name="shield" />
+          <span className="storehero__trustcopy">
+            <strong>{t('storeHeroPerkWarranty')}</strong>
+            <small>{t('storeHeroPerkWarrantyText')}</small>
+          </span>
         </div>
-
-        {categories.length > 0 && (
-          <div className="storehero__categories">
-            <div className="ticker">
-              <div className="ticker__track">
-                {[0, 1].map((rep) => (
-                  <Fragment key={rep}>
-                    {categories.map((c) => (
-                      <Link key={`${rep}-${c.id}`} className="ticker__cat" to={`/collections/${c.handle}`}>
-                        {c.photo && <img src={c.photo} alt="" loading="lazy" />}
-                        <span className="ticker__cat-label">{c.title}</span>
-                      </Link>
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="storehero__scrollhint">
-        <span className="storehero__scrollhint-circle"><Icon name="chevronDown" /></span>
-        <span className="storehero__scrollhint-text">{t('scrollHint')}</span>
+        <div className="storehero__trustitem">
+          <Icon name="headphones" />
+          <span className="storehero__trustcopy">
+            <strong>{t('storeHeroPerkSupport')}</strong>
+            <small>{t('storeHeroPerkSupportText')}</small>
+          </span>
+        </div>
+        <div className="storehero__trustitem">
+          <Icon name="card" />
+          <span className="storehero__trustcopy">
+            <strong>{t('storeHeroPerkPay')}</strong>
+            <small>{t('storeHeroPerkPayText')}</small>
+          </span>
+        </div>
       </div>
     </section>
   );
