@@ -92,7 +92,6 @@ export async function loader({context}: Route.LoaderArgs) {
         c.handle !== 'novedades-destacadas-home' &&
         c.products.nodes.length > 0,
     )
-    .slice(0, 9)
     .map((c) => {
       const override = categoryCovers[c.handle];
       const withPhoto = c.products.nodes.filter((p) => p.featuredImage);

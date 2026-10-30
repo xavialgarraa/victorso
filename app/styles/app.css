@@ -633,13 +633,17 @@ body.nav-open { overflow: hidden; }
   .storehero__arrow--prev { left: 12px; }
   .storehero__arrow--next { right: 12px; }
   .storehero__dots { bottom: 21px; }
-  .storehero__trustbar { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 10px; }
-  .storehero__trustitem { justify-content: flex-start; gap: 8px; min-height: 66px; padding: 10px 7px; }
-  .storehero__trustitem > .icon { width: 22px; height: 22px; font-size: 1.15rem; }
-  .storehero__trustitem:nth-child(3) { border-left: 0; }
-  .storehero__trustitem:nth-child(n+3) { border-top: 1px solid var(--border); }
-  .storehero__trustcopy strong { font-size: .7rem; }
-  .storehero__trustcopy small { font-size: .61rem; }
+  /* Una sola fila compacta: solo icono + título (sin el texto de debajo,
+     que es lo que más alto lo hacía) — así deja más sitio a "Encuentra tu
+     equipo" sin tener que hacer tanto scroll. */
+  .storehero__trustbar { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 4px; }
+  .storehero__trustitem { flex-direction: column; justify-content: center; gap: 5px; min-height: 0; padding: 10px 3px; text-align: center; }
+  .storehero__trustitem > .icon { width: 19px; height: 19px; font-size: 1.05rem; }
+  .storehero__trustitem:nth-child(3) { border-left: 1px solid var(--border); }
+  .storehero__trustitem:nth-child(n+3) { border-top: 0; }
+  .storehero__trustcopy { align-items: center; gap: 0; }
+  .storehero__trustcopy strong { font-size: .62rem; font-weight: 700; line-height: 1.15; }
+  .storehero__trustcopy small { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .storehero__track { transition: none; } }
 
