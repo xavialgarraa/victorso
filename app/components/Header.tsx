@@ -217,8 +217,19 @@ function useMainNav() {
     headerElRef.current = document.querySelector('.header');
   }, []);
 
+  // overflow:hidden solo en el body no basta para bloquear el scroll de
+  // verdad en iOS Safari (sigue dejando arrastrar la página por detrás) —
+  // hace falta además fijar el body en position:fixed mientras el menú
+  // está abierto (o cerrándose, para no destraparlo a mitad de la
+  // animación). Como siempre se abre con la página ya en la posición 0
+  // (ver toggleBurger), no hace falta guardar ni restaurar ningún scroll.
   useEffect(() => {
-    document.body.classList.toggle('nav-open', state === 'open');
+    const locked = state === 'open' || state === 'closing';
+    document.body.classList.toggle('nav-open', locked);
+    document.body.style.position = locked ? 'fixed' : '';
+    document.body.style.top = locked ? '0' : '';
+    document.body.style.left = locked ? '0' : '';
+    document.body.style.right = locked ? '0' : '';
   }, [state]);
 
   function closeNav() {
@@ -231,15 +242,16 @@ function useMainNav() {
       closeNav();
       return;
     }
-    // Usa la posicion real del header (puede no estar aun "pegado" arriba
-    // si se abre nada mas cargar, con la topbar aun visible) — el menú
-    // vuelve a quedarse por debajo del header en vez de a pantalla
-    // completa (eso hacía que el botón de cerrar, que vive en el propio
-    // header, se solapara con "Inicio"). El scroll de la página detrás
-    // sigue bloqueado mientras está abierto (body.nav-open).
-    const rect = headerElRef.current?.getBoundingClientRect();
-    if (rect) setTop(`${rect.bottom}px`);
-    setState('open');
+    // Al abrir, la página salta siempre a arriba del todo — así el header
+    // queda en su alto "con topbar" de verdad (si no, el cálculo de abajo
+    // saldría distinto según por dónde se hubiera scrolleado antes) y el
+    // menú siempre arranca igual, limpio, sin dejar ver nada detrás.
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => {
+      const rect = headerElRef.current?.getBoundingClientRect();
+      if (rect) setTop(`${rect.bottom}px`);
+      setState('open');
+    });
   }
 
   function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
