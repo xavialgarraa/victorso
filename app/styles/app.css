@@ -339,6 +339,12 @@ body.search-open { overflow: hidden; }
   backdrop-filter: blur(22px) saturate(1.1);
   -webkit-backdrop-filter: blur(22px) saturate(1.1);
 }
+/* La barra de navegación inferior fija (z-index 90, solo en este mismo
+   punto de corte) va por encima del menú y le tapaba el idioma/modo
+   oscuro de abajo del todo — se le deja ese hueco libre. */
+@media (max-width: 760px) {
+  .mainnav.open, .mainnav.closing { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+}
 .mainnav.open { animation: mainnav-in .22s var(--ease); }
 .mainnav.closing { animation: mainnav-out .2s var(--ease) forwards; }
 .mainnav a, .mainnav__dropdown-trigger { color: var(--nav-text); padding: 13px 20px; border-bottom: 1px solid var(--nav-border); font-size: .92rem; font-weight: 500; }

@@ -221,15 +221,19 @@ function useMainNav() {
   // verdad en iOS Safari (sigue dejando arrastrar la página por detrás) —
   // hace falta además fijar el body en position:fixed mientras el menú
   // está abierto (o cerrándose, para no destraparlo a mitad de la
-  // animación). Como siempre se abre con la página ya en la posición 0
-  // (ver toggleBurger), no hace falta guardar ni restaurar ningún scroll.
-  useEffect(() => {
-    const locked = state === 'open' || state === 'closing';
+  // animación). Como siempre se abre con la página ya en la posición 0,
+  // no hace falta guardar ni restaurar ningún scroll.
+  function lockScroll(locked: boolean) {
     document.body.classList.toggle('nav-open', locked);
     document.body.style.position = locked ? 'fixed' : '';
     document.body.style.top = locked ? '0' : '';
     document.body.style.left = locked ? '0' : '';
     document.body.style.right = locked ? '0' : '';
+  }
+
+  useEffect(() => {
+    lockScroll(state === 'open' || state === 'closing');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   function closeNav() {
@@ -242,16 +246,22 @@ function useMainNav() {
       closeNav();
       return;
     }
-    // Al abrir, la página salta siempre a arriba del todo — así el header
-    // queda en su alto "con topbar" de verdad (si no, el cálculo de abajo
-    // saldría distinto según por dónde se hubiera scrolleado antes) y el
-    // menú siempre arranca igual, limpio, sin dejar ver nada detrás.
+    // Al abrir, la página salta siempre a arriba del todo primero — un
+    // instante visible con las dos barras de arriba puestas, como si se
+    // acabara de cargar la web — y SOLO ENTONCES se abre el menú, ya con
+    // el hueco bien calculado (si se mide a la vez que se scrollea, sale
+    // el alto de antes de saltar arriba, no el de después). Se bloquea el
+    // scroll ya desde este mismo instante, para que no se pueda bajar
+    // durante ese pequeño salto hacia arriba (por eso se bloquea DESPUÉS
+    // de pedir el scroll a 0, no antes — position:fixed anularía el
+    // scrollTo si se aplicara primero).
     window.scrollTo(0, 0);
-    requestAnimationFrame(() => {
+    lockScroll(true);
+    setTimeout(() => {
       const rect = headerElRef.current?.getBoundingClientRect();
       if (rect) setTop(`${rect.bottom}px`);
       setState('open');
-    });
+    }, 180);
   }
 
   function handleLinkClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
