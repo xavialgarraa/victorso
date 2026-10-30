@@ -330,7 +330,7 @@ body.search-open { overflow: hidden; }
   display: flex;
   justify-content: space-evenly;
   position: fixed;
-  top: 0;
+  top: var(--header-offset);
   left: 0; right: 0; bottom: 0;
   z-index: 80;
   overflow: hidden;

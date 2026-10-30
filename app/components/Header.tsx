@@ -83,6 +83,7 @@ export function Header({header, isLoggedIn, cart}: HeaderProps) {
         <MainNavPanel
           collections={header.collections.nodes}
           state={mainNav.state}
+          top={mainNav.top}
           closeNav={mainNav.closeNav}
           handleLinkClick={mainNav.handleLinkClick}
         />
@@ -209,6 +210,12 @@ type NavState = 'closed' | 'open' | 'closing';
 function useMainNav() {
   const navigate = useNavigate();
   const [state, setState] = useState<NavState>('closed');
+  const [top, setTop] = useState<string>();
+  const headerElRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    headerElRef.current = document.querySelector('.header');
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle('nav-open', state === 'open');
@@ -219,15 +226,19 @@ function useMainNav() {
     setTimeout(() => setState((s) => (s === 'closing' ? 'closed' : s)), 220);
   }
 
-  // A pantalla completa siempre (ver .mainnav.open en app.css, top:0) —
-  // antes se medía dónde terminaba el header para no tapar la topbar si
-  // se abría sin haber hecho scroll, pero eso dejaba ver el banner del
-  // hero por encima del menú.
   function toggleBurger() {
     if (state === 'open') {
       closeNav();
       return;
     }
+    // Usa la posicion real del header (puede no estar aun "pegado" arriba
+    // si se abre nada mas cargar, con la topbar aun visible) — el menú
+    // vuelve a quedarse por debajo del header en vez de a pantalla
+    // completa (eso hacía que el botón de cerrar, que vive en el propio
+    // header, se solapara con "Inicio"). El scroll de la página detrás
+    // sigue bloqueado mientras está abierto (body.nav-open).
+    const rect = headerElRef.current?.getBoundingClientRect();
+    if (rect) setTop(`${rect.bottom}px`);
     setState('open');
   }
 
@@ -238,7 +249,7 @@ function useMainNav() {
     setTimeout(() => navigate(href), 220);
   }
 
-  return {state, toggleBurger, closeNav, handleLinkClick};
+  return {state, top, toggleBurger, closeNav, handleLinkClick};
 }
 
 function Burger({state, toggleBurger}: {state: NavState; toggleBurger: () => void}) {
@@ -311,21 +322,25 @@ function NavDropdown({
 function MainNavPanel({
   collections,
   state,
+  top,
   closeNav,
   handleLinkClick,
 }: {
   collections?: NavCollection[];
   state: NavState;
+  top?: string;
   closeNav: () => void;
   handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   const navLinks = useNavLinks(collections);
   const {locale, setLocale} = useI18n();
+  const isOpenish = state === 'open' || state === 'closing';
 
   return (
     <nav
       className={`mainnav${state === 'open' ? ' open' : ''}${state === 'closing' ? ' closing' : ''}`}
       role="navigation"
+      style={isOpenish ? {top} : undefined}
       onClick={(e) => {
         if (e.target === e.currentTarget) closeNav();
       }}
