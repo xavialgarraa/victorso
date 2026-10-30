@@ -1,4 +1,3 @@
-import {useState} from 'react';
 import {Link} from 'react-router';
 import {Image, Money} from '@shopify/hydrogen';
 import type {ProductCardFragment} from 'storefrontapi.generated';
@@ -12,9 +11,6 @@ const LOW_STOCK_THRESHOLD = 3;
 
 export function ProductCard({product}: {product: ProductCardFragment}) {
   const {t} = useI18n();
-  // Corazón de favoritos: solo de cara al usuario, sin guardar nada — no
-  // hay backend de lista de deseos todavía, es puramente decorativo.
-  const [wishlisted, setWishlisted] = useState(false);
   const price = product.priceRange.minVariantPrice;
   const compareAtPrice = product.compareAtPriceRange?.minVariantPrice;
   const hasOffer =
@@ -33,18 +29,6 @@ export function ProductCard({product}: {product: ProductCardFragment}) {
 
   return (
     <article className="pcard">
-      <button
-        type="button"
-        className={`pcard__wishlist${wishlisted ? ' active' : ''}`}
-        aria-label={t(wishlisted ? 'removeFromWishlist' : 'addToWishlist')}
-        aria-pressed={wishlisted}
-        onClick={(e) => {
-          e.preventDefault();
-          setWishlisted((v) => !v);
-        }}
-      >
-        <Icon name="heart" />
-      </button>
       <Link to={`/products/${product.handle}`} prefetch="intent">
         <div className="pcard__imgwrap">
           {(hasOffer || !variant?.availableForSale || lowStock) && (

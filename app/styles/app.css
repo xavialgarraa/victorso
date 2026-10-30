@@ -836,10 +836,6 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .pcard__imgwrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
 .pcard:hover .pcard__imgwrap img { transform: scale(1.06); }
 .pcard__badges { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px; z-index: 2; }
-.pcard__wishlist { position: absolute; top: 8px; right: 8px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: flex; align-items: center; justify-content: center; font-size: .95rem; cursor: pointer; transition: transform .15s var(--ease), color .15s ease; }
-.pcard__wishlist:hover { transform: scale(1.08); }
-.pcard__wishlist.active { color: var(--red); border-color: var(--red); }
-.pcard__wishlist.active .icon svg { fill: currentColor; }
 .badge { font-size: .65rem; font-weight: 800; letter-spacing: .3px; padding: 4px 8px; border-radius: 5px; color: #fff; text-transform: uppercase; }
 .badge--offer { background: var(--red); }
 .badge--outlet { background: var(--text); color: var(--bg); }
@@ -895,10 +891,7 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
   /* Ancho fijo (no "auto" según su contenido): sin esto, el precio sin
      recortar ("152,00 € 189,00 €" seguidos) pedía más sitio del que le
      tocaba y se lo quitaba a la imagen+título, que acababan solapados. */
-  /* padding-top de sobra para dejar sitio al corazón de favoritos (es
-     position:absolute sobre toda la tarjeta, top:8px — sin este hueco el
-     precio empezaba justo debajo y se tocaban). */
-  .prodgrid--home .pcard__footer { flex: 0 0 92px; width: 92px; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-top: 0; padding: 44px 12px 10px; gap: 8px; }
+  .prodgrid--home .pcard__footer { flex: 0 0 92px; width: 92px; flex-direction: column; align-items: flex-end; justify-content: center; margin-top: 0; padding: 10px 12px; gap: 8px; }
   .prodgrid--home .pcard__price { flex-direction: column; align-items: flex-end; gap: 2px; }
   .prodgrid--home .pcard__price .now { font-size: .98rem; }
   .prodgrid--home .pcard__price .was { font-size: .7rem; }
