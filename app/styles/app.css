@@ -284,12 +284,13 @@ body.search-open { overflow: hidden; }
 }
 .search-ai-btn:hover { opacity: .85; }
 .search-ai-btn .icon { font-size: .85rem; }
-/* En pantallas estrechas el icono+input+botón de lupa no dejan sitio al
-   pill de "Modo IA" en la misma fila — en vez de encogerlo hasta que
-   desaparezca (lo que pasaba antes), que baje entero a su propia fila
-   a todo lo ancho, bien visible. */
+/* En móvil, el botón circular de enviar sobraba (el Enter del teclado ya
+   manda el formulario) y era precisamente lo que no dejaba sitio a
+   "Modo IA" en la misma fila — se quedaba cayendo solo a una segunda
+   fila suelta, con hueco de más, en vez de leerse como parte del mismo
+   buscador. Quitando ese botón, "Modo IA" cabe junto al campo de texto. */
 @media (max-width: 560px) {
-  .search-ai-btn { flex: 1 1 100%; margin-top: 2px; }
+  .search-modal__form button[type="submit"] { display: none; }
 }
 .search-ai-hint { margin: 6px 16px 0; font-size: .78rem; color: var(--text-soft); }
 
@@ -329,7 +330,7 @@ body.search-open { overflow: hidden; }
   display: flex;
   justify-content: space-evenly;
   position: fixed;
-  top: var(--header-offset);
+  top: 0;
   left: 0; right: 0; bottom: 0;
   z-index: 80;
   overflow: hidden;
@@ -887,12 +888,20 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 @media (max-width: 560px) {
   .prodgrid--home { display: flex; flex-direction: column; gap: 12px; }
   .prodgrid--home .pcard { flex-direction: row; }
-  .prodgrid--home .pcard > a { display: flex; flex: 1; min-width: 0; }
+  .prodgrid--home .pcard > a { display: flex; flex: 1 1 auto; min-width: 0; }
   .prodgrid--home .pcard__imgwrap { width: 100px; flex-shrink: 0; aspect-ratio: 1/1; }
-  .prodgrid--home .pcard__body { justify-content: center; }
+  .prodgrid--home .pcard__body { justify-content: center; min-width: 0; }
   .prodgrid--home .pcard__title { min-height: 0; }
-  .prodgrid--home .pcard__footer { flex-direction: column; align-items: flex-end; justify-content: center; margin-top: 0; padding: 10px 16px; gap: 8px; }
-  .prodgrid--home .pcard__price { flex-direction: row; align-items: baseline; gap: 8px; }
+  /* Ancho fijo (no "auto" según su contenido): sin esto, el precio sin
+     recortar ("152,00 € 189,00 €" seguidos) pedía más sitio del que le
+     tocaba y se lo quitaba a la imagen+título, que acababan solapados. */
+  /* padding-top de sobra para dejar sitio al corazón de favoritos (es
+     position:absolute sobre toda la tarjeta, top:8px — sin este hueco el
+     precio empezaba justo debajo y se tocaban). */
+  .prodgrid--home .pcard__footer { flex: 0 0 92px; width: 92px; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin-top: 0; padding: 44px 12px 10px; gap: 8px; }
+  .prodgrid--home .pcard__price { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .prodgrid--home .pcard__price .now { font-size: .98rem; }
+  .prodgrid--home .pcard__price .was { font-size: .7rem; }
   .prodgrid--home .pcard__pricebadge { display: inline-block; position: static; }
 }
 
