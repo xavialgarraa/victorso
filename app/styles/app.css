@@ -553,11 +553,22 @@ body.nav-open { overflow: hidden; }
 .storehero__bglink { position: absolute; inset: 0; z-index: 1; }
 .storehero__titleLink { color: inherit; text-decoration: none; }
 .storehero__titleLink:hover { text-decoration: none; }
-.storehero__arrow { position: absolute; top: 50%; z-index: 4; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.34); border-radius: 50%; color: #fff; background: rgba(12,12,14,.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: pointer; transition: background .2s ease, border-color .2s ease; }
+.storehero__arrow { position: absolute; top: 50%; z-index: 4; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.34); border-radius: 50%; color: #fff; background: rgba(12,12,14,.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: pointer; transition: background .2s ease, border-color .2s ease, opacity .25s ease; }
 .storehero__arrow:hover { background: rgba(12,12,14,.78); border-color: rgba(255,255,255,.65); }
 .storehero__arrow--prev { left: 18px; }
 .storehero__arrow--next { right: 18px; }
-.storehero__dots { position: absolute; left: 50%; bottom: 16px; z-index: 4; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); }
+.storehero__dots { position: absolute; left: 50%; bottom: 16px; z-index: 4; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); transition: opacity .25s ease; }
+/* Limpio por defecto: en escritorio (con ratón) solo aparecen al pasar
+   por encima del banner; en móvil (sin ratón) solo mientras se está
+   tocando/deslizando — ver storehero__panel--touching, que pone el JS. */
+.storehero__arrow, .storehero__dots { opacity: 0; }
+@media (hover: hover) {
+  .storehero__panel:hover .storehero__arrow, .storehero__panel:focus-within .storehero__arrow,
+  .storehero__panel:hover .storehero__dots, .storehero__panel:focus-within .storehero__dots { opacity: 1; }
+}
+@media (hover: none) {
+  .storehero__panel--touching .storehero__arrow, .storehero__panel--touching .storehero__dots { opacity: 1; }
+}
 .storehero__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.58); transition: background .25s var(--ease), width .25s var(--ease); cursor: pointer; }
 .storehero__dot.active { width: 19px; background: var(--red); }
 

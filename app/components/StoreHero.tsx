@@ -38,6 +38,11 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
   const swiped = useRef(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<Array<HTMLElement | null>>([]);
+  // En móvil no hay ":hover" — los puntos/flechas solo se enseñan mientras
+  // se está tocando el carrusel (y un momento después, para que dé tiempo
+  // a ver dónde ha quedado), luego se ocultan solos.
+  const [touching, setTouching] = useState(false);
+  const touchHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cada slide se posiciona de forma independiente (position:absolute) en
   // vez de ir todos en fila empujando el alto del contenedor — si no, un
@@ -77,12 +82,18 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
+  useEffect(() => {
+    return () => {
+      if (touchHideTimer.current) clearTimeout(touchHideTimer.current);
+    };
+  }, []);
+
   if (!slides.length) return null;
 
   return (
     <div
       ref={panelRef}
-      className="storehero__panel"
+      className={`storehero__panel${touching ? ' storehero__panel--touching' : ''}`}
       onMouseEnter={() => timerRef.current && clearInterval(timerRef.current)}
       onMouseLeave={restart}
     >
@@ -92,6 +103,8 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
           touchStartX.current = e.touches[0].clientX;
           swiped.current = false;
           if (timerRef.current) clearInterval(timerRef.current);
+          if (touchHideTimer.current) clearTimeout(touchHideTimer.current);
+          setTouching(true);
         }}
         onTouchEnd={(e) => {
           const delta = e.changedTouches[0].clientX - touchStartX.current;
@@ -100,6 +113,8 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
             show(index + (delta < 0 ? 1 : -1));
           }
           restart();
+          if (touchHideTimer.current) clearTimeout(touchHideTimer.current);
+          touchHideTimer.current = setTimeout(() => setTouching(false), 1600);
         }}
       >
         {slides.map((s, i) => {
