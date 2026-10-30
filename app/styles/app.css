@@ -870,7 +870,11 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .prodgrid--list .pcard:hover { transform: translateY(-1px); }
 .prodgrid--list .pcard > a { display: flex; flex: 1; min-width: 0; }
 .prodgrid--list .pcard__imgwrap { width: 100px; flex-shrink: 0; }
-.prodgrid--list .pcard__body { justify-content: center; }
+/* min-width:0 obligatorio: el body es flex:1 dentro de <a>, pero por
+   defecto un item flex no encoge por debajo del ancho de su contenido
+   (min-width:auto); con títulos largos eso lo hacía desbordar fuera de
+   su columna y solaparse con el precio. */
+.prodgrid--list .pcard__body { justify-content: center; min-width: 0; }
 .prodgrid--list .pcard__title { min-height: 0; }
 .prodgrid--list .pcard__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: .8rem; color: var(--text-muted); line-height: 1.4; margin: 2px 0 0; }
 .prodgrid--list .pcard__footer { flex-direction: column; align-items: flex-end; justify-content: center; margin-top: 0; padding: 10px 16px; gap: 10px; }
