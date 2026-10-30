@@ -36,6 +36,26 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef(0);
   const swiped = useRef(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const slideRefs = useRef<Array<HTMLElement | null>>([]);
+
+  // Cada slide se posiciona de forma independiente (position:absolute) en
+  // vez de ir todos en fila empujando el alto del contenedor — si no, un
+  // banner fino (ratio muy panorámico) se estira a la altura del slide más
+  // alto del carrusel en vez de quedarse fino de verdad. El panel copia
+  // aquí el aspect-ratio ya resuelto (por CSS, según el punto de corte) del
+  // slide activo, así su alto siempre es el correcto para ESE slide.
+  useEffect(() => {
+    function syncHeight() {
+      const el = slideRefs.current[index];
+      if (!el || !panelRef.current) return;
+      const ratio = getComputedStyle(el).aspectRatio;
+      if (ratio && ratio !== 'auto') panelRef.current.style.aspectRatio = ratio;
+    }
+    syncHeight();
+    window.addEventListener('resize', syncHeight);
+    return () => window.removeEventListener('resize', syncHeight);
+  }, [index]);
 
   function show(i: number) {
     setIndex(((i % slides.length) + slides.length) % slides.length);
@@ -61,13 +81,13 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
 
   return (
     <div
+      ref={panelRef}
       className="storehero__panel"
       onMouseEnter={() => timerRef.current && clearInterval(timerRef.current)}
       onMouseLeave={restart}
     >
       <div
         className="storehero__track"
-        style={{transform: `translateX(-${index * 100}%)`}}
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
           swiped.current = false;
@@ -90,15 +110,19 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
             }
           };
           const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}`;
+          const slideStyle = {transform: `translateX(${(i - index) * 100}%)`};
+          const setRef = (el: HTMLElement | null) => {
+            slideRefs.current[i] = el;
+          };
 
           if (s.hideOverlay) {
             // Sin texto ni botón: el slide entero es un único enlace.
             return s.external ? (
-              <a key={s.key} className={className} href={s.href} target="_blank" rel="noopener noreferrer" onClickCapture={onClickCapture}>
+              <a key={s.key} ref={setRef} className={className} style={slideStyle} href={s.href} target="_blank" rel="noopener noreferrer" onClickCapture={onClickCapture}>
                 <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
               </a>
             ) : (
-              <Link key={s.key} className={className} to={s.href} onClickCapture={onClickCapture}>
+              <Link key={s.key} ref={setRef} className={className} style={slideStyle} to={s.href} onClickCapture={onClickCapture}>
                 <img className="storehero__slide-img" src={s.image} alt="" loading="lazy" />
               </Link>
             );
@@ -111,7 +135,7 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
           const bgProps = {className: 'storehero__bglink', onClickCapture, 'aria-label': s.title};
           const titleProps = {className: 'storehero__titleLink', onClickCapture};
           return (
-            <div key={s.key} className={className}>
+            <div key={s.key} ref={setRef} className={className} style={slideStyle}>
               {s.external ? (
                 <a {...bgProps} href={s.href} target="_blank" rel="noopener noreferrer" />
               ) : (

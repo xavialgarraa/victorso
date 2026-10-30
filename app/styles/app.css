@@ -498,12 +498,24 @@ body.nav-open { overflow: hidden; }
 .storehero__scrollhint-text { color: var(--text-soft); font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 @keyframes storehero-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .storehero__scrollhint-circle { animation: none; } }
-.storehero__panel { position: relative; width: 100%; margin: 0; overflow: hidden; background: #08090b; box-shadow: none; }
-.storehero__track { display: flex; align-items: stretch; transition: transform .55s var(--ease); will-change: transform; }
+/* El alto del panel lo decide JS, copiando el aspect-ratio ya resuelto
+   (por CSS, según el punto de corte) del slide activo — el valor de aquí
+   es solo el aspecto por defecto antes de que React monte (evita un salto
+   de layout en la carga). */
+.storehero__panel { position: relative; width: 100%; margin: 0; overflow: hidden; background: #08090b; box-shadow: none; aspect-ratio: 4.9 / 1; max-height: 360px; }
+/* Sin position:relative a propósito: los slides (position:absolute) se
+   posicionan respecto al panel (que sí tiene alto propio vía
+   aspect-ratio), no respecto a este div — si track fuera el contenedor de
+   posicionamiento, su alto "auto" colapsaría a 0 (su único contenido son
+   los slides, y al estar en absolute ya no cuentan para ese auto). */
+.storehero__track { position: static; }
+/* Cada slide se posiciona de forma independiente (no todos en fila
+   empujando el alto del contenedor) — si no, un banner con proporción muy
+   fina se estira a la altura del slide más alto del carrusel. */
 .storehero__slide {
-  position: relative; flex: 0 0 100%; display: flex; flex-direction: column; justify-content: flex-end;
-  aspect-ratio: 4.2 / 1; max-height: 420px; min-width: 0; overflow: hidden; isolation: isolate;
-  text-decoration: none; background: #08090b;
+  position: absolute; inset: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end;
+  aspect-ratio: 4.9 / 1; min-width: 0; overflow: hidden; isolation: isolate;
+  text-decoration: none; background: #08090b; transition: transform .55s var(--ease);
 }
 .storehero__slide:focus-visible { outline: 2px solid var(--red); outline-offset: -3px; }
 .storehero__slide-img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 62% center; transition: transform .65s var(--ease); }
@@ -560,7 +572,7 @@ body.nav-open { overflow: hidden; }
 
 /* Tablet: imagen panorámica y beneficios en una cuadrícula 2 x 2. */
 @media (min-width: 561px) and (max-width: 999px) {
-  .storehero__slide { aspect-ratio: 1.85 / 1; max-height: 340px; }
+  .storehero__slide, .storehero__panel { aspect-ratio: 1.85 / 1; max-height: 340px; }
   .storehero__slide-img { object-position: 61% center; }
   .storehero__info { width: 58%; padding: 34px 30px 30px; gap: 7px; }
   .storehero__title { font-size: clamp(1.9rem, 3.6vw, 2.65rem); }
@@ -573,18 +585,29 @@ body.nav-open { overflow: hidden; }
   .storehero__trustitem:nth-child(n+3) { border-top: 1px solid var(--border); }
 }
 @media (min-width: 1000px) {
-  .storehero__slide { aspect-ratio: 4.2 / 1; max-height: 420px; }
-  .storehero__info { width: 49%; padding: 38px clamp(48px, 4.4vw, 82px) 34px; }
-  .storehero__title { font-size: clamp(1.9rem, 2.4vw, 2.5rem); }
+  .storehero__slide, .storehero__panel { aspect-ratio: 4.9 / 1; max-height: 360px; }
+  .storehero__info { width: 49%; padding: 28px clamp(48px, 4.4vw, 82px) 24px; }
+  .storehero__title { font-size: clamp(1.6rem, 2vw, 2.1rem); }
   .storehero__badge { left: clamp(48px, 4.4vw, 82px); }
   .storehero__brandlogo { right: clamp(48px, 4.4vw, 82px); }
 }
 
 /* Móvil: CTA legible y los cuatro beneficios en dos columnas. */
 @media (max-width: 560px) {
-  .storehero__slide { aspect-ratio: .82 / 1; max-height: 490px; justify-content: flex-start; }
+  .storehero__slide, .storehero__panel { aspect-ratio: .82 / 1; max-height: 490px; }
+  .storehero__slide { justify-content: flex-start; }
   .storehero__slide-img { object-position: 64% center; }
   .storehero__slide::before { background: linear-gradient(90deg, rgba(5,6,8,.92) 0%, rgba(5,6,8,.78) 58%, rgba(5,6,8,.24) 100%), linear-gradient(0deg, rgba(5,6,8,.58) 0%, transparent 50%); }
+  /* Los banners "solo imagen" llevan el texto ya dibujado dentro de la
+     foto — el recorte alto/estrecho pensado para el texto superpuesto
+     nuestro se lo comía entero. Aquí se ven enteros (sin recortar),
+     aunque queden más finos, con el propio fondo del slide de relleno
+     arriba/abajo si hace falta. */
+  /* Misma proporción que llevan de verdad estas fotos (4.9/1, igual que
+     en escritorio) — así el recuadro encaja exacto con la imagen, sin
+     recortar nada y sin necesitar ningún borde de relleno. */
+  .storehero__slide--plain { aspect-ratio: 4.9 / 1; justify-content: center; }
+  .storehero__slide--plain .storehero__slide-img { object-fit: cover; object-position: center; }
   .storehero__badge { top: 14px; left: 16px; padding: 6px 10px; font-size: .59rem; }
   .storehero__brandlogo { top: 14px; right: 14px; height: 25px; max-width: 94px; padding: 4px 6px; }
   .storehero__brandlogo img { max-width: 80px; }
