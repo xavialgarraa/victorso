@@ -92,6 +92,10 @@ export async function loader({context}: Route.LoaderArgs) {
         c.handle !== 'novedades-destacadas-home' &&
         c.products.nodes.length > 0,
     )
+    // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
+    // hay más categorías de las que caben aquí, "Ver todas las categorías"
+    // lleva a /collections, que sí las muestra todas sin límite.
+    .slice(0, 10)
     .map((c) => {
       const override = categoryCovers[c.handle];
       const withPhoto = c.products.nodes.filter((p) => p.featuredImage);

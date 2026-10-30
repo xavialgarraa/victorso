@@ -16,7 +16,7 @@ const I18N = {
   es: {
     shipBar: 'Envío gratis Península desde',
     featuredTitle: 'Productos destacados', tabBestsellers: 'Más vendidos', tabNewest: 'Novedades', tabOffers: 'Ofertas',
-    findEquipmentTitle: 'Encuentra tu equipo', viewAllCategories: 'Ver todas las categorías',
+    findEquipmentTitle: 'Encuentra tu equipo', viewAllCategories: 'Ver todas las categorías', allCategoriesTitle: 'Todas las categorías',
     addToWishlist: 'Añadir a favoritos', removeFromWishlist: 'Quitar de favoritos',
     searchPlaceholder: 'Buscar productos, marcas...',
     searchSeeAll: 'Ver todos los resultados', searchPopularTitle: 'Productos populares', searchAiMode: 'Modo IA', searchAiHint: '¿No encuentras lo que buscas? Pregúntaselo a nuestra IA en lenguaje natural.',
@@ -166,7 +166,7 @@ const I18N = {
   en: {
     shipBar: 'Free shipping mainland Spain from',
     featuredTitle: 'Featured products', tabBestsellers: 'Bestsellers', tabNewest: 'New in', tabOffers: 'Offers',
-    findEquipmentTitle: 'Find your gear', viewAllCategories: 'View all categories',
+    findEquipmentTitle: 'Find your gear', viewAllCategories: 'View all categories', allCategoriesTitle: 'All categories',
     addToWishlist: 'Add to wishlist', removeFromWishlist: 'Remove from wishlist',
     searchPlaceholder: 'Search products, brands...',
     searchSeeAll: 'See all results', searchPopularTitle: 'Popular products', searchAiMode: 'AI Mode', searchAiHint: "Can't find what you're looking for? Ask our AI in plain language.",
@@ -316,7 +316,7 @@ const I18N = {
   fr: {
     shipBar: 'Livraison gratuite Espagne péninsulaire dès',
     featuredTitle: 'Produits phares', tabBestsellers: 'Meilleures ventes', tabNewest: 'Nouveautés', tabOffers: 'Offres',
-    findEquipmentTitle: 'Trouvez votre matériel', viewAllCategories: 'Voir toutes les catégories',
+    findEquipmentTitle: 'Trouvez votre matériel', viewAllCategories: 'Voir toutes les catégories', allCategoriesTitle: 'Toutes les categories',
     addToWishlist: 'Ajouter aux favoris', removeFromWishlist: 'Retirer des favoris',
     searchPlaceholder: 'Rechercher produits, marques...',
     searchSeeAll: 'Voir tous les résultats', searchPopularTitle: 'Produits populaires', searchAiMode: 'Mode IA', searchAiHint: "Vous ne trouvez pas ce que vous cherchez ? Demandez à notre IA.",
@@ -466,7 +466,7 @@ const I18N = {
   pt: {
     shipBar: 'Envio grátis Península desde',
     featuredTitle: 'Produtos em destaque', tabBestsellers: 'Mais vendidos', tabNewest: 'Novidades', tabOffers: 'Ofertas',
-    findEquipmentTitle: 'Encontre o seu equipamento', viewAllCategories: 'Ver todas as categorias',
+    findEquipmentTitle: 'Encontre o seu equipamento', viewAllCategories: 'Ver todas as categorias', allCategoriesTitle: 'Todas as categorias',
     addToWishlist: 'Adicionar aos favoritos', removeFromWishlist: 'Remover dos favoritos',
     searchPlaceholder: 'Pesquisar produtos, marcas...',
     searchSeeAll: 'Ver todos os resultados', searchPopularTitle: 'Produtos populares', searchAiMode: 'Modo IA', searchAiHint: 'Não encontra o que procura? Pergunte à nossa IA.',
@@ -616,7 +616,7 @@ const I18N = {
   ca: {
     shipBar: 'Enviament gratuït Península des de',
     featuredTitle: 'Productes destacats', tabBestsellers: 'Més venuts', tabNewest: 'Novetats', tabOffers: 'Ofertes',
-    findEquipmentTitle: 'Troba el teu equip', viewAllCategories: 'Veure totes les categories',
+    findEquipmentTitle: 'Troba el teu equip', viewAllCategories: 'Veure totes les categories', allCategoriesTitle: 'Totes les categories',
     addToWishlist: 'Afegir a favorits', removeFromWishlist: 'Treure de favorits',
     searchPlaceholder: 'Cerca productes, marques...',
     searchSeeAll: 'Veure tots els resultats', searchPopularTitle: 'Productes populars', searchAiMode: 'Mode IA', searchAiHint: 'No trobes el que busques? Pregunta-ho a la nostra IA.',
