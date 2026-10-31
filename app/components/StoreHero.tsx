@@ -54,8 +54,13 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
     function syncHeight() {
       const el = slideRefs.current[index];
       if (!el || !panelRef.current) return;
-      const ratio = getComputedStyle(el).aspectRatio;
-      if (ratio && ratio !== 'auto') panelRef.current.style.aspectRatio = ratio;
+      const style = getComputedStyle(el);
+      if (style.aspectRatio && style.aspectRatio !== 'auto') panelRef.current.style.aspectRatio = style.aspectRatio;
+      // maxHeight también se copia del slide activo — los slides de
+      // producto (--product) usan un ratio menos panorámico que necesita
+      // más alto para no recortarse, así que llevan su propio tope
+      // (ver app.css) en vez del del banner.
+      if (style.maxHeight && style.maxHeight !== 'none') panelRef.current.style.maxHeight = style.maxHeight;
     }
     syncHeight();
     window.addEventListener('resize', syncHeight);
@@ -124,7 +129,14 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
               swiped.current = false;
             }
           };
-          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}`;
+          // Slides de producto (vinculado a mano o puestos por el relleno
+          // automático de novedad/más vendido) — se distinguen por llevar
+          // precio o botón de añadir al carrito. Sus fotos suelen ser
+          // cuadradas/de producto, así que usan su propio ratio fijo en
+          // vez del panorámico de los banners diseñados (ver --product
+          // en app.css).
+          const isProductCard = Boolean(s.priceNode) || Boolean(s.addToCart);
+          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}${isProductCard ? ' storehero__slide--product' : ''}`;
           const slideStyle = {transform: `translateX(${(i - index) * 100}%)`};
           const setRef = (el: HTMLElement | null) => {
             slideRefs.current[i] = el;

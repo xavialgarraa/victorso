@@ -335,17 +335,23 @@ function SlideFields({
   const [eyebrow, setEyebrow] = useState(initial?.eyebrow ?? '');
   const [cta, setCta] = useState(initial?.cta ?? '');
   const [ctaClass, setCtaClass] = useState<HeroSlide['ctaClass']>(initial?.ctaClass ?? 'btn--primary');
+  const [href, setHref] = useState(initial?.href ?? '');
+  const [external, setExternal] = useState(initial?.external ?? false);
   const lastAppliedHandle = useRef<string | null>(null);
 
   const product = products.find((p) => p.handle === productHandle.trim()) ?? null;
 
   // Solo autorrellena al ELEGIR un producto (no en cada letra tecleada ni
   // en renders posteriores) — y solo pisa campos que el admin aún no ha
-  // tocado a mano, para no borrarle algo que ya haya escrito.
+  // tocado a mano, para no borrarle algo que ya haya escrito. El enlace
+  // se sigue pudiendo editar a mano después aunque haya un producto
+  // vinculado (por ejemplo, para mandar a una colección en vez de a la
+  // ficha del producto, usando solo su foto/precio/título como atajo).
   if (product && lastAppliedHandle.current !== product.handle) {
     lastAppliedHandle.current = product.handle;
     if (!title) setTitle(product.title);
     if (!eyebrow) setEyebrow(product.vendor);
+    if (!href) setHref(`/products/${product.handle}`);
     if (!badge && product.compareAtPrice) {
       setBadge('Oferta');
       setBadgeClass('storehero__badge--offer');
@@ -353,7 +359,6 @@ function SlideFields({
   }
 
   const previewImage = manualImageSrc ?? product?.image ?? initial?.imageUrl ?? '';
-  const href = product ? `/products/${product.handle}` : (initial?.href ?? '');
 
   return (
     <div className="hero-admin__editor">
@@ -374,8 +379,9 @@ function SlideFields({
         )}
         {product && (
           <p className="admin-hint">
-            Enlazado a <strong>{product.title}</strong> — enlace, foto (si no subes una) y precio salen de ahí
-            solos.
+            Enlazado a <strong>{product.title}</strong> — foto (si no subes una) y precio salen de ahí solos.
+            El enlace de abajo se rellena solo con su ficha, pero lo puedes cambiar si quieres mandar a otro
+            sitio.
           </p>
         )}
 
@@ -397,16 +403,18 @@ function SlideFields({
           }}
         />
 
-        {!product && (
-          <>
-            <label>Enlace</label>
-            <input type="text" name="href" defaultValue={initial?.href} />
-            <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-              <input type="checkbox" name="external" defaultChecked={initial?.external} style={{width: 'auto'}} />
-              Enlace externo
-            </label>
-          </>
-        )}
+        <label>Enlace</label>
+        <input type="text" name="href" value={href} onChange={(e) => setHref(e.target.value)} />
+        <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          <input
+            type="checkbox"
+            name="external"
+            checked={external}
+            onChange={(e) => setExternal(e.target.checked)}
+            style={{width: 'auto'}}
+          />
+          Enlace externo
+        </label>
 
         <label style={{display: 'flex', alignItems: 'center', gap: 6, marginTop: 10}}>
           <input
@@ -465,27 +473,6 @@ function SlideFields({
           </div>
         </div>
 
-        {previewImage && (
-          <div className="hero-admin__crop-preview">
-            <p className="admin-hint" style={{margin: '8px 0 6px'}}>
-              Así se recortará según la pantalla — procura que lo importante quede centrado:
-            </p>
-            <div className="hero-admin__crop-row">
-              <div className="hero-admin__crop-box hero-admin__crop-box--mobile">
-                <img src={previewImage} alt="" />
-                <span className="hero-admin__crop-label">Móvil</span>
-              </div>
-              <div className="hero-admin__crop-box hero-admin__crop-box--tablet">
-                <img src={previewImage} alt="" />
-                <span className="hero-admin__crop-label">Tablet</span>
-              </div>
-              <div className="hero-admin__crop-box hero-admin__crop-box--desktop">
-                <img src={previewImage} alt="" />
-                <span className="hero-admin__crop-label">Escritorio</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="hero-admin__editor-preview">
@@ -577,7 +564,6 @@ export default function AdminHero() {
                 <span className="hero-admin__order">{slide.order}</span>
               </div>
               <div>
-                <span className="hero-admin__tag">{slide.position === 'left' ? 'Primera mitad' : 'Segunda mitad'}</span>
                 {slide.badge && (
                   <span className={`hero-admin__badge hero-admin__badge--${badgeSuffix(slide.badgeClass)}`}>{slide.badge}</span>
                 )}
@@ -585,18 +571,6 @@ export default function AdminHero() {
                 <span className="hero-admin__link">{slide.href}</span>
               </div>
               <div className="hero-admin__card-actions">
-                <Form method="post">
-                  <input type="hidden" name="intent" value="move-slide" />
-                  <input type="hidden" name="id" value={id} />
-                  <button
-                    type="submit"
-                    className="hero-admin__icon-btn"
-                    title={slide.position === 'left' ? 'Mandar a la segunda mitad' : 'Mandar a la primera mitad'}
-                    disabled={isBusy}
-                  >
-                    {slide.position === 'left' ? '→' : '←'}
-                  </button>
-                </Form>
                 <details style={{position: 'relative'}}>
                   <summary className="hero-admin__icon-btn" style={{listStyle: 'none', display: 'flex'}}>
                     ✎
@@ -654,11 +628,7 @@ export default function AdminHero() {
           <div className="hero-admin__add-form" style={{width: 640, maxWidth: '90vw'}}>
             <Form method="post" encType="multipart/form-data" className="admin-form">
               <input type="hidden" name="intent" value="add-slide" />
-              <label htmlFor="hero-add-position">Mitad del banner</label>
-              <select id="hero-add-position" name="position" defaultValue="left">
-                <option value="left">Primera mitad</option>
-                <option value="right">Segunda mitad</option>
-              </select>
+              <input type="hidden" name="position" value="left" />
               <SlideFields products={products} />
               <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
                 {isBusy ? 'Subiendo…' : 'Añadir slide'}
@@ -672,24 +642,24 @@ export default function AdminHero() {
 
         <h2 style={{marginTop: 28}}>Relleno automático</h2>
         <p className="admin-hint">
-          Si una mitad se queda sin slides manuales (o si quieres dejarlo siempre activo como añadido), se
-          completa sola con el producto novedad / más vendido. Con los interruptores de abajo lo activas o
-          desactivas por mitad entera; con el botón "Ocultar" de cada tarjeta puedes quitar solo una tarjeta
-          concreta del relleno, sin tocar las demás.
+          Si se queda sin slides manuales (o si quieres dejarlo siempre activo como añadido), se completa solo
+          con el producto novedad / más vendido. Con los interruptores de abajo lo activas o desactivas; con el
+          botón "Ocultar" de cada tarjeta puedes quitar solo una tarjeta concreta del relleno, sin tocar las
+          demás.
         </p>
         <Form method="post">
           <input type="hidden" name="intent" value="save-settings" />
           <div className="hero-admin__toggle-row">
             <div className="hero-admin__toggle-text">
-              <strong>Primera mitad</strong>
-              <span>Producto novedad si faltan fotos</span>
+              <strong>Producto novedad</strong>
+              <span>Se usa si faltan fotos</span>
             </div>
             <input type="checkbox" className="hero-admin__switch" name="leftAutoFallback" defaultChecked={settings.leftAutoFallback} />
           </div>
           <div className="hero-admin__toggle-row">
             <div className="hero-admin__toggle-text">
-              <strong>Segunda mitad</strong>
-              <span>Más vendido + tarjetas de contacto</span>
+              <strong>Más vendido + contacto</strong>
+              <span>Tarjetas de "escríbenos" / "ven a la tienda"</span>
             </div>
             <input type="checkbox" className="hero-admin__switch" name="rightAutoFallback" defaultChecked={settings.rightAutoFallback} />
           </div>
@@ -708,7 +678,7 @@ export default function AdminHero() {
           return (
             <div key={position}>
               <div className="hero-admin__side-head">
-                {position === 'left' ? 'Primera mitad' : 'Segunda mitad'}
+                {position === 'left' ? 'Producto novedad' : 'Más vendido + contacto'}
                 <span
                   className="admin-badge"
                   style={{

@@ -652,6 +652,16 @@ body.nav-open { overflow: hidden; }
   .storehero__trustcopy strong { font-size: .62rem; font-weight: 700; line-height: 1.15; }
   .storehero__trustcopy small { display: none; }
 }
+
+/* Slides de producto (vinculados a mano o del relleno automático de
+   novedad/más vendido, ver StoreHero.tsx) — su foto suele ser de
+   producto (cuadrada/vertical), no panorámica como un banner diseñado, así
+   que llevan su propio ratio fijo en vez del 4.9:1 de los banners. Fijo
+   también en todos los tamaños de pantalla, igual que el resto del hero.
+   Va después de las reglas de arriba (incluida la de @media móvil) a
+   propósito, para ganarles el empate de especificidad por orden. */
+.storehero__slide--product { aspect-ratio: 1.85 / 1; max-height: 460px; }
+
 @media (prefers-reduced-motion: reduce) { .storehero__track { transition: none; } }
 
 /* Accesos directos "Ver todos los productos" / "Comprar por categoría",
@@ -1854,6 +1864,10 @@ aside li { margin-bottom: .125rem; }
   background: #fff; color: #17171a; font-family: inherit;
 }
 .admin-shell__main textarea { resize: vertical; }
+.admin-shell__main input[type='file'] {
+  width: 100%; padding: 7px 10px; border: 1px solid #d8d8de; border-radius: 8px; font-size: .82rem;
+  background: #fff; color: #17171a; font-family: inherit;
+}
 .admin-shell__main input:focus, .admin-shell__main select:focus, .admin-shell__main textarea:focus {
   outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(227,6,19,.12);
 }
@@ -1959,25 +1973,21 @@ aside li { margin-bottom: .125rem; }
 @media (max-width: 460px) { .hero-admin__field-grid { grid-template-columns: 1fr; } }
 .hero-admin__field-grid--full { grid-column: 1 / -1; }
 
-.hero-admin__editor { display: grid; grid-template-columns: 1fr 260px; gap: 20px; align-items: start; }
-@media (max-width: 760px) { .hero-admin__editor { grid-template-columns: 1fr; } }
+/* Siempre en una columna: este formulario vive dentro de un popover
+   estrecho (.hero-admin__add-form, 640px/90vw máx.), nunca a todo el
+   ancho de la página, así que el reparto a dos columnas (1fr 260px) solo
+   dejaba una columna de vista previa corta con un hueco en blanco enorme
+   debajo y los campos de la izquierda demasiado apretados. */
+.hero-admin__editor { display: flex; flex-direction: column; gap: 16px; }
 .hero-admin__editor-fields { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.hero-admin__editor-preview { position: sticky; top: 12px; }
-.hero-admin__live-preview { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; }
-
-.hero-admin__crop-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.hero-admin__crop-box {
-  position: relative; overflow: hidden; border-radius: 8px; background: var(--surface-alt);
-  border: 1px solid var(--border); flex: 1 1 120px;
-}
-.hero-admin__crop-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.hero-admin__crop-box--mobile { aspect-ratio: 343 / 210; }
-.hero-admin__crop-box--tablet { aspect-ratio: 2.3 / 1; }
-.hero-admin__crop-box--desktop { aspect-ratio: 1.36 / 1; }
-.hero-admin__crop-label {
-  position: absolute; bottom: 4px; left: 4px; font-size: .62rem; font-weight: 700; color: #fff;
-  background: rgba(0,0,0,.55); padding: 2px 6px; border-radius: 4px;
-}
+.hero-admin__editor-preview { width: 100%; }
+/* .storehero__slide (reutilizada aquí a propósito, para que la vista
+   previa sea 1:1 con el banner real) trae position:absolute;inset:0 del
+   carrusel de la tienda — ahí tiene sentido (encaja dentro de un panel ya
+   posicionado), pero aquí no hay ningún panel así de contenedor: sin
+   este reset la vista previa se queda flotando encima de los campos del
+   formulario en vez de aparecer debajo, en su sitio. */
+.hero-admin__live-preview { position: relative; inset: auto; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; }
 .admin-login {
   min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #17171a;
 }
