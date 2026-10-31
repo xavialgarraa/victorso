@@ -121,7 +121,7 @@ export default function AdminCategorias() {
                 <Form method="post" encType="multipart/form-data" style={{display: 'flex', gap: 6, alignItems: 'center'}}>
                   <input type="hidden" name="intent" value="set" />
                   <input type="hidden" name="handle" value={c.handle} />
-                  <input type="file" name="image" accept="image/*" style={{width: 150, fontSize: '.78rem'}} />
+                  <input type="file" name="image" accept="image/*" style={{width: 260, fontSize: '.78rem'}} />
                   <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
                     Subir
                   </button>

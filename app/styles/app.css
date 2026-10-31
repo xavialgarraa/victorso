@@ -1921,6 +1921,12 @@ aside li { margin-bottom: .125rem; }
   display: grid; grid-template-columns: 84px 1fr auto; gap: 14px; align-items: center;
   padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-alt);
 }
+/* Por defecto un hijo de grid no encoge por debajo del ancho de su
+   contenido (min-width:auto) — con una respuesta larga en
+   .hero-admin__link (que es white-space:nowrap) eso empujaba la columna
+   "1fr" muy ancha y el botón ✎ de la columna "auto" se iba fuera de la
+   pantalla en vez de truncar el texto con los puntos suspensivos. */
+.hero-admin__card > * { min-width: 0; }
 @media (max-width: 480px) {
   .hero-admin__card { grid-template-columns: 60px 1fr; }
   .hero-admin__card-actions { grid-column: 1 / -1; justify-content: flex-end; }
@@ -1965,7 +1971,11 @@ aside li { margin-bottom: .125rem; }
   border: 1.5px dashed var(--border); border-radius: 10px; color: var(--text-muted); font-size: .86rem;
   font-weight: 650; background: transparent; cursor: pointer; width: 100%;
 }
-.hero-admin__add-tile:hover { border-color: var(--red); color: var(--red); }
+/* Solo el summary (la "píldora" cerrada), no todo el <details> — si no,
+   al abrirlo el hover se queda activo mientras el ratón esté encima del
+   formulario entero y el color rojo se hereda a las etiquetas de los
+   campos de dentro (quedan en rojo como si fuera un error). */
+summary.hero-admin__add-tile:hover { border-color: var(--red); color: var(--red); }
 .hero-admin__add-tile > summary { list-style: none; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .hero-admin__add-tile > summary::-webkit-details-marker { display: none; }
 .hero-admin__add-form { margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
