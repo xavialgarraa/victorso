@@ -27,6 +27,11 @@ export type HeroSlide = {
   /** Solo la imagen, sin badge/texto/botón encima — sigue llevando a
    * "href" al clicar. */
   hideOverlay?: boolean;
+  /** "banner" (panorámico) o "caratula" (menos panorámico, para fotos de
+   * producto/contacto). Si no se pone explícitamente, se detecta solo:
+   * cualquier slide con precio o botón de añadir al carrito se trata como
+   * carátula (ver className más abajo). */
+  cardSize?: 'banner' | 'caratula';
 };
 
 function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSlide[]; intervalMs?: number}) {
@@ -56,10 +61,10 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
       if (!el || !panelRef.current) return;
       const style = getComputedStyle(el);
       if (style.aspectRatio && style.aspectRatio !== 'auto') panelRef.current.style.aspectRatio = style.aspectRatio;
-      // maxHeight también se copia del slide activo — los slides de
-      // producto (--product) usan un ratio menos panorámico que necesita
-      // más alto para no recortarse, así que llevan su propio tope
-      // (ver app.css) en vez del del banner.
+      // maxHeight también se copia del slide activo — las carátulas
+      // (--caratula) usan un ratio menos panorámico que necesita más alto
+      // para no recortarse, así que llevan su propio tope (ver app.css)
+      // en vez del del banner.
       if (style.maxHeight && style.maxHeight !== 'none') panelRef.current.style.maxHeight = style.maxHeight;
     }
     syncHeight();
@@ -129,14 +134,15 @@ function HeroPanel({id, slides, intervalMs = 6000}: {id: string; slides: HeroSli
               swiped.current = false;
             }
           };
-          // Slides de producto (vinculado a mano o puestos por el relleno
-          // automático de novedad/más vendido) — se distinguen por llevar
-          // precio o botón de añadir al carrito. Sus fotos suelen ser
-          // cuadradas/de producto, así que usan su propio ratio fijo en
-          // vez del panorámico de los banners diseñados (ver --product
-          // en app.css).
-          const isProductCard = Boolean(s.priceNode) || Boolean(s.addToCart);
-          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}${isProductCard ? ' storehero__slide--product' : ''}`;
+          // "Carátula" (vinculado a mano con esa proporción elegida, o
+          // puesto por el relleno automático de novedad/más vendido/
+          // contacto/visítanos) — si no viene marcado explícitamente, se
+          // detecta solo: cualquier slide con precio o botón de añadir al
+          // carrito se trata igual. Sus fotos suelen ser de producto (o
+          // de la tienda), no panorámicas como un banner diseñado, así
+          // que usan su propio ratio fijo (ver --caratula en app.css).
+          const isCaratula = s.cardSize ? s.cardSize === 'caratula' : Boolean(s.priceNode) || Boolean(s.addToCart);
+          const className = `storehero__slide${i === index ? ' active' : ''}${s.hideOverlay ? ' storehero__slide--plain' : ''}${isCaratula ? ' storehero__slide--caratula' : ''}`;
           const slideStyle = {transform: `translateX(${(i - index) * 100}%)`};
           const setRef = (el: HTMLElement | null) => {
             slideRefs.current[i] = el;

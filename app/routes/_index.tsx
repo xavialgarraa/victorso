@@ -178,6 +178,7 @@ export default function Homepage() {
       cta: slide.cta,
       ctaClass: slide.ctaClass,
       hideOverlay: slide.hideOverlay,
+      cardSize: slide.cardSize,
     };
   }
 
@@ -206,6 +207,7 @@ export default function Homepage() {
       addToCart: p.selectedOrFirstAvailableVariant?.availableForSale
         ? {merchandiseId: p.selectedOrFirstAvailableVariant.id}
         : undefined,
+      cardSize: 'caratula' as const,
     }))
     .filter((s) => !hiddenAutoKeys.includes(s.key));
   const leftSlides: HeroSlide[] = [...manualLeft, ...(heroSettings.leftAutoFallback ? autoLeft : [])];
@@ -234,6 +236,7 @@ export default function Homepage() {
       addToCart: bestselling.selectedOrFirstAvailableVariant?.availableForSale
         ? {merchandiseId: bestselling.selectedOrFirstAvailableVariant.id}
         : undefined,
+      cardSize: 'caratula',
     });
   }
   autoRight.push(
@@ -248,6 +251,7 @@ export default function Homepage() {
       title: t('storeHeroContactTitle'),
       cta: t('storeHeroContactCta'),
       ctaClass: 'btn--outline',
+      cardSize: 'caratula',
     },
     {
       key: 'visit',
@@ -259,6 +263,7 @@ export default function Homepage() {
       title: t('storeHeroVisitTitle'),
       cta: t('storeHeroVisitCta'),
       ctaClass: 'btn--outline',
+      cardSize: 'caratula',
     },
   );
   const rightSlides: HeroSlide[] = [

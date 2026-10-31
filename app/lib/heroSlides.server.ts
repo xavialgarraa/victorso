@@ -28,6 +28,13 @@ export type HeroSlide = {
    * los trae en vivo en cada carga de la home para que nunca queden
    * desactualizados. */
   productHandle: string;
+  /** "banner" (panorámico, 4.9:1 — foto diseñada a propósito para ese
+   * ancho) o "caratula" (menos panorámico — foto de producto/contacto que
+   * se recorta peor muy ancha). Por defecto "banner"; los slides creados
+   * antes de añadir este campo no lo tienen en Firestore y se tratan como
+   * "banner" también (ver StoreHero.tsx, que además detecta solo cuando
+   * hay precio/añadir-al-carrito aunque esto no esté puesto). */
+  cardSize?: 'banner' | 'caratula';
 };
 
 const COLLECTION = 'hero_slides';

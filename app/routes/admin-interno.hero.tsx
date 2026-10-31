@@ -1,4 +1,4 @@
-import {useRef, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Form, data, useActionData, useLoaderData, useNavigation} from 'react-router';
 import type {Route} from './+types/admin-interno.hero';
 import {requireAdminUser} from '~/lib/adminSession.server';
@@ -135,10 +135,13 @@ function slideFromForm(formData: FormData, imageUrl: string, productHandle: stri
     position: formData.get('position') === 'right' ? 'right' : 'left',
     order: Number(formData.get('order')) || 0,
     imageUrl,
-    // Vinculado a un producto: el enlace siempre es el de su ficha, no se
-    // puede escribir uno distinto a mano (ver por qué en el formulario).
-    href: productHandle ? `/products/${productHandle}` : String(formData.get('href') || '').trim(),
-    external: productHandle ? false : formData.get('external') === 'on',
+    // El enlace se puede editar a mano aunque haya un producto vinculado
+    // (p. ej. para mandar a una colección usando solo su foto/precio como
+    // atajo) — se precarga con la ficha del producto al elegirlo, pero el
+    // admin lo puede cambiar, así que aquí siempre se respeta lo que
+    // venga en el formulario tal cual.
+    href: String(formData.get('href') || '').trim(),
+    external: formData.get('external') === 'on',
     badge: String(formData.get('badge') || '').trim(),
     badgeClass:
       (formData.get('badgeClass') as HeroSlide['badgeClass']) || 'storehero__badge--new',
@@ -147,6 +150,7 @@ function slideFromForm(formData: FormData, imageUrl: string, productHandle: stri
     cta: String(formData.get('cta') || '').trim(),
     ctaClass: (formData.get('ctaClass') as HeroSlide['ctaClass']) || 'btn--primary',
     hideOverlay: formData.get('hideOverlay') === 'on',
+    cardSize: formData.get('cardSize') === 'caratula' ? 'caratula' : 'banner',
     productHandle,
   };
 }
@@ -322,11 +326,13 @@ function SlideFields({
     order?: number;
     productHandle?: string;
     hideOverlay?: boolean;
+    cardSize?: HeroSlide['cardSize'];
   };
 }) {
   const [productHandle, setProductHandle] = useState(initial?.productHandle ?? '');
   const [manualImageSrc, setManualImageSrc] = useState<string | null>(null);
   const [hideOverlay, setHideOverlay] = useState(initial?.hideOverlay ?? false);
+  const [cardSize, setCardSize] = useState<NonNullable<HeroSlide['cardSize']>>(initial?.cardSize ?? 'banner');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [badge, setBadge] = useState(initial?.badge ?? '');
   const [badgeClass, setBadgeClass] = useState<HeroSlide['badgeClass']>(
@@ -337,8 +343,6 @@ function SlideFields({
   const [ctaClass, setCtaClass] = useState<HeroSlide['ctaClass']>(initial?.ctaClass ?? 'btn--primary');
   const [href, setHref] = useState(initial?.href ?? '');
   const [external, setExternal] = useState(initial?.external ?? false);
-  const lastAppliedHandle = useRef<string | null>(null);
-
   const product = products.find((p) => p.handle === productHandle.trim()) ?? null;
 
   // Solo autorrellena al ELEGIR un producto (no en cada letra tecleada ni
@@ -347,16 +351,23 @@ function SlideFields({
   // se sigue pudiendo editar a mano después aunque haya un producto
   // vinculado (por ejemplo, para mandar a una colección en vez de a la
   // ficha del producto, usando solo su foto/precio/título como atajo).
-  if (product && lastAppliedHandle.current !== product.handle) {
-    lastAppliedHandle.current = product.handle;
-    if (!title) setTitle(product.title);
-    if (!eyebrow) setEyebrow(product.vendor);
-    if (!href) setHref(`/products/${product.handle}`);
-    if (!badge && product.compareAtPrice) {
-      setBadge('Oferta');
+  // Va en un useEffect (no directo en el render) — hacerlo ahí con una
+  // ref como guarda fallaba en desarrollo por el doble-render de Strict
+  // Mode: la ref se marcaba como "ya aplicado" en el render que React
+  // descarta, y el real se quedaba sin rellenar.
+  useEffect(() => {
+    if (!product) return;
+    setTitle((prev) => prev || product.title);
+    setEyebrow((prev) => prev || product.vendor);
+    setHref((prev) => prev || `/products/${product.handle}`);
+    setCta((prev) => prev || 'Ver producto');
+    setBadge((prev) => {
+      if (prev || !product.compareAtPrice) return prev;
       setBadgeClass('storehero__badge--offer');
-    }
-  }
+      return 'Oferta';
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.handle]);
 
   const previewImage = manualImageSrc ?? product?.image ?? initial?.imageUrl ?? '';
 
@@ -430,6 +441,12 @@ function SlideFields({
           Sigue siendo clicable — va al enlace o producto de arriba igual que cualquier slide.
         </p>
 
+        <label style={{marginTop: 10}}>Proporción</label>
+        <select name="cardSize" value={cardSize} onChange={(e) => setCardSize(e.target.value as typeof cardSize)}>
+          <option value="banner">Banner (panorámico)</option>
+          <option value="caratula">Carátula (menos panorámico, para fotos de producto)</option>
+        </select>
+
         {!hideOverlay && (
           <div className="hero-admin__field-grid">
             <div>
@@ -479,7 +496,9 @@ function SlideFields({
         <span className="admin-hint" style={{display: 'block', marginBottom: 8}}>
           Vista previa
         </span>
-        <div className={`storehero__slide hero-admin__live-preview${hideOverlay ? ' storehero__slide--plain' : ''}`}>
+        <div
+          className={`storehero__slide hero-admin__live-preview${hideOverlay ? ' storehero__slide--plain' : ''}${cardSize === 'caratula' ? ' storehero__slide--caratula' : ''}`}
+        >
           {previewImage && <img className="storehero__slide-img" src={previewImage} alt="" />}
           {!hideOverlay && (
             <>
@@ -625,7 +644,7 @@ export default function AdminHero() {
 
         <details className="hero-admin__add-tile" style={{display: 'block', border: 'none', padding: 0, marginTop: 16}}>
           <summary className="hero-admin__add-tile">+ Añadir slide</summary>
-          <div className="hero-admin__add-form" style={{width: 640, maxWidth: '90vw'}}>
+          <div className="hero-admin__add-form">
             <Form method="post" encType="multipart/form-data" className="admin-form">
               <input type="hidden" name="intent" value="add-slide" />
               <input type="hidden" name="position" value="left" />
