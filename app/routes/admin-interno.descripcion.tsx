@@ -234,12 +234,27 @@ export default function AdminDescripcion() {
             </div>
           )}
 
-          {hadUnrecognizedDescription && (
-            <p className="admin-hint" style={{marginBottom: 14}}>
-              Este producto ya tiene una descripción, pero no se generó con este formulario (viene de
-              otro sitio, como una IA externa o el ERP) — no se puede precargar. Si guardas aquí, la
-              sustituye por completo.
-            </p>
+          {hadUnrecognizedDescription && selected && (
+            <div style={{marginBottom: 14}}>
+              <p className="admin-hint">
+                Este producto ya tiene una descripción, pero no se generó con este formulario (viene de
+                otro sitio, como una IA externa o el ERP) — no se puede precargar sola en los campos de
+                abajo. Aquí tienes el texto tal cual está ahora, para que puedas copiar trozos a mano al
+                rellenar la plantilla. Si guardas aquí, la sustituye por completo.
+              </p>
+              <details style={{marginTop: 8}}>
+                <summary style={{cursor: 'pointer', fontWeight: 600, fontSize: '.85rem'}}>
+                  Ver descripción actual
+                </summary>
+                <div
+                  style={{
+                    marginTop: 8, padding: 14, border: '1px solid #e4e4e8', borderRadius: 8,
+                    background: '#fafafb', maxHeight: 320, overflowY: 'auto', fontSize: '.88rem',
+                  }}
+                  dangerouslySetInnerHTML={{__html: selected.descriptionHtml}}
+                />
+              </details>
+            </div>
           )}
 
           <h2>2. Introducción</h2>

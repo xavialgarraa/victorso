@@ -80,7 +80,93 @@ type ActionResult =
   | {intent: 'stelorder-sku-apply-stock'; ok: true; applied: number; errors: string[]}
   | {intent: 'stelorder-sku-apply-stock'; ok: false; error: string}
   | {intent: 'draft-orphaned'; ok: true; applied: number; errors: string[]}
-  | {intent: 'draft-orphaned'; ok: false; error: string};
+  | {intent: 'draft-orphaned'; ok: false; error: string}
+  | {intent: 'apply-single-price'; ok: true; rowKey: string; errors: string[]; summary: SyncSummary; supplierId: string}
+  | {intent: 'apply-single-price'; ok: false; rowKey: string; error: string}
+  | {intent: 'stelorder-apply-single-price'; ok: true; rowKey: string; errors: string[]; summary: StelOrderSyncSummary}
+  | {intent: 'stelorder-apply-single-price'; ok: false; rowKey: string; error: string}
+  | {intent: 'stelorder-sku-apply-single-price'; ok: true; rowKey: string; errors: string[]; summary: SkuSyncSummary}
+  | {intent: 'stelorder-sku-apply-single-price'; ok: false; rowKey: string; error: string};
+
+// Precio de oferta solo tiene sentido cuando el precio nuevo es MENOR que
+// el que había — si fuera al revés no es una rebaja, así que ese modo ni
+// se ofrece en la interfaz, pero se vuelve a comprobar aquí por si acaso.
+function resolvePriceChangeInput(
+  mode: string,
+  productId: string,
+  variantId: string,
+  priceFrom: number,
+  priceTo: number,
+): {productId: string; variantId: string; price: number; compareAtPrice?: number} | null {
+  if (mode === 'offer') {
+    if (!(priceTo < priceFrom)) return null;
+    return {productId, variantId, price: priceTo, compareAtPrice: priceFrom};
+  }
+  return {productId, variantId, price: priceTo};
+}
+
+// Botones de precio por fila, reutilizados en las tres tablas de cambios
+// de precio (Walkasse, StelOrder completo, StelOrder por SKU). "Actualizar
+// como oferta" solo se ofrece cuando el precio nuevo es más barato — si
+// subiera no sería una rebaja, así que ni se muestra el botón.
+function PriceRowActions({
+  intent,
+  rowId,
+  rowIdField,
+  priceFrom,
+  priceTo,
+  isBusy,
+  busyRowKey,
+  extraFields,
+}: {
+  intent: string;
+  rowId: string;
+  rowIdField: string;
+  priceFrom: number;
+  priceTo: number;
+  isBusy: boolean;
+  busyRowKey: FormDataEntryValue | null | undefined;
+  extraFields?: Record<string, string>;
+}) {
+  const busyHere = isBusy && busyRowKey === rowId;
+  const canOffer = priceTo < priceFrom;
+  return (
+    <div style={{display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap'}}>
+      <Form method="post">
+        <input type="hidden" name="intent" value={intent} />
+        <input type="hidden" name={rowIdField} value={rowId} />
+        <input type="hidden" name="mode" value="price" />
+        {extraFields &&
+          Object.entries(extraFields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+        <button
+          type="submit"
+          className="admin-btn admin-btn--outline"
+          style={{padding: '4px 9px', fontSize: '.74rem'}}
+          disabled={busyHere}
+        >
+          {busyHere ? '…' : 'Actualizar precio'}
+        </button>
+      </Form>
+      {canOffer && (
+        <Form method="post">
+          <input type="hidden" name="intent" value={intent} />
+          <input type="hidden" name={rowIdField} value={rowId} />
+          <input type="hidden" name="mode" value="offer" />
+          {extraFields &&
+            Object.entries(extraFields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+          <button
+            type="submit"
+            className="admin-btn admin-btn--primary"
+            style={{padding: '4px 9px', fontSize: '.74rem'}}
+            disabled={busyHere}
+          >
+            {busyHere ? '…' : 'Actualizar como oferta'}
+          </button>
+        </Form>
+      )}
+    </div>
+  );
+}
 
 // Solo hay parser hecho para el formato de Walkasse. Un proveedor nuevo
 // con otro formato de feed necesitaría su propio parser (como
@@ -233,6 +319,141 @@ export async function action({request, context}: Route.ActionArgs) {
     }
   }
 
+  if (intent === 'apply-single-price') {
+    const startedAt = new Date().toISOString();
+    const ean = String(formData.get('ean') || '');
+    const mode = String(formData.get('mode') || 'price');
+    try {
+      const {config, summary} = await runWalkasseSync(context.env, supplierId);
+      const row = summary.rows.find((r) => r.status === 'matched' && r.ean === ean) as
+        | Extract<(typeof summary.rows)[number], {status: 'matched'}>
+        | undefined;
+      if (!row || !row.changes.price) {
+        return data<ActionResult>(
+          {intent: 'apply-single-price', ok: false, rowKey: ean, error: 'Ese cambio de precio ya no está disponible — vuelve a sincronizar.'},
+          {headers},
+        );
+      }
+      const change = resolvePriceChangeInput(mode, row.productId, row.variantId, row.changes.price.from, row.changes.price.to);
+      if (!change) {
+        return data<ActionResult>(
+          {intent: 'apply-single-price', ok: false, rowKey: ean, error: 'El precio nuevo no es menor que el actual — no se puede marcar como oferta.'},
+          {headers},
+        );
+      }
+      const result = await applyPriceChanges(context.env, [change]);
+      await logSyncRun(context.env, {
+        supplierId,
+        supplierName: config.name,
+        type: 'apply',
+        triggeredBy: user.email,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalFeedRows,
+        matchedCount: summary.matchedCount,
+        changedCount: summary.changedCount,
+        unmatchedCount: summary.unmatchedCount,
+        stockApplied: 0,
+        priceApplied: result.applied,
+        errors: result.errors,
+        details: summaryToRunDetails(summary),
+      });
+      const freshSummary = (await runWalkasseSync(context.env, supplierId)).summary;
+      return data<ActionResult>(
+        {intent: 'apply-single-price', ok: true, rowKey: ean, errors: result.errors, summary: freshSummary, supplierId},
+        {headers},
+      );
+    } catch (error) {
+      console.error('[admin-interno/proveedores] apply-single-price', error);
+      return data<ActionResult>(
+        {intent: 'apply-single-price', ok: false, rowKey: ean, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-apply-single-price') {
+    const barcode = String(formData.get('barcode') || '');
+    const mode = String(formData.get('mode') || 'price');
+    try {
+      const summary = await buildStelOrderSyncSummary(context.env);
+      const row = summary.priceChanges.find((r) => r.product.barcode === barcode);
+      if (!row) {
+        return data<ActionResult>(
+          {intent: 'stelorder-apply-single-price', ok: false, rowKey: barcode, error: 'Ese cambio de precio ya no está disponible — vuelve a comparar.'},
+          {headers},
+        );
+      }
+      const change = resolvePriceChangeInput(mode, row.catalogVariant.productId, row.catalogVariant.variantId, row.priceFrom, row.priceTo);
+      if (!change) {
+        return data<ActionResult>(
+          {intent: 'stelorder-apply-single-price', ok: false, rowKey: barcode, error: 'El precio nuevo no es menor que el actual — no se puede marcar como oferta.'},
+          {headers},
+        );
+      }
+      const result = await applyPriceChanges(context.env, [change]);
+      const freshSummary = await buildStelOrderSyncSummary(context.env);
+      return data<ActionResult>({intent: 'stelorder-apply-single-price', ok: true, rowKey: barcode, errors: result.errors, summary: freshSummary}, {headers});
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-apply-single-price', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-apply-single-price', ok: false, rowKey: barcode, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'stelorder-sku-apply-single-price') {
+    const startedAt = new Date().toISOString();
+    const sku = String(formData.get('sku') || '');
+    const mode = String(formData.get('mode') || 'price');
+    try {
+      const summary = await buildStelOrderSkuSyncSummary(context.env);
+      const row = summary.rows.find((r) => r.status === 'matched' && r.sku === sku) as
+        | Extract<(typeof summary.rows)[number], {status: 'matched'}>
+        | undefined;
+      if (!row || !row.priceChange) {
+        return data<ActionResult>(
+          {intent: 'stelorder-sku-apply-single-price', ok: false, rowKey: sku, error: 'Ese cambio de precio ya no está disponible — vuelve a cruzar.'},
+          {headers},
+        );
+      }
+      const change = resolvePriceChangeInput(mode, row.productId, row.variantId, row.priceChange.from, row.priceChange.to);
+      if (!change) {
+        return data<ActionResult>(
+          {intent: 'stelorder-sku-apply-single-price', ok: false, rowKey: sku, error: 'El precio nuevo no es menor que el actual — no se puede marcar como oferta.'},
+          {headers},
+        );
+      }
+      const result = await applyPriceChanges(context.env, [change]);
+      await logSyncRun(context.env, {
+        supplierId: 'stelorder-sku',
+        supplierName: 'StelOrder (por SKU)',
+        type: 'apply',
+        triggeredBy: user.email,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalShopifySkus,
+        matchedCount: summary.matchedCount,
+        changedCount: summary.stockChangedCount,
+        unmatchedCount: summary.unmatchedCount + summary.ambiguousCount,
+        stockApplied: 0,
+        priceApplied: result.applied,
+        pendingPriceChanges: summary.pendingPriceChanges,
+        errors: result.errors,
+        details: skuSyncSummaryToRunDetails(summary),
+      });
+      const freshSummary = await buildStelOrderSkuSyncSummary(context.env);
+      return data<ActionResult>({intent: 'stelorder-sku-apply-single-price', ok: true, rowKey: sku, errors: result.errors, summary: freshSummary}, {headers});
+    } catch (error) {
+      console.error('[admin-interno/proveedores] stelorder-sku-apply-single-price', error);
+      return data<ActionResult>(
+        {intent: 'stelorder-sku-apply-single-price', ok: false, rowKey: sku, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
   if (intent === 'sync') {
     const startedAt = new Date().toISOString();
     try {
@@ -379,14 +600,23 @@ export default function AdminProveedores() {
   const isBusy = navigation.state !== 'idle';
   const busyIntent = navigation.formData?.get('intent');
   const busySupplierId = navigation.formData?.get('supplierId');
+  const busyRowKey = navigation.formData?.get('ean') ?? navigation.formData?.get('barcode') ?? navigation.formData?.get('sku');
 
-  const stelorderSummary = actionData?.intent === 'stelorder-sync' && actionData.ok ? actionData.summary : null;
+  const stelorderSummary =
+    (actionData?.intent === 'stelorder-sync' || actionData?.intent === 'stelorder-apply-single-price') && actionData.ok
+      ? actionData.summary
+      : null;
   const stelorderSyncError = actionData?.intent === 'stelorder-sync' && !actionData.ok ? actionData.error : null;
+  const stelorderApplySingleError = actionData?.intent === 'stelorder-apply-single-price' && !actionData.ok ? actionData : null;
   const stelorderCreateResult = actionData?.intent === 'stelorder-create-batch' ? actionData : null;
   const stelorderUpdateResult = actionData?.intent === 'stelorder-update-stock' ? actionData : null;
 
-  const skuSyncSummary = actionData?.intent === 'stelorder-sku-sync' && actionData.ok ? actionData.summary : null;
+  const skuSyncSummary =
+    (actionData?.intent === 'stelorder-sku-sync' || actionData?.intent === 'stelorder-sku-apply-single-price') && actionData.ok
+      ? actionData.summary
+      : null;
   const skuSyncError = actionData?.intent === 'stelorder-sku-sync' && !actionData.ok ? actionData.error : null;
+  const skuApplySingleError = actionData?.intent === 'stelorder-sku-apply-single-price' && !actionData.ok ? actionData : null;
   const skuApplyResult = actionData?.intent === 'stelorder-sku-apply-stock' ? actionData : null;
   const skuStockChangedRows =
     skuSyncSummary?.rows.filter((r) => r.status === 'matched' && r.stockChange) ?? [];
@@ -395,8 +625,11 @@ export default function AdminProveedores() {
   const skuUnmatchedRows = skuSyncSummary?.rows.filter((r) => r.status === 'unmatched') ?? [];
   const skuAmbiguousRows = skuSyncSummary?.rows.filter((r) => r.status === 'ambiguous') ?? [];
 
-  const summary = actionData?.intent === 'sync' && actionData.ok ? actionData.summary : null;
-  const summarySupplierId = actionData?.intent === 'sync' && actionData.ok ? actionData.supplierId : null;
+  const summary =
+    (actionData?.intent === 'sync' || actionData?.intent === 'apply-single-price') && actionData.ok ? actionData.summary : null;
+  const summarySupplierId =
+    (actionData?.intent === 'sync' || actionData?.intent === 'apply-single-price') && actionData.ok ? actionData.supplierId : null;
+  const applySingleError = actionData?.intent === 'apply-single-price' && !actionData.ok ? actionData : null;
   const syncError = actionData?.intent === 'sync' && !actionData.ok ? actionData : null;
   const applyResult = actionData?.intent === 'apply' ? actionData : null;
   const draftOrphanedResult = actionData?.intent === 'draft-orphaned' ? actionData : null;
@@ -512,13 +745,13 @@ export default function AdminProveedores() {
               <>
                 <h3 style={{marginTop: 24}}>Cambios de precio detectados ({stelorderSummary.priceChanges.length})</h3>
                 <p className="admin-hint" style={{maxWidth: 600}}>
-                  Solo informativo — <strong>nunca se aplican solos</strong>, hay que cambiarlos a mano en Shopify
-                  si corresponde. <strong>Ojo:</strong> esto compara el <code>sales-price</code> de StelOrder
-                  contra el precio actual en Shopify — si le has puesto una oferta/promoción directamente en
-                  Shopify, también saldrá aquí como "cambio" aunque no sea un cambio de coste real en StelOrder.
-                  Revisa cada uno antes de tocar nada.
+                  Nunca se aplican solos — confírmalos uno a uno aquí abajo. <strong>Ojo:</strong> esto compara el{' '}
+                  <code>sales-price</code> de StelOrder contra el precio actual en Shopify — si le has puesto una
+                  oferta/promoción directamente en Shopify, también saldrá aquí como "cambio" aunque no sea un
+                  cambio de coste real en StelOrder. Revisa cada uno antes de tocar nada.
                 </p>
-                <div className="admin-scroll" style={{maxHeight: 240}}>
+                {stelorderApplySingleError && <p className="admin-msg--error">{stelorderApplySingleError.error}</p>}
+                <div className="admin-scroll" style={{maxHeight: 320}}>
                   <table className="admin-table">
                     <thead>
                       <tr>
@@ -535,6 +768,15 @@ export default function AdminProveedores() {
                             {r.priceWarning && (
                               <div style={{color: '#a15c00', fontSize: '.78rem', marginTop: 2}}>⚠ {r.priceWarning}</div>
                             )}
+                            <PriceRowActions
+                              intent="stelorder-apply-single-price"
+                              rowId={r.product.barcode}
+                              rowIdField="barcode"
+                              priceFrom={r.priceFrom}
+                              priceTo={r.priceTo}
+                              isBusy={isBusy && busyIntent === 'stelorder-apply-single-price'}
+                              busyRowKey={busyRowKey}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -699,8 +941,9 @@ export default function AdminProveedores() {
               <>
                 <h3 style={{marginTop: 24}}>Cambios de precio detectados — pendientes de confirmar ({skuPriceChangedRows.length})</h3>
                 <p className="admin-hint">
-                  Nunca se aplican solos. Revísalos a mano en Shopify si de verdad quieres cambiar el precio.
+                  Nunca se aplican solos — confírmalos uno a uno aquí abajo.
                 </p>
+                {skuApplySingleError && <p className="admin-msg--error">{skuApplySingleError.error}</p>}
                 <div className="admin-scroll">
                   <table className="admin-table">
                     <thead>
@@ -713,7 +956,18 @@ export default function AdminProveedores() {
                           <tr key={row.sku}>
                             <td>{row.title}</td>
                             <td>{row.sku}</td>
-                            <td>{row.priceChange!.from.toFixed(2)}€ → {row.priceChange!.to.toFixed(2)}€</td>
+                            <td>
+                              {row.priceChange!.from.toFixed(2)}€ → {row.priceChange!.to.toFixed(2)}€
+                              <PriceRowActions
+                                intent="stelorder-sku-apply-single-price"
+                                rowId={row.sku}
+                                rowIdField="sku"
+                                priceFrom={row.priceChange!.from}
+                                priceTo={row.priceChange!.to}
+                                isBusy={isBusy && busyIntent === 'stelorder-sku-apply-single-price'}
+                                busyRowKey={busyRowKey}
+                              />
+                            </td>
                             <td>{row.priceWarning ?? ''}</td>
                           </tr>
                         );
@@ -976,6 +1230,18 @@ export default function AdminProveedores() {
                                     ⚠ {row.priceWarning}
                                   </div>
                                 )}
+                                {row.changes.price && (
+                                  <PriceRowActions
+                                    intent="apply-single-price"
+                                    rowId={row.ean}
+                                    rowIdField="ean"
+                                    priceFrom={row.changes.price.from}
+                                    priceTo={row.changes.price.to}
+                                    isBusy={isBusy && busyIntent === 'apply-single-price'}
+                                    busyRowKey={busyRowKey}
+                                    extraFields={{supplierId: id}}
+                                  />
+                                )}
                               </td>
                             </tr>
                           );
@@ -991,6 +1257,7 @@ export default function AdminProveedores() {
                       {isBusy && busyIntent === 'apply' ? 'Aplicando…' : `Confirmar y aplicar ${changedRows.length} cambios`}
                     </button>
                   </Form>
+                  {applySingleError && <p className="admin-msg--error">{applySingleError.error}</p>}
                 </>
               )}
 

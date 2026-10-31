@@ -179,7 +179,9 @@ export async function draftProducts(env: Env, productIds: string[]): Promise<{ap
 }
 
 export type StockChangeInput = {inventoryItemId: string; quantity: number};
-export type PriceChangeInput = {productId: string; variantId: string; price: number};
+// compareAtPrice solo se manda cuando se pide explícitamente marcar el
+// cambio como oferta (precio anterior tachado) — si se omite no se toca.
+export type PriceChangeInput = {productId: string; variantId: string; price: number; compareAtPrice?: number};
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -266,7 +268,11 @@ export async function applyPriceChanges(
         }`,
         {
           productId: change.productId,
-          variants: [{id: change.variantId, price: change.price.toFixed(2)}],
+          variants: [{
+            id: change.variantId,
+            price: change.price.toFixed(2),
+            ...(change.compareAtPrice != null ? {compareAtPrice: change.compareAtPrice.toFixed(2)} : {}),
+          }],
         },
       );
 

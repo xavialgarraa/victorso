@@ -1765,6 +1765,25 @@ aside li { margin-bottom: .125rem; }
   background: #f4f4f6;
   color: #17171a;
   font-family: 'Inter', system-ui, sans-serif;
+  /* El panel admin es de paleta clara fija a propósito (ver arriba) — pero
+     algunas partes (el bloque hero-admin__*) reutilizan los tokens
+     --surface/--border/--text... de la TIENDA, que sí cambian con el modo
+     claro/oscuro del sistema. Sin este reset, con el móvil/navegador en
+     oscuro esas partes se ponían negras y los <select> nativos heredaban
+     el estilo oscuro del sistema — ilegibles sobre fondo claro. Fijando
+     los tokens aquí (se heredan a todos los descendientes) todo el panel
+     queda siempre en claro, pase lo que pase fuera. */
+  --surface: #ffffff;
+  --surface-alt: #f4f4f5;
+  --surface-raised: #ffffff;
+  --text: #3d3d42;
+  --text-muted: #5b5b60;
+  --text-soft: #8a8a90;
+  --border: #e7e7e9;
+  --border-strong: #d3d3d6;
+  --shadow: 0 2px 10px rgba(20,20,25,.06);
+  --shadow-lg: 0 16px 40px rgba(20,20,25,.14);
+  color-scheme: light;
 }
 .admin-shell__sidebar {
   width: 220px;
@@ -1819,9 +1838,24 @@ aside li { margin-bottom: .125rem; }
 .admin-table tbody tr:hover { background: #fafafb; }
 
 .admin-form label { display: block; font-size: .8rem; font-weight: 600; margin: 10px 0 4px; }
-.admin-form input, .admin-form select {
+/* Estilo base para cualquier campo dentro del panel admin, lleve o no el
+   envoltorio .admin-form — varios paneles (descripción, categorías,
+   Instagram…) meten inputs/textareas sueltos y se quedaban con el estilo
+   gris de fábrica del navegador. */
+.admin-shell__main input[type='text'],
+.admin-shell__main input[type='search'],
+.admin-shell__main input[type='number'],
+.admin-shell__main input[type='url'],
+.admin-shell__main input[type='email'],
+.admin-shell__main input:not([type]),
+.admin-shell__main select,
+.admin-shell__main textarea {
   width: 100%; padding: 8px 10px; border: 1px solid #d8d8de; border-radius: 8px; font-size: .88rem;
   background: #fff; color: #17171a; font-family: inherit;
+}
+.admin-shell__main textarea { resize: vertical; }
+.admin-shell__main input:focus, .admin-shell__main select:focus, .admin-shell__main textarea:focus {
+  outline: none; border-color: var(--red); box-shadow: 0 0 0 3px rgba(227,6,19,.12);
 }
 .admin-btn {
   display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 8px; padding: 9px 16px;

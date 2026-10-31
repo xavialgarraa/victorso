@@ -527,6 +527,9 @@ export default function AdminHero() {
 
   const leftSlides = slides.filter((s) => s.slide.position === 'left');
   const rightSlides = slides.filter((s) => s.slide.position === 'right');
+  // Mismo orden en que StoreHero las junta de verdad en la web (ver
+  // app/components/StoreHero.tsx: allSlides = [...leftSlides, ...rightSlides]).
+  const allManualSlides = [...leftSlides, ...rightSlides];
   const hiddenAutoKeys = settings.hiddenAutoKeys ?? [];
 
   return (
@@ -545,26 +548,147 @@ export default function AdminHero() {
         ))}
       </datalist>
 
+      {/* Antes había dos paneles visuales lado a lado en la home; ahora el
+          carrusel es uno solo (StoreHero junta izquierda+derecha en una
+          única tira, ver app/components/StoreHero.tsx), así que aquí
+          también va todo en una sola lista — en el mismo orden en que
+          salen de verdad en la web (izquierda primero, luego derecha,
+          cada mitad por su "Orden"). "Izquierda/derecha" sigue existiendo
+          por dentro solo para decidir qué mitad de esa tira ocupa cada
+          slide. */}
       <div className="admin-card">
-        <h2 style={{marginTop: 0}}>Relleno automático</h2>
+        <div className="hero-admin__side-head" style={{marginTop: 0}}>
+          <span className="dot" />
+          <h2>Slides del banner</h2>
+          <span className="hero-admin__count">
+            {allManualSlides.length} tuya{allManualSlides.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {allManualSlides.length === 0 && (
+          <div className="hero-admin__empty">Sin slides manuales todavía — añade la primera abajo.</div>
+        )}
+
+        <div className="hero-admin__list">
+          {allManualSlides.map(({id, slide}) => (
+            <div key={id} className="hero-admin__card">
+              <div className="hero-admin__thumb">
+                <img src={slide.imageUrl} alt="" />
+                <span className="hero-admin__order">{slide.order}</span>
+              </div>
+              <div>
+                <span className="hero-admin__tag">{slide.position === 'left' ? 'Primera mitad' : 'Segunda mitad'}</span>
+                {slide.badge && (
+                  <span className={`hero-admin__badge hero-admin__badge--${badgeSuffix(slide.badgeClass)}`}>{slide.badge}</span>
+                )}
+                <div className="hero-admin__title">{slide.title || <em>(sin título)</em>}</div>
+                <span className="hero-admin__link">{slide.href}</span>
+              </div>
+              <div className="hero-admin__card-actions">
+                <Form method="post">
+                  <input type="hidden" name="intent" value="move-slide" />
+                  <input type="hidden" name="id" value={id} />
+                  <button
+                    type="submit"
+                    className="hero-admin__icon-btn"
+                    title={slide.position === 'left' ? 'Mandar a la segunda mitad' : 'Mandar a la primera mitad'}
+                    disabled={isBusy}
+                  >
+                    {slide.position === 'left' ? '→' : '←'}
+                  </button>
+                </Form>
+                <details style={{position: 'relative'}}>
+                  <summary className="hero-admin__icon-btn" style={{listStyle: 'none', display: 'flex'}}>
+                    ✎
+                  </summary>
+                  <div
+                    className="hero-admin__add-form"
+                    style={{position: 'absolute', right: 0, top: 36, zIndex: 5, width: 640, maxWidth: '90vw', boxShadow: 'var(--shadow-lg)'}}
+                  >
+                    <Form method="post" encType="multipart/form-data" className="admin-form" key={id}>
+                      <input type="hidden" name="intent" value="update-slide" />
+                      <input type="hidden" name="id" value={id} />
+                      <input type="hidden" name="position" value={slide.position} />
+                      <SlideFields
+                        products={products}
+                        initial={{
+                          imageUrl: slide.imageUrl,
+                          href: slide.href,
+                          external: slide.external,
+                          badge: slide.badge,
+                          badgeClass: slide.badgeClass,
+                          eyebrow: slide.eyebrow,
+                          title: slide.title,
+                          cta: slide.cta,
+                          ctaClass: slide.ctaClass,
+                          order: slide.order,
+                          productHandle: slide.productHandle,
+                        }}
+                      />
+                      <button type="submit" className="admin-btn admin-btn--outline" style={{marginTop: 8}} disabled={isBusy}>
+                        Guardar cambios
+                      </button>
+                    </Form>
+                    <Form
+                      method="post"
+                      style={{marginTop: 8}}
+                      onSubmit={(e) => {
+                        if (!confirm('¿Borrar este slide?')) e.preventDefault();
+                      }}
+                    >
+                      <input type="hidden" name="intent" value="delete-slide" />
+                      <input type="hidden" name="id" value={id} />
+                      <button type="submit" className="admin-btn admin-btn--danger" style={{width: '100%'}}>
+                        Borrar
+                      </button>
+                    </Form>
+                  </div>
+                </details>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <details className="hero-admin__add-tile" style={{display: 'block', border: 'none', padding: 0, marginTop: 16}}>
+          <summary className="hero-admin__add-tile">+ Añadir slide</summary>
+          <div className="hero-admin__add-form" style={{width: 640, maxWidth: '90vw'}}>
+            <Form method="post" encType="multipart/form-data" className="admin-form">
+              <input type="hidden" name="intent" value="add-slide" />
+              <label htmlFor="hero-add-position">Mitad del banner</label>
+              <select id="hero-add-position" name="position" defaultValue="left">
+                <option value="left">Primera mitad</option>
+                <option value="right">Segunda mitad</option>
+              </select>
+              <SlideFields products={products} />
+              <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
+                {isBusy ? 'Subiendo…' : 'Añadir slide'}
+              </button>
+            </Form>
+            {actionData?.intent === 'add-slide' && !actionData.ok && (
+              <p className="admin-msg--error">{actionData.error}</p>
+            )}
+          </div>
+        </details>
+
+        <h2 style={{marginTop: 28}}>Relleno automático</h2>
         <p className="admin-hint">
-          Si un lado se queda sin slides manuales (o si quieres dejarlo siempre activo como añadido), se completa
-          solo con el producto novedad / más vendido. Con los interruptores de abajo lo activas o desactivas por
-          lado entero; con el botón "Ocultar" de cada tarjeta puedes quitar solo una tarjeta concreta del relleno,
-          sin tocar las demás.
+          Si una mitad se queda sin slides manuales (o si quieres dejarlo siempre activo como añadido), se
+          completa sola con el producto novedad / más vendido. Con los interruptores de abajo lo activas o
+          desactivas por mitad entera; con el botón "Ocultar" de cada tarjeta puedes quitar solo una tarjeta
+          concreta del relleno, sin tocar las demás.
         </p>
         <Form method="post">
           <input type="hidden" name="intent" value="save-settings" />
           <div className="hero-admin__toggle-row">
             <div className="hero-admin__toggle-text">
-              <strong>Panel izquierdo</strong>
+              <strong>Primera mitad</strong>
               <span>Producto novedad si faltan fotos</span>
             </div>
             <input type="checkbox" className="hero-admin__switch" name="leftAutoFallback" defaultChecked={settings.leftAutoFallback} />
           </div>
           <div className="hero-admin__toggle-row">
             <div className="hero-admin__toggle-text">
-              <strong>Panel derecho</strong>
+              <strong>Segunda mitad</strong>
               <span>Más vendido + tarjetas de contacto</span>
             </div>
             <input type="checkbox" className="hero-admin__switch" name="rightAutoFallback" defaultChecked={settings.rightAutoFallback} />
@@ -576,164 +700,53 @@ export default function AdminHero() {
         {actionData?.intent === 'save-settings' && actionData.ok && (
           <p className="admin-msg--ok">Guardado.</p>
         )}
-      </div>
 
-      {(['left', 'right'] as const).map((position) => {
-        const manual = position === 'left' ? leftSlides : rightSlides;
-        const autoCandidates = position === 'left' ? autoLeftCandidates : autoRightCandidates;
-        const autoFallbackOn = position === 'left' ? settings.leftAutoFallback : settings.rightAutoFallback;
+        {(['left', 'right'] as const).map((position) => {
+          const autoCandidates = position === 'left' ? autoLeftCandidates : autoRightCandidates;
+          const autoFallbackOn = position === 'left' ? settings.leftAutoFallback : settings.rightAutoFallback;
 
-        return (
-          <div key={position} className="admin-card">
-            <div className="hero-admin__side-head" style={{marginTop: 0}}>
-              <span className="dot" />
-              <h2>Panel {position === 'left' ? 'izquierdo' : 'derecho'}</h2>
-              <span className="hero-admin__count">
-                {manual.length} tuya{manual.length === 1 ? '' : 's'} + {autoCandidates.length} auto
-              </span>
-            </div>
-
-            {manual.length === 0 && (
-              <div className="hero-admin__empty">Sin slides manuales todavía — añade la primera abajo.</div>
-            )}
-
-            <div className="hero-admin__list">
-              {manual.map(({id, slide}) => (
-                <div key={id} className="hero-admin__card">
-                  <div className="hero-admin__thumb">
-                    <img src={slide.imageUrl} alt="" />
-                    <span className="hero-admin__order">{slide.order}</span>
-                  </div>
-                  <div>
-                    {slide.badge && (
-                      <span className={`hero-admin__badge hero-admin__badge--${badgeSuffix(slide.badgeClass)}`}>{slide.badge}</span>
-                    )}
-                    <div className="hero-admin__title">{slide.title || <em>(sin título)</em>}</div>
-                    <span className="hero-admin__link">{slide.href}</span>
-                  </div>
-                  <div className="hero-admin__card-actions">
-                    <Form method="post">
-                      <input type="hidden" name="intent" value="move-slide" />
-                      <input type="hidden" name="id" value={id} />
-                      <button
-                        type="submit"
-                        className="hero-admin__icon-btn"
-                        title={`Mover al panel ${position === 'left' ? 'derecho' : 'izquierdo'}`}
-                        disabled={isBusy}
-                      >
-                        {position === 'left' ? '→' : '←'}
-                      </button>
-                    </Form>
-                    <details style={{position: 'relative'}}>
-                      <summary className="hero-admin__icon-btn" style={{listStyle: 'none', display: 'flex'}}>
-                        ✎
-                      </summary>
-                      <div
-                        className="hero-admin__add-form"
-                        style={{position: 'absolute', right: 0, top: 36, zIndex: 5, width: 640, maxWidth: '90vw', boxShadow: 'var(--shadow-lg)'}}
-                      >
-                        <Form method="post" encType="multipart/form-data" className="admin-form" key={id}>
-                          <input type="hidden" name="intent" value="update-slide" />
-                          <input type="hidden" name="id" value={id} />
-                          <input type="hidden" name="position" value={slide.position} />
-                          <SlideFields
-                            products={products}
-                            initial={{
-                              imageUrl: slide.imageUrl,
-                              href: slide.href,
-                              external: slide.external,
-                              badge: slide.badge,
-                              badgeClass: slide.badgeClass,
-                              eyebrow: slide.eyebrow,
-                              title: slide.title,
-                              cta: slide.cta,
-                              ctaClass: slide.ctaClass,
-                              order: slide.order,
-                              productHandle: slide.productHandle,
-                            }}
-                          />
-                          <button type="submit" className="admin-btn admin-btn--outline" style={{marginTop: 8}} disabled={isBusy}>
-                            Guardar cambios
-                          </button>
-                        </Form>
-                        <Form
-                          method="post"
-                          style={{marginTop: 8}}
-                          onSubmit={(e) => {
-                            if (!confirm('¿Borrar este slide?')) e.preventDefault();
-                          }}
-                        >
-                          <input type="hidden" name="intent" value="delete-slide" />
-                          <input type="hidden" name="id" value={id} />
-                          <button type="submit" className="admin-btn admin-btn--danger" style={{width: '100%'}}>
-                            Borrar
+          return (
+            <div key={position}>
+              <div className="hero-admin__side-head">
+                {position === 'left' ? 'Primera mitad' : 'Segunda mitad'}
+                <span
+                  className="admin-badge"
+                  style={{
+                    background: autoFallbackOn ? '#e3f5e8' : '#eef0f4',
+                    color: autoFallbackOn ? '#16743a' : '#4a4a52',
+                  }}
+                >
+                  {autoFallbackOn ? 'Activo' : 'Desactivado'}
+                </span>
+              </div>
+              <div className="hero-admin__list">
+                {autoCandidates.map((c) => {
+                  const hidden = hiddenAutoKeys.includes(c.key);
+                  return (
+                    <div key={c.key} className={`hero-admin__card hero-admin__card--auto${hidden ? ' hero-admin__card--hidden' : ''}`}>
+                      <div className="hero-admin__thumb">{c.image && <img src={c.image} alt="" />}</div>
+                      <div>
+                        <span className="hero-admin__tag">{c.tag}{hidden ? ' · oculta' : ''}</span>
+                        <div className="hero-admin__title">{c.title}</div>
+                        <span className="hero-admin__link">se actualiza solo con el catálogo</span>
+                      </div>
+                      <div className="hero-admin__card-actions">
+                        <Form method="post">
+                          <input type="hidden" name="intent" value="toggle-auto" />
+                          <input type="hidden" name="key" value={c.key} />
+                          <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                            {hidden ? 'Mostrar' : 'Ocultar'}
                           </button>
                         </Form>
                       </div>
-                    </details>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="hero-admin__side-head">
-              Relleno automático
-              <span
-                className="admin-badge"
-                style={{
-                  background: autoFallbackOn ? '#e3f5e8' : '#eef0f4',
-                  color: autoFallbackOn ? '#16743a' : '#4a4a52',
-                }}
-              >
-                {autoFallbackOn ? 'Activo' : 'Desactivado'}
-              </span>
-            </div>
-            <div className="hero-admin__list">
-              {autoCandidates.map((c) => {
-                const hidden = hiddenAutoKeys.includes(c.key);
-                return (
-                  <div key={c.key} className={`hero-admin__card hero-admin__card--auto${hidden ? ' hero-admin__card--hidden' : ''}`}>
-                    <div className="hero-admin__thumb">{c.image && <img src={c.image} alt="" />}</div>
-                    <div>
-                      <span className="hero-admin__tag">{c.tag}{hidden ? ' · oculta' : ''}</span>
-                      <div className="hero-admin__title">{c.title}</div>
-                      <span className="hero-admin__link">se actualiza solo con el catálogo</span>
                     </div>
-                    <div className="hero-admin__card-actions">
-                      <Form method="post">
-                        <input type="hidden" name="intent" value="toggle-auto" />
-                        <input type="hidden" name="key" value={c.key} />
-                        <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
-                          {hidden ? 'Mostrar' : 'Ocultar'}
-                        </button>
-                      </Form>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <details className="hero-admin__add-tile" style={{display: 'block', border: 'none', padding: 0, marginTop: 16}}>
-              <summary className="hero-admin__add-tile">
-                + Añadir slide en el panel {position === 'left' ? 'izquierdo' : 'derecho'}
-              </summary>
-              <div className="hero-admin__add-form" style={{width: 640, maxWidth: '90vw'}}>
-                <Form method="post" encType="multipart/form-data" className="admin-form">
-                  <input type="hidden" name="intent" value="add-slide" />
-                  <input type="hidden" name="position" value={position} />
-                  <SlideFields products={products} />
-                  <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
-                    {isBusy ? 'Subiendo…' : 'Añadir slide'}
-                  </button>
-                </Form>
-                {actionData?.intent === 'add-slide' && !actionData.ok && (
-                  <p className="admin-msg--error">{actionData.error}</p>
-                )}
+                  );
+                })}
               </div>
-            </details>
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </AdminShell>
   );
 }

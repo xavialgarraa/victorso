@@ -1,5 +1,5 @@
 import {Fragment, useState} from 'react';
-import {data, useLoaderData} from 'react-router';
+import {data, useFetcher, useLoaderData} from 'react-router';
 import type {Route} from './+types/admin-interno.historial';
 import {requireAdminUser} from '~/lib/adminSession.server';
 import {AdminShell} from '~/components/admin/AdminShell';
@@ -14,6 +14,78 @@ export async function loader({request, context}: Route.LoaderArgs) {
   const {user, headers} = await requireAdminUser(request, context.env);
   const runs = await listRecentSyncRuns(context.env, 200);
   return data({user, runs}, {headers});
+}
+
+// Los mismos botones de precio por fila del panel de Proveedores, pero
+// aquí van contra la acción de esa otra ruta vía fetcher (sin navegar
+// fuera de Historial) — más cómodo para confirmar un precio que se ve al
+// revisar una sincronización pasada, sin tener que ir a buscarlo en
+// Proveedores. La acción vuelve a comparar contra el feed/Shopify en
+// vivo antes de aplicar, así que si ese cambio ya no está vigente
+// (se aplicó o cambió de nuevo) simplemente avisa, no aplica a ciegas.
+function HistorialPriceActions({
+  intent,
+  rowId,
+  rowIdField,
+  priceFrom,
+  priceTo,
+  extraFields,
+}: {
+  intent: string;
+  rowId: string;
+  rowIdField: string;
+  priceFrom: number;
+  priceTo: number;
+  extraFields?: Record<string, string>;
+}) {
+  const fetcher = useFetcher<{ok?: boolean; error?: string}>();
+  const busy = fetcher.state !== 'idle';
+  const canOffer = priceTo < priceFrom;
+
+  return (
+    <div style={{marginTop: 6}}>
+      <div style={{display: 'flex', gap: 6, flexWrap: 'wrap'}}>
+        <fetcher.Form method="post" action="/admin-interno/proveedores">
+          <input type="hidden" name="intent" value={intent} />
+          <input type="hidden" name={rowIdField} value={rowId} />
+          <input type="hidden" name="mode" value="price" />
+          {extraFields &&
+            Object.entries(extraFields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+          <button
+            type="submit"
+            className="admin-btn admin-btn--outline"
+            style={{padding: '4px 9px', fontSize: '.74rem'}}
+            disabled={busy}
+          >
+            {busy ? '…' : 'Actualizar precio'}
+          </button>
+        </fetcher.Form>
+        {canOffer && (
+          <fetcher.Form method="post" action="/admin-interno/proveedores">
+            <input type="hidden" name="intent" value={intent} />
+            <input type="hidden" name={rowIdField} value={rowId} />
+            <input type="hidden" name="mode" value="offer" />
+            {extraFields &&
+              Object.entries(extraFields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+            <button
+              type="submit"
+              className="admin-btn admin-btn--primary"
+              style={{padding: '4px 9px', fontSize: '.74rem'}}
+              disabled={busy}
+            >
+              {busy ? '…' : 'Actualizar como oferta'}
+            </button>
+          </fetcher.Form>
+        )}
+      </div>
+      {fetcher.data?.ok === true && (
+        <span style={{color: '#16743a', fontSize: '.72rem'}}>Aplicado ✓</span>
+      )}
+      {fetcher.data?.ok === false && (
+        <span style={{color: 'var(--red)', fontSize: '.72rem'}}>{fetcher.data.error}</span>
+      )}
+    </div>
+  );
 }
 
 function RunDetails({run}: {run: SyncRunLog}) {
@@ -89,9 +161,31 @@ function RunDetails({run}: {run: SyncRunLog}) {
                         : '—'}
                     </td>
                     <td>
-                      {row.priceFrom !== null && row.priceTo !== null
-                        ? `${row.priceFrom.toFixed(2)}€ → ${row.priceTo.toFixed(2)}€`
-                        : '—'}
+                      {row.priceFrom !== null && row.priceTo !== null ? (
+                        <>
+                          {row.priceFrom.toFixed(2)}€ → {row.priceTo.toFixed(2)}€
+                          {run.supplierId === 'stelorder-sku' ? (
+                            <HistorialPriceActions
+                              intent="stelorder-sku-apply-single-price"
+                              rowId={row.sku || row.ean}
+                              rowIdField="sku"
+                              priceFrom={row.priceFrom}
+                              priceTo={row.priceTo}
+                            />
+                          ) : (
+                            <HistorialPriceActions
+                              intent="apply-single-price"
+                              rowId={row.ean}
+                              rowIdField="ean"
+                              priceFrom={row.priceFrom}
+                              priceTo={row.priceTo}
+                              extraFields={{supplierId: run.supplierId}}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   </tr>
                 ))}
