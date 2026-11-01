@@ -161,6 +161,10 @@ const I18N = {
     notifyMeLabel: 'Avísame cuando vuelva a haber stock',
     notifyMePlaceholder: 'Tu email', notifyMeBtn: 'Avísame', notifyMeSending: 'Enviando…',
     notifyMeSuccess: 'Te avisaremos por email en cuanto esté disponible.',
+    newsletterTitle: 'Suscríbete a nuestras novedades',
+    newsletterSubtitle: 'Ofertas y lanzamientos, sin spam.',
+    newsletterPlaceholder: 'Tu email', newsletterBtn: 'Suscribirme', newsletterSending: 'Enviando…',
+    newsletterSuccess: '¡Listo! Ya estás suscrito.',
   },
   en: {
     shipBar: 'Free shipping mainland Spain from',
@@ -310,6 +314,10 @@ const I18N = {
     notifyMeLabel: 'Notify me when back in stock',
     notifyMePlaceholder: 'Your email', notifyMeBtn: 'Notify me', notifyMeSending: 'Sending…',
     notifyMeSuccess: "We'll email you as soon as it's available.",
+    newsletterTitle: 'Subscribe to our newsletter',
+    newsletterSubtitle: 'Deals and new arrivals, no spam.',
+    newsletterPlaceholder: 'Your email', newsletterBtn: 'Subscribe', newsletterSending: 'Sending…',
+    newsletterSuccess: "You're subscribed!",
   },
   fr: {
     shipBar: 'Livraison gratuite Espagne péninsulaire dès',
@@ -459,6 +467,10 @@ const I18N = {
     notifyMeLabel: 'Prévenez-moi quand ce sera de nouveau en stock',
     notifyMePlaceholder: 'Votre email', notifyMeBtn: 'Me prévenir', notifyMeSending: 'Envoi…',
     notifyMeSuccess: 'Nous vous préviendrons par email dès que disponible.',
+    newsletterTitle: 'Abonnez-vous à notre newsletter',
+    newsletterSubtitle: 'Offres et nouveautés, sans spam.',
+    newsletterPlaceholder: 'Votre email', newsletterBtn: "M'abonner", newsletterSending: 'Envoi…',
+    newsletterSuccess: 'Vous êtes abonné !',
   },
   pt: {
     shipBar: 'Envio grátis Península desde',
@@ -608,6 +620,10 @@ const I18N = {
     notifyMeLabel: 'Avise-me quando voltar a haver stock',
     notifyMePlaceholder: 'O seu email', notifyMeBtn: 'Avise-me', notifyMeSending: 'A enviar…',
     notifyMeSuccess: 'Avisaremos por email assim que estiver disponível.',
+    newsletterTitle: 'Inscreva-se na nossa newsletter',
+    newsletterSubtitle: 'Ofertas e novidades, sem spam.',
+    newsletterPlaceholder: 'O seu email', newsletterBtn: 'Inscrever-me', newsletterSending: 'Enviando…',
+    newsletterSuccess: 'Pronto! Já está inscrito.',
   },
   ca: {
     shipBar: 'Enviament gratuït Península des de',
@@ -757,6 +773,10 @@ const I18N = {
     notifyMeLabel: "Avisa'm quan torni a haver-hi estoc",
     notifyMePlaceholder: 'El teu email', notifyMeBtn: "Avisa'm", notifyMeSending: 'Enviant…',
     notifyMeSuccess: "T'avisarem per email tan bon punt estigui disponible.",
+    newsletterTitle: 'Subscriu-te a la nostra newsletter',
+    newsletterSubtitle: 'Ofertes i novetats, sense spam.',
+    newsletterPlaceholder: 'El teu email', newsletterBtn: 'Subscriure\'m', newsletterSending: 'Enviant…',
+    newsletterSuccess: 'Llest! Ja estàs subscrit.',
   },
 } as const satisfies Record<LocaleCode, Record<string, string | ((...args: any[]) => string)>>;
 

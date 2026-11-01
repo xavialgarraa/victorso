@@ -3,6 +3,7 @@ import {Await, NavLink} from 'react-router';
 import type {FooterQuery, HeaderQuery} from 'storefrontapi.generated';
 import {Icon} from '~/lib/icons';
 import {useI18n} from '~/lib/i18n';
+import {NewsletterForm} from '~/components/NewsletterForm';
 
 interface FooterProps {
   footer: Promise<FooterQuery | null>;
@@ -14,6 +15,7 @@ export function Footer({footer: footerPromise, header, publicStoreDomain}: Foote
   const {t} = useI18n();
   return (
     <footer className="footer">
+      <NewsletterForm />
       <div className="container footer__grid">
         <div className="footer__col">
           <div className="logo logo--footer">
