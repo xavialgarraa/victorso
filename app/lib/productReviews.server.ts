@@ -9,6 +9,7 @@ export type ReviewStatus = 'pending' | 'approved';
 export type Review = {
   id: string;
   name: string;
+  email?: string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -23,6 +24,7 @@ export type PendingEntry = {
   productHandle: string;
   productTitle: string;
   name: string;
+  email?: string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -66,10 +68,14 @@ async function getAllReviews(env: Env, productId: string): Promise<Review[]> {
   }
 }
 
-/** Reseñas aprobadas de un producto, para mostrar en la ficha pública. */
-export async function getReviews(env: Env, productId: string): Promise<Review[]> {
+/** Reseñas aprobadas de un producto, para mostrar en la ficha pública.
+ * El email (si lo dejó el autor) nunca sale de aquí — es solo para el
+ * aviso interno de "reseña aprobada", no para mostrar en la web. */
+export async function getReviews(env: Env, productId: string): Promise<Omit<Review, 'email'>[]> {
   const all = await getAllReviews(env, productId);
-  return all.filter((r) => r.status === 'approved');
+  return all
+    .filter((r) => r.status === 'approved')
+    .map(({email: _email, ...rest}) => rest);
 }
 
 async function setReviews(env: Env, productId: string, reviews: Review[]): Promise<void> {
@@ -149,12 +155,13 @@ export async function getPendingReviews(env: Env): Promise<PendingEntry[]> {
 export async function addReview(
   env: Env,
   product: {id: string; handle: string; title: string},
-  review: {name: string; rating: number; comment: string},
+  review: {name: string; email?: string; rating: number; comment: string},
 ): Promise<void> {
   const existing = await getAllReviews(env, product.id);
   const newReview: Review = {
     id: crypto.randomUUID(),
     name: review.name,
+    email: review.email || undefined,
     rating: review.rating,
     comment: review.comment,
     createdAt: new Date().toISOString(),
@@ -169,6 +176,7 @@ export async function addReview(
     productHandle: product.handle,
     productTitle: product.title,
     name: newReview.name,
+    email: newReview.email,
     rating: newReview.rating,
     comment: newReview.comment,
     createdAt: newReview.createdAt,

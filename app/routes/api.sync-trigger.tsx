@@ -6,6 +6,7 @@ import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} fro
 import {applyStelOrderCreations, buildStelOrderSyncSummary} from '~/lib/connectors/stelorderSync.server';
 import {buildStelOrderSkuSyncSummary, skuSyncSummaryToRunDetails} from '~/lib/connectors/stelorderSkuSync.server';
 import {safeCompare} from '~/lib/safeCompare.server';
+import {sendSyncFailureEmail, sendPriceChangesPendingEmail} from '~/lib/email.server';
 
 /**
  * StelOrder no tiene "supplier" en Firestore (no es un feed por URL como
@@ -50,6 +51,7 @@ export async function action({request, context}: Route.ActionArgs) {
 
   const suppliers = await listSuppliers(context.env);
   const results: Array<Record<string, unknown>> = [];
+  const adminUrl = new URL('/admin-interno/proveedores', request.url).toString();
 
   if (context.env.STELORDER_API_KEY) {
     const startedAt = new Date().toISOString();
@@ -80,9 +82,20 @@ export async function action({request, context}: Route.ActionArgs) {
         pendingPriceChanges: summary.priceChanges.length,
         errors: [...stockResult.errors, ...creationResult.errors.map((e) => `${e.name}: ${e.message}`)],
       });
+      if (summary.priceChanges.length > 0) {
+        await sendPriceChangesPendingEmail(context.env, {
+          supplierName: 'StelOrder',
+          count: summary.priceChanges.length,
+          adminUrl,
+        }).catch((e) => console.error('[api/sync-trigger] stelorder price-pending email', e));
+      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido.';
       console.error('[api/sync-trigger] stelorder', error);
-      results.push({id: 'stelorder', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'});
+      results.push({id: 'stelorder', ok: false, error: message});
+      await sendSyncFailureEmail(context.env, {supplierName: 'StelOrder', error: message}).catch((e) =>
+        console.error('[api/sync-trigger] stelorder failure email', e),
+      );
     }
   }
 
@@ -126,9 +139,20 @@ export async function action({request, context}: Route.ActionArgs) {
         pendingPriceChanges: summary.pendingPriceChanges,
         errors: stockResult.errors,
       });
+      if (summary.pendingPriceChanges > 0) {
+        await sendPriceChangesPendingEmail(context.env, {
+          supplierName: 'StelOrder (por SKU)',
+          count: summary.pendingPriceChanges,
+          adminUrl,
+        }).catch((e) => console.error('[api/sync-trigger] stelorder-sku price-pending email', e));
+      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido.';
       console.error('[api/sync-trigger] stelorder-sku', error);
-      results.push({id: 'stelorder-sku', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'});
+      results.push({id: 'stelorder-sku', ok: false, error: message});
+      await sendSyncFailureEmail(context.env, {supplierName: 'StelOrder (por SKU)', error: message}).catch((e) =>
+        console.error('[api/sync-trigger] stelorder-sku failure email', e),
+      );
     }
   }
 
@@ -190,9 +214,20 @@ export async function action({request, context}: Route.ActionArgs) {
         pendingPriceChanges,
         errors: stockResult.errors,
       });
+      if (pendingPriceChanges > 0) {
+        await sendPriceChangesPendingEmail(context.env, {
+          supplierName: config.name,
+          count: pendingPriceChanges,
+          adminUrl,
+        }).catch((e) => console.error('[api/sync-trigger]', id, 'price-pending email', e));
+      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido.';
       console.error('[api/sync-trigger]', id, error);
-      results.push({id, ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'});
+      results.push({id, ok: false, error: message});
+      await sendSyncFailureEmail(context.env, {supplierName: config.name, error: message}).catch((e) =>
+        console.error('[api/sync-trigger]', id, 'failure email', e),
+      );
     }
   }
 

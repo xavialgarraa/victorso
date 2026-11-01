@@ -1,8 +1,10 @@
 import type {Route} from './+types/api.reviews';
 import {addReview} from '~/lib/productReviews.server';
+import {sendNewReviewPendingEmail} from '~/lib/email.server';
 
 const NAME_MAX = 60;
 const COMMENT_MAX = 600;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function action({request, context}: Route.ActionArgs) {
   const formData = await request.formData();
@@ -18,6 +20,8 @@ export async function action({request, context}: Route.ActionArgs) {
   const productHandle = String(formData.get('productHandle') || '');
   const productTitle = String(formData.get('productTitle') || '');
   const name = String(formData.get('name') || '').trim().slice(0, NAME_MAX);
+  const emailRaw = String(formData.get('email') || '').trim();
+  const email = EMAIL_RE.test(emailRaw) ? emailRaw : undefined;
   const comment = String(formData.get('comment') || '').trim().slice(0, COMMENT_MAX);
   const rating = Math.min(5, Math.max(1, Math.round(Number(formData.get('rating')) || 0)));
 
@@ -38,9 +42,8 @@ export async function action({request, context}: Route.ActionArgs) {
     await addReview(
       context.env,
       {id: productId, handle: productHandle, title: productTitle},
-      {name, rating, comment},
+      {name, email, rating, comment},
     );
-    return {ok: true};
   } catch (error) {
     console.error('[reviews]', error);
     return {
@@ -48,4 +51,13 @@ export async function action({request, context}: Route.ActionArgs) {
       error: 'No se pudo publicar tu reseña ahora mismo. Inténtalo de nuevo en un momento.',
     };
   }
+
+  try {
+    const adminUrl = new URL('/admin-interno/resenas', request.url).toString();
+    await sendNewReviewPendingEmail(context.env, {productTitle, name, rating, comment, adminUrl});
+  } catch (error) {
+    console.error('[reviews] admin alert email', error);
+  }
+
+  return {ok: true};
 }

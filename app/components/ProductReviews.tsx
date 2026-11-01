@@ -148,6 +148,11 @@ export function ProductReviews({
             </label>
             <input id="review-name" type="text" name="name" required maxLength={60} />
 
+            <label htmlFor="review-email" className="notify-me__label">
+              {t('reviewEmail')}
+            </label>
+            <input id="review-email" type="email" name="email" maxLength={150} placeholder={t('reviewEmailPlaceholder')} />
+
             <label className="notify-me__label">{t('reviewRating')}</label>
             <StarRatingInput value={rating} onChange={setRating} />
 

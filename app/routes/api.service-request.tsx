@@ -1,8 +1,9 @@
 import type {Route} from './+types/api.service-request';
 import {createServiceRequest, type ServiceRequestType} from '~/lib/serviceRequests.server';
-import {sendServiceRequestEmail} from '~/lib/email.server';
+import {sendServiceRequestEmail, sendServiceRequestConfirmationEmail} from '~/lib/email.server';
 
 const VALID_TYPES: ServiceRequestType[] = ['reparacion', 'instalacion', 'otro'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function action({request, context}: Route.ActionArgs) {
   const formData = await request.formData();
@@ -40,6 +41,14 @@ export async function action({request, context}: Route.ActionArgs) {
     await sendServiceRequestEmail(context.env, {name, contact, type, message});
   } catch (error) {
     console.error('[service-request] email', error);
+  }
+
+  if (EMAIL_RE.test(contact)) {
+    try {
+      await sendServiceRequestConfirmationEmail(context.env, {to: contact, name, type});
+    } catch (error) {
+      console.error('[service-request] confirmation email', error);
+    }
   }
 
   return {ok: true};

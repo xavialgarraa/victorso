@@ -3,6 +3,7 @@ import type {Route} from './+types/admin-interno.resenas';
 import {requireAdminUser} from '~/lib/adminSession.server';
 import {AdminShell} from '~/components/admin/AdminShell';
 import {approveReview, getPendingReviews, rejectReview} from '~/lib/productReviews.server';
+import {sendReviewApprovedEmail} from '~/lib/email.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Reseñas — Panel interno'}];
@@ -22,7 +23,21 @@ export async function action({request, context}: Route.ActionArgs) {
   const reviewId = String(formData.get('reviewId') || '');
 
   if (intent === 'approve') {
+    const pending = await getPendingReviews(context.env);
+    const entry = pending.find((p) => p.reviewId === reviewId);
     await approveReview(context.env, productId, reviewId);
+    if (entry?.email) {
+      try {
+        await sendReviewApprovedEmail(context.env, {
+          to: entry.email,
+          name: entry.name,
+          productTitle: entry.productTitle,
+          productUrl: new URL(`/products/${entry.productHandle}`, request.url).toString(),
+        });
+      } catch (error) {
+        console.error('[admin-interno.resenas] review approved email', error);
+      }
+    }
   } else if (intent === 'reject') {
     await rejectReview(context.env, productId, reviewId);
   }
