@@ -1,11 +1,16 @@
 import type {Route} from './+types/api.service-request';
 import {createServiceRequest, type ServiceRequestType} from '~/lib/serviceRequests.server';
 import {sendServiceRequestEmail, sendServiceRequestConfirmationEmail} from '~/lib/email.server';
+import {checkRateLimit} from '~/lib/rateLimit.server';
 
 const VALID_TYPES: ServiceRequestType[] = ['reparacion', 'instalacion', 'otro'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function action({request, context}: Route.ActionArgs) {
+  if (!checkRateLimit('service-request', request, {limit: 5, windowMs: 60 * 60_000})) {
+    return {ok: false, error: 'Demasiados intentos seguidos. Prueba de nuevo en un rato.'};
+  }
+
   const formData = await request.formData();
   const name = String(formData.get('name') || '').trim();
   const contact = String(formData.get('contact') || '').trim();

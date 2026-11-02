@@ -1,5 +1,6 @@
 import type {Route} from './+types/api.chat';
 import {searchProductsForChat, type ProductSearchResult} from '~/lib/productSearch.server';
+import {checkRateLimit} from '~/lib/rateLimit.server';
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_MESSAGES = 20;
@@ -156,6 +157,16 @@ function extractMentionedProducts(
 }
 
 export async function action({request, context}: Route.ActionArgs) {
+  // 20 mensajes cada 10 min por IP — suficiente para una conversación real
+  // (incluso larga), pero frena un script que dispare el chat en bucle y
+  // consuma la cuota de la API de Anthropic sin control.
+  if (!checkRateLimit('chat', request, {limit: 20, windowMs: 10 * 60_000})) {
+    return Response.json(
+      {error: 'Has escrito muchos mensajes seguidos — espera un minuto y vuelve a intentarlo.'},
+      {status: 429},
+    );
+  }
+
   if (!context.env.ANTHROPIC_API_KEY) {
     return Response.json(
       {

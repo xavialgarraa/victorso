@@ -1,12 +1,17 @@
 import type {Route} from './+types/api.reviews';
 import {addReview} from '~/lib/productReviews.server';
 import {sendNewReviewPendingEmail} from '~/lib/email.server';
+import {checkRateLimit} from '~/lib/rateLimit.server';
 
 const NAME_MAX = 60;
 const COMMENT_MAX = 600;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function action({request, context}: Route.ActionArgs) {
+  if (!checkRateLimit('reviews', request, {limit: 5, windowMs: 60 * 60_000})) {
+    return {ok: false, error: 'Demasiados intentos seguidos. Prueba de nuevo en un rato.'};
+  }
+
   const formData = await request.formData();
 
   // Honeypot: campo oculto que un usuario real nunca rellena, pero un bot
