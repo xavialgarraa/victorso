@@ -21,6 +21,7 @@ import appStyles from '~/styles/app.css?url';
 import {PageLayout} from './components/PageLayout';
 import {jsonLdHtml} from '~/lib/jsonLd';
 import {GoogleAnalytics} from '~/components/GoogleAnalytics';
+import {CookieConsent} from '~/components/CookieConsent';
 
 export type RootLoader = typeof loader;
 
@@ -123,11 +124,12 @@ export async function loader(args: Route.LoaderArgs) {
     consent: {
       checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN,
       storefrontAccessToken: env.PUBLIC_STOREFRONT_API_TOKEN,
-      // Activa el banner de privacidad/cookies nativo de Shopify (RGPD) —
-      // configurable en Shopify Admin > Configuración > Privacidad de
-      // clientes. GA4 (ver GoogleAnalytics.tsx) solo se carga tras el
-      // consentimiento de analítica que recoge este banner.
-      withPrivacyBanner: true,
+      // El widget de banner nativo de Shopify está desactivado a propósito:
+      // usamos nuestro propio banner (CookieConsent.tsx, misma animación
+      // que el chat) que llama a la misma API de privacidad por debajo —
+      // el consentimiento se registra igual, solo cambia la interfaz. GA4
+      // (GoogleAnalytics.tsx) solo se carga tras ese consentimiento.
+      withPrivacyBanner: false,
       // localize the privacy banner
       country: args.context.storefront.i18n.country,
       language: args.context.storefront.i18n.language,
@@ -297,6 +299,7 @@ export default function App() {
         consent={data.consent}
       >
         <GoogleAnalytics containerId={data.gtmContainerId} consent={data.consent} />
+        <CookieConsent consent={data.consent} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{__html: jsonLdHtml(localBusinessJsonLd)}}

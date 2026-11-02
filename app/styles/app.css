@@ -1592,6 +1592,30 @@ body.nav-open .whatsapp-float { display: none; }
   body.chat-open { overflow: hidden; }
 }
 
+/* ---------- Aviso de cookies (propio, mismo origen/animación que el chat) ---------- */
+.cookie-consent {
+  position: fixed; bottom: 80px; right: 20px; width: min(340px, calc(100vw - 24px));
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: var(--shadow-lg); padding: 18px; z-index: 96;
+  transform-origin: bottom right; animation: chat-panel-pop .22s var(--ease) both;
+}
+@media (prefers-reduced-motion: reduce) { .cookie-consent { animation: none; } }
+.cookie-consent__head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cookie-consent__head svg { width: 18px; height: 18px; color: var(--red); flex-shrink: 0; }
+.cookie-consent__head strong { font-size: .92rem; }
+.cookie-consent__text { font-size: .82rem; color: var(--text-soft); line-height: 1.5; margin: 0 0 14px; }
+.cookie-consent__text a { color: var(--red); text-decoration: underline; }
+.cookie-consent__prefs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; padding: 12px; background: var(--bg-muted, rgba(0,0,0,.03)); border-radius: 10px; }
+.cookie-consent__pref { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: .84rem; }
+.cookie-consent__pref input { accent-color: var(--red); width: 16px; height: 16px; flex-shrink: 0; }
+.cookie-consent__actions { display: flex; gap: 8px; }
+.cookie-consent__actions .btn { flex: 1; font-size: .84rem; padding: 9px 12px; }
+.cookie-consent__manage { display: block; width: 100%; text-align: center; margin-top: 10px; background: none; border: none; color: var(--text-soft); font-size: .78rem; text-decoration: underline; cursor: pointer; }
+
+@media (max-width: 480px) {
+  .cookie-consent { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom, 0px) + 60px); width: calc(100vw - 24px); }
+}
+
 .chat-panel__head {
   display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;
   background: var(--red); color: #fff; flex-shrink: 0;
