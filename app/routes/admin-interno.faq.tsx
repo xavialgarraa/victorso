@@ -87,7 +87,8 @@ export default function AdminFaq() {
       <p style={{color: 'var(--text-muted)', fontSize: '.9rem', maxWidth: 640}}>
         Se muestran al final de la home, en formato acordeón, y también se mandan a Google como datos
         estructurados (FAQPage) — ayuda al SEO porque Google puede sacarlas directamente en el resultado de
-        búsqueda. El "Orden" decide en qué posición sale cada una (menor va primero).
+        búsqueda. El "Orden" decide en qué posición sale cada una (menor va primero). Escribe solo en
+        español: al guardar se traduce automáticamente a los demás idiomas de la web.
       </p>
 
       <div className="admin-card">

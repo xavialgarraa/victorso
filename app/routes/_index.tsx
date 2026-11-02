@@ -13,6 +13,7 @@ import {useI18n} from '~/lib/i18n';
 import {getHeroSettings, listHeroSlides} from '~/lib/heroSlides.server';
 import {listFaqItems} from '~/lib/faq.server';
 import {listCategoryCovers} from '~/lib/categoryCovers.server';
+import {getLocaleFromRequest} from '~/lib/locales';
 import {Faq} from '~/components/Faq';
 import {jsonLdHtml} from '~/lib/jsonLd';
 import {findBrandLogoByVendor} from '~/lib/brands';
@@ -33,15 +34,16 @@ export const meta: Route.MetaFunction = () => {
   ];
 };
 
-export async function loader({context}: Route.LoaderArgs) {
+export async function loader({context, request}: Route.LoaderArgs) {
   const {storefront} = context;
+  const locale = getLocaleFromRequest(request);
   const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers] =
     await Promise.all([
       storefront.query(HOME_PRODUCTS_QUERY),
       storefront.query(HOME_COLLECTIONS_QUERY),
       listHeroSlides(context.env),
       getHeroSettings(context.env),
-      listFaqItems(context.env),
+      listFaqItems(context.env, locale),
       listCategoryCovers(context.env),
     ]);
 
