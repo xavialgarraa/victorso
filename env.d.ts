@@ -26,6 +26,15 @@ declare global {
     // Asistente de chat con IA (API de Anthropic/Claude).
     ANTHROPIC_API_KEY?: string;
 
+    // Google Tag Manager — id público del contenedor (formato
+    // GTM-XXXXXXX), seguro de exponer en el cliente. Dentro del propio
+    // contenedor (tagmanager.google.com) se configuran GA4, Meta Pixel,
+    // etc. sin tocar código nunca más. Si no está puesto, el script de GTM
+    // simplemente no se carga. Ver app/components/GoogleAnalytics.tsx —
+    // solo se activa si además el visitante ha dado consentimiento de
+    // analítica (banner de privacidad de Shopify, activado en root.tsx).
+    PUBLIC_GTM_CONTAINER_ID?: string;
+
     // --- Panel interno (/admin-interno: proveedores, historial, reseñas) ---
     // Firebase Auth: login de Iván/Xavier. La API key es pública (se usa
     // igual en el cliente que en el servidor para las llamadas REST).

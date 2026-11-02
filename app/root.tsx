@@ -20,6 +20,7 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import {PageLayout} from './components/PageLayout';
 import {jsonLdHtml} from '~/lib/jsonLd';
+import {GoogleAnalytics} from '~/components/GoogleAnalytics';
 
 export type RootLoader = typeof loader;
 
@@ -118,10 +119,15 @@ export async function loader(args: Route.LoaderArgs) {
       storefront,
       publicStorefrontId: env.PUBLIC_STOREFRONT_ID,
     }),
+    gtmContainerId: env.PUBLIC_GTM_CONTAINER_ID,
     consent: {
       checkoutDomain: env.PUBLIC_CHECKOUT_DOMAIN,
       storefrontAccessToken: env.PUBLIC_STOREFRONT_API_TOKEN,
-      withPrivacyBanner: false,
+      // Activa el banner de privacidad/cookies nativo de Shopify (RGPD) —
+      // configurable en Shopify Admin > Configuración > Privacidad de
+      // clientes. GA4 (ver GoogleAnalytics.tsx) solo se carga tras el
+      // consentimiento de analítica que recoge este banner.
+      withPrivacyBanner: true,
       // localize the privacy banner
       country: args.context.storefront.i18n.country,
       language: args.context.storefront.i18n.language,
@@ -237,6 +243,10 @@ export default function App() {
     return (
       <ShopifyProvider {...shopifyProviderProps}>
         <Analytics.Provider cart={data.cart} shop={data.shop} consent={data.consent}>
+          {/* No medir /admin-interno con GA4 — solo tráfico público (incluye /opina). */}
+          {!isAdminInterno && (
+            <GoogleAnalytics containerId={data.gtmContainerId} consent={data.consent} />
+          )}
           <Outlet />
         </Analytics.Provider>
       </ShopifyProvider>
@@ -286,6 +296,7 @@ export default function App() {
         shop={data.shop}
         consent={data.consent}
       >
+        <GoogleAnalytics containerId={data.gtmContainerId} consent={data.consent} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{__html: jsonLdHtml(localBusinessJsonLd)}}
