@@ -632,6 +632,16 @@ export type AdminCategoriesQuery = {
   };
 };
 
+export type AdminCollectionsForBannersQueryVariables = StorefrontAPI.Exact<{
+  [key: string]: never;
+}>;
+
+export type AdminCollectionsForBannersQuery = {
+  collections: {
+    nodes: Array<Pick<StorefrontAPI.Collection, 'id' | 'handle' | 'title'>>;
+  };
+};
+
 export type AdminDescriptionProductsQueryVariables = StorefrontAPI.Exact<{
   [key: string]: never;
 }>;
@@ -1774,6 +1784,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query AdminCategories {\n    collections(first: 30, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 1) {\n          nodes { featuredImage { url } }\n        }\n      }\n    }\n  }\n': {
     return: AdminCategoriesQuery;
     variables: AdminCategoriesQueryVariables;
+  };
+  '#graphql\n  query AdminCollectionsForBanners {\n    collections(first: 50, sortKey: TITLE) {\n      nodes { id handle title }\n    }\n  }\n': {
+    return: AdminCollectionsForBannersQuery;
+    variables: AdminCollectionsForBannersQueryVariables;
   };
   '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n        descriptionHtml\n      }\n    }\n  }\n': {
     return: AdminDescriptionProductsQuery;

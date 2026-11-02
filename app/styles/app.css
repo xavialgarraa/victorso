@@ -1425,11 +1425,56 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .brand-page__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 
 /* ---------- Banner editorial dentro de una colección concreta ---------- */
-.collection-banner { margin: 20px 0 28px; }
-.collection-banner img {
-  width: 100%; max-width: 847px; margin: 0 auto; border-radius: var(--radius); display: block; box-shadow: var(--shadow);
+/* Todo texto real (nunca una imagen fija) — ver /admin-interno/colecciones
+   y app/components/CollectionBanner.tsx. */
+.collection-hero {
+  position: relative;
+  display: grid; grid-template-columns: 1.3fr 1fr;
+  background: var(--header-bg) center/cover no-repeat;
+  border-radius: var(--radius); overflow: hidden;
+  margin: 20px 0 28px; box-shadow: var(--shadow);
 }
-.collection-banner__text { max-width: 760px; margin: 16px auto 0; text-align: center; color: var(--text-muted); font-size: .95rem; line-height: 1.6; }
+/* Oscurece la foto de fondo (si hay) lo justo para que el texto blanco
+   siga siendo legible encima de cualquier imagen; sin imagen de fondo no
+   se nota porque el fondo ya es oscuro debajo. */
+.collection-hero__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, rgba(8,8,9,.82) 0%, rgba(8,8,9,.55) 38%, rgba(8,8,9,.15) 62%, rgba(8,8,9,.4) 100%);
+}
+.collection-hero__left, .collection-hero__right { position: relative; }
+.collection-hero__left { padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; }
+.collection-hero__logos { display: flex; gap: 24px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+.collection-hero__logos img { height: 30px; filter: invert(1) brightness(2); display: block; }
+.collection-hero__title { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0 0 12px; color: #fff; font-weight: 800; letter-spacing: -.01em; }
+.collection-hero__lede { color: #c8c8cc; font-size: .92rem; line-height: 1.6; max-width: 48ch; margin: 0 0 18px; }
+.collection-hero__cta {
+  display: inline-flex; width: fit-content; align-items: center; gap: 8px;
+  background: var(--red); color: #fff; font-weight: 700; font-size: .84rem;
+  padding: 10px 18px; border-radius: 999px; text-decoration: none;
+  transition: filter .15s ease;
+}
+.collection-hero__cta:hover { filter: brightness(1.1); }
+.collection-hero__right {
+  background: rgba(0,0,0,.08); padding: 28px 32px; display: flex; flex-direction: column;
+  justify-content: center; gap: 18px;
+}
+.collection-hero__row { display: flex; align-items: flex-start; gap: 12px; }
+.collection-hero__row-ic {
+  width: 32px; height: 32px; border-radius: 8px; background: rgba(227,6,19,.22);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--red);
+}
+.collection-hero__row-ic svg { width: 16px; height: 16px; }
+.collection-hero__row strong { display: block; color: #fff; font-size: .86rem; margin-bottom: 2px; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.collection-hero__row span { color: #e2e2e4; font-size: .8rem; line-height: 1.45; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.collection-hero__row-ic { box-shadow: 0 1px 8px rgba(0,0,0,.4); }
+
+#collection-products { scroll-margin-top: 90px; }
+
+@media (max-width: 760px) {
+  .collection-hero { grid-template-columns: 1fr; }
+  .collection-hero__left, .collection-hero__right { padding: 26px 22px; }
+  .collection-hero__logos img { height: 24px; }
+}
 
 .brandsindex__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
 @media (min-width: 560px) { .brandsindex__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

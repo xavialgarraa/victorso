@@ -7,6 +7,9 @@ import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
 import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 import {useI18n} from '~/lib/i18n';
 import {jsonLdHtml} from '~/lib/jsonLd';
+import {getCollectionBanner} from '~/lib/collectionBanners.server';
+import {getLocaleFromRequest} from '~/lib/locales';
+import {CollectionBanner} from '~/components/CollectionBanner';
 
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
@@ -46,6 +49,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   const {handle} = params;
   const {storefront} = context;
   const url = new URL(request.url);
+  const locale = getLocaleFromRequest(request);
 
   const perPage = [12, 24, 48].includes(Number(url.searchParams.get('perPage')))
     ? Number(url.searchParams.get('perPage'))
@@ -70,7 +74,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     throw redirect('/collections');
   }
 
-  const [{collection}, {collection: countData}] = await Promise.all([
+  const [{collection}, {collection: countData}, banner] = await Promise.all([
     storefront.query(COLLECTION_QUERY, {
       variables: {
         handle,
@@ -86,6 +90,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     storefront.query(COLLECTION_COUNT_QUERY, {
       variables: {handle, filters},
     }),
+    getCollectionBanner(context.env, handle, locale),
   ]);
 
   if (!collection) {
@@ -96,11 +101,11 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
 
   const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
 
-  return {collection, resultCount};
+  return {collection, resultCount, banner};
 }
 
 export default function Collection() {
-  const {collection, resultCount} = useLoaderData<typeof loader>();
+  const {collection, resultCount, banner} = useLoaderData<typeof loader>();
   const {t} = useI18n();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
@@ -135,23 +140,8 @@ export default function Collection() {
       <div className="breadcrumb container">
         <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
       </div>
-      {collection.handle === 'pioneer-dj-alphatheta' && (
-        <div className="container">
-          <div className="collection-banner">
-            <img
-              src="/assets/pioneer-dj-alphatheta-banner.jpg"
-              alt="Pioneer DJ & AlphaTheta"
-              loading="eager"
-            />
-            <p className="collection-banner__text">
-              Pioneer DJ es el estándar mundial en cabinas de DJ profesionales. AlphaTheta es la marca
-              joven del mismo grupo, nacida para explorar lo que viene después. En Victor So Professional
-              trabajamos con las dos codo a codo: aquí tienes todo lo que tenemos de ambas, del CDJ más
-              clásico a lo último que ha salido.
-            </p>
-          </div>
-        </div>
-      )}
+      {banner && <CollectionBanner banner={banner} resultCount={resultCount} />}
+      <div id="collection-products" />
       <ProductListing
         title={collection.title}
         products={collection.products}
