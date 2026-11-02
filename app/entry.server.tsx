@@ -19,8 +19,40 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
-    // TODO: quitar en cuanto el logo se suba a Shopify Files (cdn.shopify.com)
-    // en vez de servirse desde la web antigua de LiveCommerce.
+    // Necesario para el embed de TikTok en /instalaciones (script + iframe),
+    // el mapa de Google Maps en /quienes-somos (iframe), los embeds de
+    // Instagram que se puedan pegar en artículos del blog (iframe + script),
+    // los vídeos de YouTube embebidos (iframe, dominio youtube-nocookie
+    // incluido porque es el que genera el embed "privacy-enhanced"), y
+    // Google Tag Manager/Analytics (ver GoogleAnalytics.tsx — solo se carga
+    // tras consentimiento de analítica, pero necesita estar permitido aquí
+    // o el navegador lo bloquea directamente, aunque el código lo intente).
+    scriptSrc: [
+      "'self'",
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+      'https://www.tiktok.com',
+      'https://www.instagram.com',
+      'https://www.googletagmanager.com',
+    ],
+    frameSrc: [
+      "'self'",
+      'https://www.tiktok.com',
+      'https://www.google.com',
+      'https://www.instagram.com',
+      'https://www.youtube.com',
+      'https://www.youtube-nocookie.com',
+    ],
+    connectSrc: [
+      'https://www.tiktok.com',
+      'https://www.instagram.com',
+      'https://www.googletagmanager.com',
+      'https://www.google-analytics.com',
+      'https://*.google-analytics.com',
+      'https://analytics.google.com',
+    ],
+    // TODO: quitar victorso.com en cuanto el logo se suba a Shopify Files
+    // (cdn.shopify.com) en vez de servirse desde la web antigua de LiveCommerce.
     imgSrc: [
       "'self'",
       'data:',
@@ -31,28 +63,9 @@ export default async function handleRequest(
       'https://*.ibyteimg.com',
       'https://*.cdninstagram.com',
       'https://www.instagram.com',
+      'https://www.google-analytics.com',
+      'https://www.googletagmanager.com',
     ],
-    // Necesario para el embed de TikTok en /instalaciones (script + iframe),
-    // el mapa de Google Maps en /quienes-somos (iframe), los embeds de
-    // Instagram que se puedan pegar en artículos del blog (iframe + script),
-    // y los vídeos de YouTube embebidos (iframe, dominio youtube-nocookie
-    // incluido porque es el que genera el embed "privacy-enhanced").
-    scriptSrc: [
-      "'self'",
-      'https://cdn.shopify.com',
-      'https://shopify.com',
-      'https://www.tiktok.com',
-      'https://www.instagram.com',
-    ],
-    frameSrc: [
-      "'self'",
-      'https://www.tiktok.com',
-      'https://www.google.com',
-      'https://www.instagram.com',
-      'https://www.youtube.com',
-      'https://www.youtube-nocookie.com',
-    ],
-    connectSrc: ['https://www.tiktok.com', 'https://www.instagram.com'],
   });
 
   const body = await renderToReadableStream(
