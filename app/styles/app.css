@@ -12,7 +12,12 @@
   --red-soft: #ffe4e6;
   --radius: 12px;
   --radius-sm: 8px;
-  --maxw: 1240px;
+  /* A petición de Víctor: la web debe ocupar todo el ancho horizontal
+     disponible, sin el margen muerto que dejaba un ancho máximo fijo en
+     pantallas grandes (cabecera, categorías, listados, footer...). El
+     padding lateral de .container (16/24px) se mantiene para que el
+     contenido no toque el borde del navegador. */
+  --maxw: none;
   --ease: cubic-bezier(.22,.61,.36,1);
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Space Grotesk', 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -153,6 +158,14 @@ h1, h2, h3, h4, .section__head h2, .section-title-lg { font-weight: 700; letter-
 .topbar__contact a { display: inline-flex; align-items: center; gap: 6px; opacity: .9; white-space: nowrap; color: var(--nav-text); }
 .topbar__contact a .icon { font-size: .95rem; }
 .topbar__contact a:hover { opacity: 1; color: var(--nav-accent); }
+/* Escritorio: número de WhatsApp en vez del texto "WhatsApp" (útil para
+   quien no tiene WhatsApp Web); en móvil es al revés, porque ahí el
+   enlace abre la app directamente y el texto "WhatsApp" tiene más sentido. */
+.topbar__whatsapp-desktop { display: none; }
+@media (min-width: 761px) {
+  .topbar__whatsapp-mobile { display: none; }
+  .topbar__whatsapp-desktop { display: inline; }
+}
 .theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--nav-surface); border: none; color: var(--nav-text); font-size: .95rem; }
 .theme-toggle:hover { background: var(--nav-surface-hover); }
 

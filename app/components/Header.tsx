@@ -42,7 +42,12 @@ export function Header({header, isLoggedIn, cart}: HeaderProps) {
             </a>
             <a href="https://wa.me/34619406443" target="_blank" rel="noopener noreferrer">
               <Icon name="whatsapp" />
-              WhatsApp
+              {/* En escritorio se muestra el número en vez de "WhatsApp": mucha
+                  gente no tiene WhatsApp Web y así el dato es útil igualmente
+                  (para apuntarlo o llamarlo). En móvil sigue diciendo
+                  "WhatsApp" porque ahí sí abre la app directamente. */}
+              <span className="topbar__whatsapp-mobile">WhatsApp</span>
+              <span className="topbar__whatsapp-desktop">619 406 443</span>
             </a>
             <LangSelect />
             <Link className="theme-toggle" to="/account" aria-label={t('loginCta')}>
