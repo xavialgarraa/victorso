@@ -45,8 +45,15 @@ function pemToDer(pem) {
 }
 
 async function getGoogleAccessToken() {
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyPem = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  const clientEmail = (process.env.FIREBASE_CLIENT_EMAIL || '').trim().replace(/^"|"$/g, '');
+  // El valor en .env va entre comillas dobles con "\n" escapado en una sola
+  // línea (p.ej. "-----BEGIN...-----\nMII...\n-----END...-----\n") — si se
+  // pegó tal cual en un secreto de GitHub, las comillas quedan como
+  // caracteres literales y rompen el PEM, así que se quitan aquí por si acaso.
+  const privateKeyPem = (process.env.FIREBASE_PRIVATE_KEY || '')
+    .trim()
+    .replace(/^"|"$/g, '')
+    .replace(/\\n/g, '\n');
   if (!clientEmail || !privateKeyPem) throw new Error('Faltan FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY.');
 
   const now = Math.floor(Date.now() / 1000);
