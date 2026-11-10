@@ -12,7 +12,7 @@
  *   MIDWICH_FTP_HOST/USER/PASSWORD
  */
 import {Client} from 'basic-ftp';
-import {createSign} from 'crypto';
+import {webcrypto} from 'crypto';
 import {Writable} from 'stream';
 
 function collectorStream() {
@@ -31,10 +31,23 @@ const CHUNK_SIZE = 80; // ver nota de tamaño máximo de documento en distributo
 // --- Firestore REST, igual que app/lib/firestore.server.ts + googleAuth.server.ts,
 // reescrito en JS plano porque este script corre en Node normal, no en Oxygen. ---
 
+// Firma el JWT importando la clave como PKCS8 vía Web Crypto, igual que
+// app/lib/googleAuth.server.ts (que sí funciona en producción) — evita
+// depender del parser de strings PEM de Node, que en el runner de GitHub
+// Actions (Node 20 + OpenSSL 3) dio "DECODER routines::unsupported" con
+// createSign().sign(pem) aunque la misma clave funcionaba en local.
+function pemToDer(pem) {
+  const base64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s+/g, '');
+  return Buffer.from(base64, 'base64');
+}
+
 async function getGoogleAccessToken() {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  if (!clientEmail || !privateKey) throw new Error('Faltan FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY.');
+  const privateKeyPem = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  if (!clientEmail || !privateKeyPem) throw new Error('Faltan FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY.');
 
   const now = Math.floor(Date.now() / 1000);
   const header = {alg: 'RS256', typ: 'JWT'};
@@ -47,7 +60,16 @@ async function getGoogleAccessToken() {
   };
   const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
   const signingInput = `${b64(header)}.${b64(claims)}`;
-  const signature = createSign('RSA-SHA256').update(signingInput).sign(privateKey, 'base64url');
+
+  const key = await webcrypto.subtle.importKey(
+    'pkcs8',
+    pemToDer(privateKeyPem),
+    {name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256'},
+    false,
+    ['sign'],
+  );
+  const signatureBuffer = await webcrypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(signingInput));
+  const signature = Buffer.from(signatureBuffer).toString('base64url');
   const assertion = `${signingInput}.${signature}`;
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
