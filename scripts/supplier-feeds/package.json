@@ -1,0 +1,8 @@
+{
+  "name": "supplier-feeds-sync",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "basic-ftp": "^6.2.6"
+  }
+}

@@ -1,0 +1,31 @@
+name: Sincronizar feeds FTP de distribuidores
+
+on:
+  schedule:
+    # 03:00 UTC = 04:00/05:00 hora de España según horario de verano/invierno
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/supplier-feeds
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: node sync-ftp-feeds.mjs
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          ZENTRALMEDIA_FTP_HOST: cloud.zentralmedia.com
+          ZENTRALMEDIA_FTP_USER: ${{ secrets.ZENTRALMEDIA_FTP_USER }}
+          ZENTRALMEDIA_FTP_PASSWORD: ${{ secrets.ZENTRALMEDIA_FTP_PASSWORD }}
+          MIDWICH_FTP_HOST: prosumer.midwich.es
+          MIDWICH_FTP_USER: ${{ secrets.MIDWICH_FTP_USER }}
+          MIDWICH_FTP_PASSWORD: ${{ secrets.MIDWICH_FTP_PASSWORD }}
