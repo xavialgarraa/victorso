@@ -1,4 +1,4 @@
-import {getSelection, listDistributorProducts, type DistributorProduct} from '~/lib/connectors/distributorFeed.server';
+import {getSelection, type DistributorProduct} from '~/lib/connectors/distributorFeed.server';
 import {classifyDistributorProducts, type DistributorCategory} from '~/lib/connectors/distributorCategories.server';
 import {normalizeVendorName} from '~/lib/brands';
 import {
@@ -23,9 +23,12 @@ export type DistributorSyncSummary = {
  * mano en /admin-interno/distribuidores (ver distributorFeed.server.ts) —
  * solo lee, no escribe nada en Shopify. El cruce es siempre por EAN.
  */
-export async function buildDistributorSyncSummary(env: Env, supplierId: string): Promise<DistributorSyncSummary> {
-  const [allProducts, selection, catalog] = await Promise.all([
-    listDistributorProducts(env, supplierId),
+export async function buildDistributorSyncSummary(
+  env: Env,
+  supplierId: string,
+  allProducts: DistributorProduct[],
+): Promise<DistributorSyncSummary> {
+  const [selection, catalog] = await Promise.all([
     getSelection(env, supplierId),
     getShopifyCatalogByBarcode(env),
   ]);

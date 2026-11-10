@@ -1,4 +1,6 @@
 import {getDoc, listDocs, setDoc} from '~/lib/firestore.server';
+import {fetchWalkasseFeed, type WalkasseProduct} from '~/lib/connectors/walkasse.server';
+import {getSupplier, resolveFeedUrl} from '~/lib/connectors/suppliers.server';
 
 /**
  * Catálogo normalizado de un distribuidor que solo habla FTP (Zentralmedia,
@@ -47,6 +49,38 @@ export async function listDistributorProducts(env: Env, supplierId: string): Pro
     .filter((c) => c.data.supplierId === supplierId)
     .sort((a, b) => a.data.chunkIndex - b.data.chunkIndex)
     .flatMap((c) => c.data.items ?? []);
+}
+
+function walkasseToDistributorProduct(p: WalkasseProduct): DistributorProduct {
+  return {
+    supplierId: 'walkasse',
+    ean: p.ean,
+    sku: p.articulo,
+    title: p.denominacion,
+    brand: p.marca,
+    category: '',
+    description: p.descripcion,
+    imageUrl: p.imagenUrl,
+    price: p.precioVenta,
+    stock: p.stock,
+  };
+}
+
+// A diferencia de Zentralmedia/Midwich (solo FTP, necesitan el script
+// externo + Firestore de por medio), Walkasse ya habla HTTP — Oxygen puede
+// leer su feed directamente en cada carga, sin caché en Firestore.
+export const LIVE_SUPPLIER_IDS = new Set(['walkasse']);
+
+/** Punto único de entrada para el panel: decide solo si el catálogo de un
+ * proveedor se lee en vivo (HTTP) o desde la caché de Firestore (FTP). */
+export async function getDistributorProducts(env: Env, supplierId: string): Promise<DistributorProduct[]> {
+  if (LIVE_SUPPLIER_IDS.has(supplierId)) {
+    const config = await getSupplier(env, supplierId);
+    if (!config) return [];
+    const products = await fetchWalkasseFeed(resolveFeedUrl(config));
+    return products.map(walkasseToDistributorProduct);
+  }
+  return listDistributorProducts(env, supplierId);
 }
 
 export type SelectionConfig = {

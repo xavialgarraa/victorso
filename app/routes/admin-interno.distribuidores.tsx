@@ -4,8 +4,8 @@ import {requireAdminUser} from '~/lib/adminSession.server';
 import {AdminShell} from '~/components/admin/AdminShell';
 import {
   getDistributorFeedMeta,
+  getDistributorProducts,
   getSelection,
-  listDistributorProducts,
   saveSelection,
   type DistributorProduct,
 } from '~/lib/connectors/distributorFeed.server';
@@ -17,15 +17,16 @@ import {
 import {applyStockChanges, getPrimaryLocationId} from '~/lib/shopifyProducts.server';
 
 export const meta: Route.MetaFunction = () => {
-  return [{title: 'Distribuidores (FTP) — Panel interno'}];
+  return [{title: 'Distribuidores — Panel interno'}];
 };
 
-// Audio-Technica se queda fuera por ahora: su FTP solo admite IPs ya
-// autorizadas por ellos y los runners que usamos no tienen IP fija — ver
-// scripts/supplier-feeds/README.md.
-const DISTRIBUTORS = [
-  {id: 'zentralmedia', name: 'Zentralmedia'},
-  {id: 'midwich', name: 'Midwich'},
+// "ftp": el catálogo lo deja un script externo en Firestore (GitHub Action,
+// cada noche) porque Oxygen no puede hablar FTP — ver distributorFeed.server.ts.
+// "live": Walkasse ya habla HTTP, así que Oxygen lee su feed directo, sin caché.
+const SUPPLIERS = [
+  {id: 'zentralmedia', name: 'Zentralmedia', mode: 'ftp' as const},
+  {id: 'midwich', name: 'Midwich', mode: 'ftp' as const},
+  {id: 'walkasse', name: 'Walkasse', mode: 'live' as const},
 ];
 
 const PAGE_SIZE = 60;
@@ -33,14 +34,16 @@ const PAGE_SIZE = 60;
 export async function loader({request, context}: Route.LoaderArgs) {
   const {user, headers} = await requireAdminUser(request, context.env);
   const url = new URL(request.url);
-  const supplierId = url.searchParams.get('supplier') || 'zentralmedia';
+  const supplierId = url.searchParams.get('supplier') || SUPPLIERS[0].id;
   const q = (url.searchParams.get('q') || '').trim().toLowerCase();
   const onlySelected = url.searchParams.get('onlySelected') === '1';
   const page = Math.max(1, Number(url.searchParams.get('page') || '1') || 1);
 
-  const [metas, allProducts, selection] = await Promise.all([
-    Promise.all(DISTRIBUTORS.map(async (d) => ({id: d.id, meta: await getDistributorFeedMeta(context.env, d.id)}))),
-    listDistributorProducts(context.env, supplierId),
+  const ftpSuppliers = SUPPLIERS.filter((s) => s.mode === 'ftp');
+
+  const [ftpMetas, allProducts, selection] = await Promise.all([
+    Promise.all(ftpSuppliers.map(async (s) => ({id: s.id, meta: await getDistributorFeedMeta(context.env, s.id)}))),
+    getDistributorProducts(context.env, supplierId),
     getSelection(context.env, supplierId),
   ]);
 
@@ -69,7 +72,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
   return data(
     {
       user,
-      metas,
+      ftpMetas,
       supplierId,
       q,
       onlySelected,
@@ -106,7 +109,8 @@ export async function action({request, context}: Route.ActionArgs) {
 
   if (intent === 'compare') {
     try {
-      const summary = await buildDistributorSyncSummary(context.env, supplierId);
+      const products = await getDistributorProducts(context.env, supplierId);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
       return data<ActionResult>({intent: 'compare', ok: true, supplierId, summary}, {headers});
     } catch (error) {
       return data<ActionResult>(
@@ -118,7 +122,8 @@ export async function action({request, context}: Route.ActionArgs) {
 
   if (intent === 'create-batch') {
     try {
-      const summary = await buildDistributorSyncSummary(context.env, supplierId);
+      const products = await getDistributorProducts(context.env, supplierId);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
       const result = await applyDistributorCreations(context.env, summary.toCreate);
       return data<ActionResult>(
         {
@@ -141,7 +146,8 @@ export async function action({request, context}: Route.ActionArgs) {
 
   if (intent === 'apply-stock') {
     try {
-      const summary = await buildDistributorSyncSummary(context.env, supplierId);
+      const products = await getDistributorProducts(context.env, supplierId);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
       const locationId = await getPrimaryLocationId(context.env);
       const changes = summary.toUpdateStock.map((r) => ({
         inventoryItemId: r.catalogVariant.inventoryItemId,
@@ -190,57 +196,35 @@ export async function action({request, context}: Route.ActionArgs) {
 
 function ProductCard({product, checked}: {product: DistributorProduct; checked: boolean}) {
   return (
-    <label
-      className="admin-card"
-      style={{
-        display: 'flex',
-        gap: 12,
-        padding: 12,
-        alignItems: 'flex-start',
-        cursor: 'pointer',
-        border: checked ? '2px solid var(--red)' : undefined,
-      }}
-    >
-      <input type="checkbox" name="ean" value={product.ean} defaultChecked={checked} style={{width: 'auto', marginTop: 4}} />
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          flexShrink: 0,
-          borderRadius: 8,
-          background: 'var(--img-bg)',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+    <label className={`dist-card${checked ? ' dist-card--checked' : ''}`}>
+      <input type="checkbox" name="ean" value={product.ean} defaultChecked={checked} className="dist-card__checkbox" />
+      <div className="dist-card__img">
         {product.imageUrl ? (
-          <img src={product.imageUrl} alt="" style={{width: '100%', height: '100%', objectFit: 'contain'}} loading="lazy" />
+          <img src={product.imageUrl} alt="" loading="lazy" />
         ) : (
-          <span style={{fontSize: '.7rem', color: '#9a9aa2'}}>Sin foto</span>
+          <span>Sin foto</span>
         )}
       </div>
-      <div style={{flex: 1, minWidth: 0}}>
-        <div style={{fontWeight: 600, fontSize: '.88rem'}}>{product.title || product.sku}</div>
-        <div style={{fontSize: '.76rem', color: '#6b6b73', marginTop: 2}}>
+      <div className="dist-card__body">
+        <div className="dist-card__title">{product.title || product.sku}</div>
+        <div className="dist-card__sub">
           {product.brand && <>{product.brand} · </>}
           {product.category}
         </div>
-        <div style={{fontSize: '.78rem', marginTop: 4}}>
-          <strong>{product.price.toFixed(2)}€</strong>{' '}
-          <span style={{color: product.stock > 0 ? '#1a7a3c' : '#a15c00'}}>
-            {product.stock > 0 ? `Stock: ${product.stock}` : 'Sin stock'}
+        <div className="dist-card__footer">
+          <span className="dist-card__price">{product.price.toFixed(2)}€</span>
+          <span className={`dist-card__stock ${product.stock > 0 ? 'dist-card__stock--in' : 'dist-card__stock--out'}`}>
+            {product.stock > 0 ? `Stock ${product.stock}` : 'Sin stock'}
           </span>
         </div>
-        <div style={{fontSize: '.74rem', color: '#9a9aa2', marginTop: 2}}>EAN {product.ean}</div>
+        <div className="dist-card__ean">EAN {product.ean}</div>
       </div>
     </label>
   );
 }
 
 export default function AdminDistribuidores() {
-  const {user, metas, supplierId, q, onlySelected, page, totalPages, totalFiltered, totalAll, selectedCount, pageItems, selectedEans} =
+  const {user, ftpMetas, supplierId, q, onlySelected, page, totalPages, totalFiltered, totalAll, selectedCount, pageItems, selectedEans} =
     useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
@@ -265,67 +249,49 @@ export default function AdminDistribuidores() {
 
   return (
     <AdminShell user={user} wide>
-      <h1>Distribuidores (FTP)</h1>
-      <p style={{color: '#6b6b73', fontSize: '.9rem', maxWidth: 680}}>
-        Estos proveedores solo hablan FTP, así que un proceso aparte (GitHub Action, cada noche) descarga su
-        catálogo y lo deja aquí. Marca qué productos quieres que existan en la web — solo esos se crearán/
-        actualizarán, el resto del catálogo del distribuidor se ignora.
+      <h1>Distribuidores</h1>
+      <p className="admin-hint" style={{maxWidth: 680}}>
+        Marca qué productos de cada distribuidor quieres que existan en la web — solo esos se crean/actualizan, el
+        resto del catálogo se ignora. Zentralmedia y Midwich solo hablan FTP, así que su catálogo lo refresca un
+        proceso aparte cada noche; Walkasse se lee en vivo cada vez que entras aquí.
       </p>
 
-      <div style={{display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap'}}>
-        {DISTRIBUTORS.map((d) => {
-          const meta = metas.find((m) => m.id === d.id)?.meta;
-          const active = d.id === supplierId;
+      <div className="dist-tabs">
+        {SUPPLIERS.map((s) => {
+          const active = s.id === supplierId;
+          const meta = s.mode === 'ftp' ? ftpMetas.find((m) => m.id === s.id)?.meta : null;
           return (
-            <a
-              key={d.id}
-              href={`?supplier=${d.id}`}
-              className="admin-card"
-              style={{
-                textDecoration: 'none',
-                color: 'inherit',
-                padding: '10px 16px',
-                border: active ? '2px solid var(--red)' : undefined,
-              }}
-            >
-              <strong>{d.name}</strong>
-              <div style={{fontSize: '.78rem', color: '#6b6b73', marginTop: 2}}>
-                {meta ? (
-                  <>
-                    {meta.totalCount} productos · actualizado {new Date(meta.updatedAt).toLocaleString()}
-                  </>
-                ) : (
-                  'Todavía sin sincronizar'
-                )}
-              </div>
+            <a key={s.id} href={`?supplier=${s.id}`} className={`dist-tab${active ? ' dist-tab--active' : ''}`}>
+              <span className="dist-tab__name">{s.name}</span>
+              {s.mode === 'live' ? (
+                <span className="dist-tab__badge">En vivo</span>
+              ) : meta ? (
+                <span className="dist-tab__meta">
+                  {meta.totalCount} productos · {new Date(meta.updatedAt).toLocaleDateString()}
+                </span>
+              ) : (
+                <span className="dist-tab__meta">Sin sincronizar</span>
+              )}
             </a>
           );
         })}
-        <div className="admin-card" style={{padding: '10px 16px', opacity: 0.6}}>
-          <strong>Audio-Technica</strong>
-          <div style={{fontSize: '.78rem', color: '#6b6b73', marginTop: 2}}>
-            Pendiente — su FTP bloquea nuestra conexión, hay que arreglar el acceso primero.
-          </div>
+        <div className="dist-tab dist-tab--disabled">
+          <span className="dist-tab__name">Audio-Technica</span>
+          <span className="dist-tab__meta">Pendiente — su FTP bloquea el acceso</span>
         </div>
       </div>
 
-      <Form method="get" style={{display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap'}}>
+      <Form method="get" className="dist-toolbar">
         <input type="hidden" name="supplier" value={supplierId} />
-        <input
-          type="text"
-          name="q"
-          defaultValue={q}
-          placeholder="Buscar por nombre, marca, EAN..."
-          style={{maxWidth: 280}}
-        />
-        <label style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '.85rem'}}>
-          <input type="checkbox" name="onlySelected" value="1" defaultChecked={onlySelected} style={{width: 'auto'}} />
+        <input type="text" name="q" defaultValue={q} placeholder="Buscar por nombre, marca, EAN..." />
+        <label className="dist-toolbar__check">
+          <input type="checkbox" name="onlySelected" value="1" defaultChecked={onlySelected} />
           Solo seleccionados
         </label>
         <button type="submit" className="admin-btn admin-btn--outline">
           Filtrar
         </button>
-        <span style={{fontSize: '.85rem', color: '#6b6b73'}}>
+        <span className="dist-toolbar__count">
           {totalFiltered} de {totalAll} · {selectedCount} seleccionados en total
         </span>
       </Form>
@@ -336,14 +302,7 @@ export default function AdminDistribuidores() {
           <input key={`page-${p.ean}`} type="hidden" name="pageEans" value={p.ean} />
         ))}
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 10,
-            marginBottom: 16,
-          }}
-        >
+        <div className="dist-grid">
           {pageItems.map((p) => (
             <ProductCard key={p.ean} product={p} checked={selectedSet.has(p.ean)} />
           ))}
@@ -351,18 +310,18 @@ export default function AdminDistribuidores() {
 
         {pageItems.length === 0 && <p className="admin-hint">No hay productos que coincidan con el filtro.</p>}
 
-        <div style={{display: 'flex', gap: 10, alignItems: 'center'}}>
+        <div className="dist-selectbar">
           <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
             {isBusy ? 'Guardando…' : 'Guardar selección de esta página'}
           </button>
 
-          <div style={{display: 'flex', gap: 6, marginLeft: 'auto'}}>
+          <div className="dist-pagination">
             {page > 1 && (
               <a className="admin-btn admin-btn--outline" href={pageHref({page: String(page - 1)})}>
                 ← Anterior
               </a>
             )}
-            <span style={{fontSize: '.85rem', alignSelf: 'center'}}>
+            <span>
               Página {page} de {totalPages}
             </span>
             {page < totalPages && (
