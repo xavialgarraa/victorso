@@ -2050,6 +2050,10 @@ aside li { margin-bottom: .125rem; }
 .dist-card__stock { font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
 .dist-card__stock--in { background: #e3f5e8; color: #16743a; }
 .dist-card__stock--out { background: #f1eee4; color: #8a7a4a; }
+.dist-card__connected {
+  font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 20px;
+  background: #e8eefc; color: #2a4f9e;
+}
 .dist-card__ean { font-size: .68rem; color: #b0b0b6; margin-top: 4px; }
 
 .dist-selectbar {

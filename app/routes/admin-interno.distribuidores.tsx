@@ -14,7 +14,7 @@ import {
   buildDistributorSyncSummary,
   type DistributorSyncSummary,
 } from '~/lib/connectors/distributorSync.server';
-import {applyStockChanges, getPrimaryLocationId} from '~/lib/shopifyProducts.server';
+import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Distribuidores — Panel interno'}];
@@ -41,13 +41,19 @@ export async function loader({request, context}: Route.LoaderArgs) {
 
   const ftpSuppliers = SUPPLIERS.filter((s) => s.mode === 'ftp');
 
-  const [ftpMetas, allProducts, selection] = await Promise.all([
+  const [ftpMetas, allProducts, selection, catalog] = await Promise.all([
     Promise.all(ftpSuppliers.map(async (s) => ({id: s.id, meta: await getDistributorFeedMeta(context.env, s.id)}))),
     getDistributorProducts(context.env, supplierId),
     getSelection(context.env, supplierId),
+    getShopifyCatalogByBarcode(context.env),
   ]);
 
   const selectedEans = new Set(selection?.selectedEans ?? []);
+  // Productos cuyo EAN ya existe en Shopify — para Walkasse esto es "ya se
+  // sincroniza" por el mecanismo de siempre (ver /admin-interno/proveedores),
+  // así que no hace falta marcarlos aquí: se muestran ya conectados en vez
+  // de pedir que se seleccionen.
+  const connectedEans = new Set(allProducts.filter((p) => catalog.has(p.ean)).map((p) => p.ean));
 
   let filtered = allProducts;
   if (q) {
@@ -83,6 +89,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
       selectedCount: selectedEans.size,
       pageItems,
       selectedEans: Array.from(selectedEans),
+      connectedEans: Array.from(connectedEans),
     },
     {headers},
   );
@@ -194,10 +201,25 @@ export async function action({request, context}: Route.ActionArgs) {
   }
 }
 
-function ProductCard({product, checked}: {product: DistributorProduct; checked: boolean}) {
+function ProductCard({
+  product,
+  checked,
+  connected,
+}: {
+  product: DistributorProduct;
+  checked: boolean;
+  connected: boolean;
+}) {
   return (
     <label className={`dist-card${checked ? ' dist-card--checked' : ''}`}>
-      <input type="checkbox" name="ean" value={product.ean} defaultChecked={checked} className="dist-card__checkbox" />
+      <input
+        type="checkbox"
+        name="ean"
+        value={product.ean}
+        defaultChecked={checked}
+        className="dist-card__checkbox"
+        title={connected ? 'Ya existe en Shopify — puedes desmarcarlo si no quieres que siga así' : undefined}
+      />
       <div className="dist-card__img">
         {product.imageUrl ? (
           <img src={product.imageUrl} alt="" loading="lazy" />
@@ -216,6 +238,7 @@ function ProductCard({product, checked}: {product: DistributorProduct; checked: 
           <span className={`dist-card__stock ${product.stock > 0 ? 'dist-card__stock--in' : 'dist-card__stock--out'}`}>
             {product.stock > 0 ? `Stock ${product.stock}` : 'Sin stock'}
           </span>
+          {connected && <span className="dist-card__connected">Ya en la tienda</span>}
         </div>
         <div className="dist-card__ean">EAN {product.ean}</div>
       </div>
@@ -224,14 +247,28 @@ function ProductCard({product, checked}: {product: DistributorProduct; checked: 
 }
 
 export default function AdminDistribuidores() {
-  const {user, ftpMetas, supplierId, q, onlySelected, page, totalPages, totalFiltered, totalAll, selectedCount, pageItems, selectedEans} =
-    useLoaderData<typeof loader>();
+  const {
+    user,
+    ftpMetas,
+    supplierId,
+    q,
+    onlySelected,
+    page,
+    totalPages,
+    totalFiltered,
+    totalAll,
+    selectedCount,
+    pageItems,
+    selectedEans,
+    connectedEans,
+  } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
   const actionData = useActionData<typeof action>();
   const isBusy = navigation.state !== 'idle';
   const busyIntent = navigation.formData?.get('intent');
   const selectedSet = new Set(selectedEans);
+  const connectedSet = new Set(connectedEans);
 
   const compareResult = actionData?.intent === 'compare' && actionData.supplierId === supplierId ? actionData : null;
   const summary = compareResult?.ok ? compareResult.summary : null;
@@ -304,7 +341,12 @@ export default function AdminDistribuidores() {
 
         <div className="dist-grid">
           {pageItems.map((p) => (
-            <ProductCard key={p.ean} product={p} checked={selectedSet.has(p.ean)} />
+            <ProductCard
+              key={p.ean}
+              product={p}
+              checked={selectedSet.has(p.ean) || connectedSet.has(p.ean)}
+              connected={connectedSet.has(p.ean)}
+            />
           ))}
         </div>
 
