@@ -65,6 +65,13 @@ export default async function handleRequest(
       'https://www.instagram.com',
       'https://www.google-analytics.com',
       'https://www.googletagmanager.com',
+      // Fotos de producto de los distribuidores, para que se vean en el
+      // panel de selección de /admin-interno/distribuidores antes de
+      // crear el producto (una vez creado, la foto se sube a Shopify Files
+      // y ya no depende de esto).
+      'https://www.walkasse.com',
+      'https://www.zentralmedia.com',
+      'https://www.earpro.es',
     ],
   });
 

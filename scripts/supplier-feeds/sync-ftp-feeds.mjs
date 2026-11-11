@@ -198,6 +198,13 @@ function normalizeEan(raw) {
   return String(raw ?? '').trim().replace(/^0+(?=\d)/, '');
 }
 
+// Zentralmedia y Midwich mandan las fotos en http:// — en producción
+// (la web va por https) el navegador las bloquea como "contenido mixto".
+// Ambos dominios sí responden por https, así que basta con forzarlo aquí.
+function toHttps(url) {
+  return url.replace(/^http:\/\//i, 'https://');
+}
+
 // --- Zentralmedia: un único CSV, ; delimitado, todo en una fila. ---
 
 async function fetchZentralmedia() {
@@ -225,7 +232,7 @@ async function fetchZentralmedia() {
         brand: (r[1] || '').trim(),
         category: (r[5] || '').trim(),
         description: (r[8] || '').trim().slice(0, 2000),
-        imageUrl: (r[16] || '').trim(),
+        imageUrl: toHttps((r[16] || '').trim()),
         price: parseEsNumber(r[14]), // PVP_ConIVA
         stock: Math.max(0, Math.round(parseEsNumber(r[12]))),
       });
@@ -280,7 +287,7 @@ async function fetchMidwich() {
         brand: '',
         category: (r[0] || '').trim(),
         description: (r[6] || '').trim().slice(0, 2000),
-        imageUrl: (r[14] || '').trim(),
+        imageUrl: toHttps((r[14] || '').trim()),
         price: parseEsNumber(r[2]), // STREET PRICE IVA Incl
         stock: stockByEan.get(ean) ?? 0,
       });
