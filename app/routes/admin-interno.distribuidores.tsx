@@ -67,7 +67,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
     );
   }
   if (onlySelected) {
-    filtered = filtered.filter((p) => selectedEans.has(p.ean));
+    filtered = filtered.filter((p) => selectedEans.has(p.ean) || connectedEans.has(p.ean));
   }
 
   const totalFiltered = filtered.length;
@@ -86,7 +86,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
       totalPages,
       totalFiltered,
       totalAll: allProducts.length,
-      selectedCount: selectedEans.size,
+      selectedCount: new Set([...selectedEans, ...connectedEans]).size,
       pageItems,
       selectedEans: Array.from(selectedEans),
       connectedEans: Array.from(connectedEans),
