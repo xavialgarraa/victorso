@@ -1,4 +1,4 @@
-import {Form, data, useActionData, useLoaderData, useNavigation, useSearchParams} from 'react-router';
+import {Form, data, useActionData, useFetcher, useLoaderData, useNavigation, useSearchParams} from 'react-router';
 import type {Route} from './+types/admin-interno.distribuidores';
 import {requireAdminUser} from '~/lib/adminSession.server';
 import {AdminShell} from '~/components/admin/AdminShell';
@@ -14,7 +14,7 @@ import {
   buildDistributorSyncSummary,
   type DistributorSyncSummary,
 } from '~/lib/connectors/distributorSync.server';
-import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
+import {applyStockChanges, draftProducts, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Distribuidores — Panel interno'}];
@@ -90,6 +90,12 @@ export async function loader({request, context}: Route.LoaderArgs) {
       pageItems,
       selectedEans: Array.from(selectedEans),
       connectedEans: Array.from(connectedEans),
+      // Solo para los productos de esta página — así el botón "pasar a
+      // borrador" sabe a qué producto de Shopify apuntar sin tener que
+      // volver a cruzar por EAN en el cliente.
+      connectedProductIds: Object.fromEntries(
+        pageItems.filter((p) => connectedEans.has(p.ean)).map((p) => [p.ean, catalog.get(p.ean)!.productId]),
+      ),
     },
     {headers},
   );
@@ -103,7 +109,9 @@ type ActionResult =
   | {intent: 'create-batch'; ok: true; supplierId: string; created: number; errors: Array<{name: string; message: string}>; remaining: number}
   | {intent: 'create-batch'; ok: false; error: string}
   | {intent: 'apply-stock'; ok: true; supplierId: string; applied: number; errors: string[]}
-  | {intent: 'apply-stock'; ok: false; error: string};
+  | {intent: 'apply-stock'; ok: false; error: string}
+  | {intent: 'draft-connected'; ok: true; ean: string}
+  | {intent: 'draft-connected'; ok: false; ean: string; error: string};
 
 export async function action({request, context}: Route.ActionArgs) {
   const {user, headers} = await requireAdminUser(request, context.env);
@@ -173,6 +181,23 @@ export async function action({request, context}: Route.ActionArgs) {
     }
   }
 
+  if (intent === 'draft-connected') {
+    const ean = String(formData.get('ean') || '');
+    const productId = String(formData.get('productId') || '');
+    try {
+      const result = await draftProducts(context.env, [productId]);
+      if (result.errors.length > 0) {
+        return data<ActionResult>({intent: 'draft-connected', ok: false, ean, error: result.errors[0]}, {headers});
+      }
+      return data<ActionResult>({intent: 'draft-connected', ok: true, ean}, {headers});
+    } catch (error) {
+      return data<ActionResult>(
+        {intent: 'draft-connected', ok: false, ean, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
   try {
     // El formulario solo incluye los productos de la página actual — para
     // no perder la selección hecha en otras páginas, se parte de la
@@ -205,14 +230,28 @@ function ProductCard({
   product,
   checked,
   connected,
+  connectedProductId,
+  supplierId,
 }: {
   product: DistributorProduct;
   checked: boolean;
   connected: boolean;
+  connectedProductId?: string;
+  supplierId: string;
 }) {
+  // Botón propio con su fetcher — no puede ser un <Form> normal porque la
+  // tarjeta ya vive dentro del <Form> grande de guardar selección, y un
+  // <form> no puede anidar otro <form> (HTML inválido).
+  const draftFetcher = useFetcher<ActionResult>();
+  const isDrafting = draftFetcher.state !== 'idle';
+  const draftError =
+    draftFetcher.data?.intent === 'draft-connected' && !draftFetcher.data.ok ? draftFetcher.data.error : null;
+  const draftDone = draftFetcher.data?.intent === 'draft-connected' && draftFetcher.data.ok;
+  const checkboxId = `ean-${product.ean}`;
   return (
-    <label className={`dist-card${checked ? ' dist-card--checked' : ''}`}>
+    <div className={`dist-card${checked ? ' dist-card--checked' : ''}`}>
       <input
+        id={checkboxId}
         type="checkbox"
         name="ean"
         value={product.ean}
@@ -220,29 +259,51 @@ function ProductCard({
         className="dist-card__checkbox"
         title={connected ? 'Ya existe en Shopify — puedes desmarcarlo si no quieres que siga así' : undefined}
       />
-      <div className="dist-card__img">
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt="" loading="lazy" />
-        ) : (
-          <span>Sin foto</span>
-        )}
-      </div>
-      <div className="dist-card__body">
-        <div className="dist-card__title">{product.title || product.sku}</div>
-        <div className="dist-card__sub">
-          {product.brand && <>{product.brand} · </>}
-          {product.category}
+      <label htmlFor={checkboxId} className="dist-card__clickarea">
+        <div className="dist-card__img">
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt="" loading="lazy" />
+          ) : (
+            <span>Sin foto</span>
+          )}
         </div>
-        <div className="dist-card__footer">
-          <span className="dist-card__price">{product.price.toFixed(2)}€</span>
-          <span className={`dist-card__stock ${product.stock > 0 ? 'dist-card__stock--in' : 'dist-card__stock--out'}`}>
-            {product.stock > 0 ? `Stock ${product.stock}` : 'Sin stock'}
-          </span>
-          {connected && <span className="dist-card__connected">Ya en la tienda</span>}
+        <div className="dist-card__body">
+          <div className="dist-card__title">{product.title || product.sku}</div>
+          <div className="dist-card__sub">
+            {product.brand && <>{product.brand} · </>}
+            {product.category}
+          </div>
+          <div className="dist-card__footer">
+            <span className="dist-card__price">{product.price.toFixed(2)}€</span>
+            <span className={`dist-card__stock ${product.stock > 0 ? 'dist-card__stock--in' : 'dist-card__stock--out'}`}>
+              {product.stock > 0 ? `Stock ${product.stock}` : 'Sin stock'}
+            </span>
+            {connected && <span className="dist-card__connected">Ya en la tienda</span>}
+          </div>
+          <div className="dist-card__ean">EAN {product.ean}</div>
         </div>
-        <div className="dist-card__ean">EAN {product.ean}</div>
-      </div>
-    </label>
+      </label>
+      {connected && connectedProductId && !draftDone && (
+        <button
+          type="button"
+          className="admin-btn admin-btn--danger dist-card__draft-btn"
+          disabled={isDrafting}
+          onClick={() => {
+            if (!confirm(`¿Pasar "${product.title || product.sku}" a borrador en Shopify? Dejará de verse en la tienda.`)) {
+              return;
+            }
+            draftFetcher.submit(
+              {intent: 'draft-connected', supplierId, ean: product.ean, productId: connectedProductId},
+              {method: 'post'},
+            );
+          }}
+        >
+          {isDrafting ? '…' : 'Pasar a borrador'}
+        </button>
+      )}
+      {draftDone && <p className="admin-hint" style={{margin: '4px 12px'}}>Pasado a borrador.</p>}
+      {draftError && <p className="admin-msg--error" style={{margin: '4px 12px'}}>{draftError}</p>}
+    </div>
   );
 }
 
@@ -261,6 +322,7 @@ export default function AdminDistribuidores() {
     pageItems,
     selectedEans,
     connectedEans,
+    connectedProductIds,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
@@ -346,6 +408,8 @@ export default function AdminDistribuidores() {
               product={p}
               checked={selectedSet.has(p.ean) || connectedSet.has(p.ean)}
               connected={connectedSet.has(p.ean)}
+              connectedProductId={connectedProductIds[p.ean]}
+              supplierId={supplierId}
             />
           ))}
         </div>
