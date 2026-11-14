@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Form, data, useActionData, useFetcher, useLoaderData, useNavigation, useSearchParams} from 'react-router';
 import type {Route} from './+types/admin-interno.distribuidores';
 import {requireAdminUser} from '~/lib/adminSession.server';
@@ -248,6 +249,11 @@ function ProductCard({
     draftFetcher.data?.intent === 'draft-connected' && !draftFetcher.data.ok ? draftFetcher.data.error : null;
   const draftDone = draftFetcher.data?.intent === 'draft-connected' && draftFetcher.data.ok;
   const checkboxId = `ean-${product.ean}`;
+  // Zentralmedia y Midwich dan, para parte del catálogo, URLs de foto que ya
+  // no existen en su servidor (404 — no es cosa nuestra). Sin esto el
+  // navegador muestra el icono feo de "imagen rota" en vez del aviso
+  // "Sin foto" que ya usamos cuando el distribuidor no manda URL.
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className={`dist-card${checked ? ' dist-card--checked' : ''}`}>
       <input
@@ -261,8 +267,8 @@ function ProductCard({
       />
       <label htmlFor={checkboxId} className="dist-card__clickarea">
         <div className="dist-card__img">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt="" loading="lazy" />
+          {product.imageUrl && !imgFailed ? (
+            <img src={product.imageUrl} alt="" loading="lazy" onError={() => setImgFailed(true)} />
           ) : (
             <span>Sin foto</span>
           )}
