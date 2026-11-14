@@ -4,6 +4,7 @@ import {Image, Money, type CartViewPayload, useAnalytics, useOptimisticCart} fro
 import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {Icon, type IconName} from '~/lib/icons';
+import {guessCategoryIcon} from '~/lib/categoryIcons';
 import {ThemeToggle} from '~/components/ThemeToggle';
 import {LOCALES, useI18n, type LocaleCode} from '~/lib/i18n';
 import {
@@ -18,12 +19,20 @@ interface HeaderProps {
   cart: Promise<CartApiQueryFragment | null>;
   isLoggedIn: Promise<boolean>;
   publicStoreDomain: string;
+  categoryCovers?: Record<string, string>;
 }
 
-export function Header({header, isLoggedIn, cart}: HeaderProps) {
+export function Header({header, isLoggedIn, cart, categoryCovers}: HeaderProps) {
   const {shop} = header;
   const {t} = useI18n();
   const mainNav = useMainNav();
+  // Item "Categorías" del menú de Shopify (Admin > Contenido >
+  // Navegación), si Víctor lo ha montado con subcategorías anidadas — ver
+  // buildMegaMenuGroups. Insensible a mayúsculas/acentos para no depender
+  // de que lo escriba exactamente igual.
+  const categoriesMenuItem = header.menu?.items.find((item) =>
+    item.title.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() === 'categorias',
+  );
 
   return (
     <>
@@ -87,6 +96,8 @@ export function Header({header, isLoggedIn, cart}: HeaderProps) {
         </div>
         <MainNavPanel
           collections={header.collections.nodes}
+          categoriesMenuItem={categoriesMenuItem}
+          categoryCovers={categoryCovers}
           state={mainNav.state}
           top={mainNav.top}
           closeNav={mainNav.closeNav}
@@ -149,16 +160,114 @@ type NavCollection = {
 };
 
 type NavLinkData = {href: string; label: string; cls?: string; icon?: IconName};
+type MegaMenuTile = {href: string; label: string; photo?: string; fallbackIcon: IconName};
+type MegaMenuGroup = {label: string; href?: string; icon: IconName; items: MegaMenuTile[]};
 type NavEntry =
   | ({type: 'link'} & NavLinkData)
-  | {type: 'dropdown'; label: string; items: Array<{href: string; label: string}>};
+  | {type: 'dropdown'; label: string; items: Array<{href: string; label: string}>}
+  | {type: 'megamenu'; label: string; groups: MegaMenuGroup[]; viewAllHref?: string};
+
+// Mínimo común de lo que necesitamos de un MenuItem de Shopify, a 3
+// niveles (Shopify permite anidar hasta 3 en el editor de Navegación) —
+// evita acoplar este parseo al tipo generado exacto de un fragment en
+// concreto, basta con que tenga esta forma.
+type ShopifyMenuItemLike = {
+  title: string;
+  url?: string | null;
+  items?: Array<{
+    title: string;
+    url?: string | null;
+    items?: Array<{title: string; url?: string | null}> | null;
+  }> | null;
+};
+
+/** Quita el dominio de una URL de menú de Shopify (siempre viene absoluta,
+ * tipo https://tienda.myshopify.com/collections/altavoces) para poder
+ * usarla con <NavLink>/<Link> de React Router. */
+function toRelativeUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).pathname + new URL(url).search;
+  } catch {
+    return url.startsWith('/') ? url : null;
+  }
+}
+
+/** Handle de colección a partir de una URL de menú tipo
+ * "/collections/altavoces" — para buscar su carátula (ver
+ * categoryCovers.server.ts) y usarla como icono de la pestaña. */
+function collectionHandleFromUrl(href: string | null): string | null {
+  const match = href?.match(/\/collections\/([^/?#]+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Construye el mega-menú de "Categorías" a partir de un item del menú de
+ * Shopify (Admin > Contenido > Navegación) con hijos anidados — ver
+ * admin-interno/colecciones para el símil con los banners. Dos modos,
+ * igual que la referencia que pidió Víctor (Madrid HiFi):
+ *  - Si ningún hijo tiene a su vez hijos propios: modo "plano", todos los
+ *    hijos salen como un único panel de iconos (p.ej. "Iluminación").
+ *  - Si algún hijo SÍ tiene hijos: modo "agrupado", cada hijo es un grupo
+ *    en la columna izquierda y sus propios hijos son los iconos de la
+ *    derecha (p.ej. "Sonido y Audio" → "Sonido Profesional" → iconos).
+ * Si el item no existe o no tiene hijos, devuelve null — el caller cae
+ * entonces al desplegable plano de siempre (ver useNavLinks).
+ */
+function buildMegaMenuGroups(
+  item: ShopifyMenuItemLike | undefined,
+  categoryCovers: Record<string, string>,
+): MegaMenuGroup[] | null {
+  const children = item?.items;
+  if (!children || children.length === 0) return null;
+
+  function tile(entry: {title: string; url?: string | null}): MegaMenuTile | null {
+    const href = toRelativeUrl(entry.url);
+    if (!href) return null;
+    const handle = collectionHandleFromUrl(href);
+    return {
+      href,
+      label: entry.title,
+      photo: handle ? categoryCovers[handle] : undefined,
+      fallbackIcon: guessCategoryIcon(entry.title),
+    };
+  }
+
+  const isGrouped = children.some((c) => c.items && c.items.length > 0);
+
+  if (!isGrouped) {
+    const items = children.map(tile).filter((t): t is MegaMenuTile => t !== null);
+    return items.length > 0 ? [{label: '', icon: guessCategoryIcon(item?.title ?? ''), items}] : null;
+  }
+
+  const groups = children
+    .map((child): MegaMenuGroup | null => {
+      const subItems = (child.items && child.items.length > 0 ? child.items : [child])
+        .map(tile)
+        .filter((t): t is MegaMenuTile => t !== null);
+      if (subItems.length === 0) return null;
+      return {
+        label: child.title,
+        href: toRelativeUrl(child.url) ?? undefined,
+        icon: guessCategoryIcon(child.title),
+        items: subItems,
+      };
+    })
+    .filter((g): g is MegaMenuGroup => g !== null);
+
+  return groups.length > 0 ? groups : null;
+}
 
 // Handles que se quedan como item propio en la barra, fuera del
 // desplegable "Categorías" — no son una categoría de producto más, son
 // secciones especiales (ofertas, marca insignia de la tienda).
 const NAV_STANDALONE_HANDLES = ['outlet', 'pioneer-dj-alphatheta'];
 
-function useNavLinks(collections: NavCollection[] = []): NavEntry[] {
+function useNavLinks(
+  collections: NavCollection[] = [],
+  categoriesMenuItem: ShopifyMenuItemLike | undefined,
+  categoryCovers: Record<string, string>,
+): NavEntry[] {
   const {t} = useI18n();
   // "frontpage" es la colección automática de Shopify con todos los
   // productos; no es una categoría real, ya existe "Todos los productos".
@@ -187,7 +296,19 @@ function useNavLinks(collections: NavCollection[] = []): NavEntry[] {
     {type: 'link', href: '/', label: t('navHome')},
     {type: 'link', href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
   ];
-  if (categoryItems.length > 0) {
+  // Si en Shopify (Admin > Contenido > Navegación) hay un item "Categorías"
+  // con subcategorías anidadas, se usa el mega-menú con iconos — si no
+  // existe todavía (como ahora, hasta que se monte con la lista real),
+  // cae al desplegable plano de siempre, con las colecciones tal cual.
+  const megaMenuGroups = buildMegaMenuGroups(categoriesMenuItem, categoryCovers);
+  if (megaMenuGroups) {
+    entries.push({
+      type: 'megamenu',
+      label: categoriesMenuItem?.title || t('navCategories'),
+      groups: megaMenuGroups,
+      viewAllHref: toRelativeUrl(categoriesMenuItem?.url) ?? '/collections/all',
+    });
+  } else if (categoryItems.length > 0) {
     entries.push({type: 'dropdown', label: t('navCategories'), items: categoryItems});
   }
   for (const c of standalone) {
@@ -346,20 +467,149 @@ function NavDropdown({
   );
 }
 
+/** Icono redondo de una pestaña del mega-menú: la carátula subida desde
+ * /admin-interno/categorias si existe, o un icono genérico si no (para
+ * que nunca se quede un hueco vacío mientras no se haya subido ninguna). */
+/** Icono de una pestaña (foto real si existe, si no el icono adivinado
+ * por nombre — ver categoryIcons.ts). */
+function MegaMenuTileIcon({photo, fallbackIcon}: {photo?: string; fallbackIcon: IconName}) {
+  if (photo) {
+    return (
+      <span className="mega-menu__tile-icon">
+        <img src={photo} alt="" loading="lazy" />
+      </span>
+    );
+  }
+  return (
+    <span className="mega-menu__tile-icon mega-menu__tile-icon--placeholder">
+      <Icon name={fallbackIcon} />
+    </span>
+  );
+}
+
+/** Desplegable de "Categorías" con iconos — diseño acordado con Víctor:
+ * en escritorio, si hay grupos, una columna de la izquierda (con icono +
+ * nombre, la activa resaltada en rojo con flecha) cambia la cuadrícula de
+ * iconos de la derecha al pasar el ratón; si no hay grupos, es una sola
+ * cuadrícula. En móvil se aplana a una lista con acordeón (ver mobile
+ * CSS), sin el panel de dos columnas — no cabe cómodamente en una
+ * pantalla pequeña. */
+function NavMegaMenu({
+  label,
+  groups,
+  viewAllHref,
+  handleLinkClick,
+}: {
+  label: string;
+  groups: MegaMenuGroup[];
+  viewAllHref?: string;
+  handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState(0);
+  const hasGroupRail = groups.length > 1 || Boolean(groups[0]?.label);
+  const current = groups[Math.min(activeGroup, groups.length - 1)] ?? groups[0];
+
+  function close() {
+    setOpen(false);
+    setActiveGroup(0);
+  }
+
+  return (
+    <div
+      className="mainnav__dropdown mega-menu"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) close();
+      }}
+    >
+      <button
+        type="button"
+        className="mainnav__item mainnav__dropdown-trigger"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label} <Icon name="chevronDown" />
+      </button>
+      <div className={`mega-menu__panel${open ? ' open' : ''}${hasGroupRail ? ' mega-menu__panel--grouped' : ''}`}>
+        {hasGroupRail && (
+          <div className="mega-menu__rail">
+            {groups.map((group, i) => {
+              const isActive = i === activeGroup;
+              return (
+                <button
+                  key={group.label || i}
+                  type="button"
+                  className={`mega-menu__rail-item${isActive ? ' active' : ''}`}
+                  onMouseEnter={() => setActiveGroup(i)}
+                  onFocus={() => setActiveGroup(i)}
+                  // En escritorio el ratón ya cambia el grupo activo con el
+                  // hover de arriba; este onClick es sobre todo para móvil
+                  // (sin hover, hay que tocar para ver los iconos del grupo).
+                  onClick={() => setActiveGroup(i)}
+                >
+                  <Icon name={group.icon} />
+                  <span>{group.label}</span>
+                  {isActive && <Icon name="chevronRight" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="mega-menu__tiles-wrap">
+          <div className="mega-menu__tiles">
+            {current?.items.map((item) => (
+              <NavLink
+                key={item.href}
+                className="mega-menu__tile"
+                prefetch="intent"
+                to={item.href}
+                onClick={(e) => {
+                  close();
+                  handleLinkClick(e, item.href);
+                }}
+              >
+                <MegaMenuTileIcon photo={item.photo} fallbackIcon={item.fallbackIcon} />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+          {viewAllHref && (
+            <NavLink
+              className="mega-menu__viewall"
+              to={viewAllHref}
+              onClick={(e) => {
+                close();
+                handleLinkClick(e, viewAllHref);
+              }}
+            >
+              Ver todas las categorías <Icon name="arrowRight" />
+            </NavLink>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MainNavPanel({
   collections,
+  categoriesMenuItem,
+  categoryCovers,
   state,
   top,
   closeNav,
   handleLinkClick,
 }: {
   collections?: NavCollection[];
+  categoriesMenuItem?: ShopifyMenuItemLike;
+  categoryCovers?: Record<string, string>;
   state: NavState;
   top?: string;
   closeNav: () => void;
   handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
-  const navLinks = useNavLinks(collections);
+  const navLinks = useNavLinks(collections, categoriesMenuItem, categoryCovers ?? {});
   const {locale, setLocale} = useI18n();
   const isOpenish = state === 'open' || state === 'closing';
 
@@ -372,10 +622,24 @@ function MainNavPanel({
         if (e.target === e.currentTarget) closeNav();
       }}
     >
-      {navLinks.map((entry) =>
-        entry.type === 'dropdown' ? (
-          <NavDropdown key={entry.label} label={entry.label} items={entry.items} handleLinkClick={handleLinkClick} />
-        ) : (
+      {navLinks.map((entry) => {
+        if (entry.type === 'megamenu') {
+          return (
+            <NavMegaMenu
+              key={entry.label}
+              label={entry.label}
+              groups={entry.groups}
+              viewAllHref={entry.viewAllHref}
+              handleLinkClick={handleLinkClick}
+            />
+          );
+        }
+        if (entry.type === 'dropdown') {
+          return (
+            <NavDropdown key={entry.label} label={entry.label} items={entry.items} handleLinkClick={handleLinkClick} />
+          );
+        }
+        return (
           <NavLink
             className={`mainnav__item ${entry.cls ?? ''}`}
             end
@@ -386,8 +650,8 @@ function MainNavPanel({
           >
             {entry.icon && <Icon name={entry.icon} />} {entry.label}
           </NavLink>
-        ),
-      )}
+        );
+      })}
       <div className="mainnav__utils">
         <select
           className="mainnav__lang-select"

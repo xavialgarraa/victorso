@@ -22,6 +22,7 @@ import {PageLayout} from './components/PageLayout';
 import {jsonLdHtml} from '~/lib/jsonLd';
 import {GoogleAnalytics} from '~/components/GoogleAnalytics';
 import {CookieConsent} from '~/components/CookieConsent';
+import {listCategoryCovers} from '~/lib/categoryCovers.server';
 
 export type RootLoader = typeof loader;
 
@@ -144,17 +145,22 @@ export async function loader(args: Route.LoaderArgs) {
 async function loadCriticalData({context}: Route.LoaderArgs) {
   const {storefront} = context;
 
-  const [header] = await Promise.all([
+  const [header, categoryCovers] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheLong(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },
     }),
+    // Carátulas de categoría (/admin-interno/categorias) — reutilizadas como
+    // icono de cada subcategoría en el mega-menú de "Categorías" (ver
+    // Header.tsx). Se piden aquí (no solo en la home) porque la cabecera
+    // sale en todas las páginas.
+    listCategoryCovers(context.env).catch(() => ({})),
     // Add other queries here, so that they are loaded in parallel
   ]);
 
-  return {header};
+  return {header, categoryCovers};
 }
 
 /**

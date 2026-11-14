@@ -220,8 +220,14 @@ const MENU_FRAGMENT = `#graphql
     type
     url
   }
+  fragment GrandchildMenuItem on MenuItem {
+    ...MenuItem
+  }
   fragment ChildMenuItem on MenuItem {
     ...MenuItem
+    items {
+      ...GrandchildMenuItem
+    }
   }
   fragment ParentMenuItem on MenuItem {
     ...MenuItem
