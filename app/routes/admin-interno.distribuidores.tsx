@@ -541,7 +541,7 @@ export default function AdminDistribuidores() {
               </div>
             </div>
 
-            {summary.toUpdateStock.length > 0 && (
+            {summary.toUpdateStock.length > 0 ? (
               <>
                 <h3 style={{marginTop: 20}}>Actualizar stock ({summary.toUpdateStock.length})</h3>
                 <div className="admin-scroll" style={{maxHeight: 240}}>
@@ -573,20 +573,20 @@ export default function AdminDistribuidores() {
                       : `Actualizar stock de ${summary.toUpdateStock.length} productos`}
                   </button>
                 </Form>
-                {applyStockResult && (
-                  applyStockResult.ok ? (
-                    <p className="admin-msg--ok">
-                      Stock actualizado en {applyStockResult.applied} productos.
-                      {applyStockResult.errors.length > 0 && ` ${applyStockResult.errors.length} errores.`}
-                    </p>
-                  ) : (
-                    <p className="admin-msg--error">{applyStockResult.error}</p>
-                  )
-                )}
               </>
+            ) : null}
+            {applyStockResult && (
+              applyStockResult.ok ? (
+                <p className="admin-msg--ok">
+                  Stock actualizado en {applyStockResult.applied} productos.
+                  {applyStockResult.errors.length > 0 && ` ${applyStockResult.errors.length} errores.`}
+                </p>
+              ) : (
+                <p className="admin-msg--error">{applyStockResult.error}</p>
+              )
             )}
 
-            {summary.toUpdatePrice.length > 0 && (
+            {summary.toUpdatePrice.length > 0 ? (
               <>
                 <h3 style={{marginTop: 24}}>Actualizar precio ({summary.toUpdatePrice.length})</h3>
                 <div className="admin-scroll" style={{maxHeight: 240}}>
@@ -618,20 +618,20 @@ export default function AdminDistribuidores() {
                       : `Actualizar precio de ${summary.toUpdatePrice.length} productos`}
                   </button>
                 </Form>
-                {applyPriceResult && (
-                  applyPriceResult.ok ? (
-                    <p className="admin-msg--ok">
-                      Precio actualizado en {applyPriceResult.applied} productos.
-                      {applyPriceResult.errors.length > 0 && ` ${applyPriceResult.errors.length} errores.`}
-                    </p>
-                  ) : (
-                    <p className="admin-msg--error">{applyPriceResult.error}</p>
-                  )
-                )}
               </>
+            ) : null}
+            {applyPriceResult && (
+              applyPriceResult.ok ? (
+                <p className="admin-msg--ok">
+                  Precio actualizado en {applyPriceResult.applied} productos.
+                  {applyPriceResult.errors.length > 0 && ` ${applyPriceResult.errors.length} errores.`}
+                </p>
+              ) : (
+                <p className="admin-msg--error">{applyPriceResult.error}</p>
+              )
             )}
 
-            {summary.toCreate.length > 0 && (
+            {summary.toCreate.length > 0 ? (
               <>
                 <h3 style={{marginTop: 24}}>Crear productos nuevos ({summary.toCreate.length})</h3>
                 <div className="admin-scroll" style={{maxHeight: 280}}>
@@ -665,19 +665,19 @@ export default function AdminDistribuidores() {
                     {isBusy && busyIntent === 'create-batch' ? 'Creando…' : 'Crear siguiente lote (borrador)'}
                   </button>
                 </Form>
-                {createResult && (
-                  createResult.ok ? (
-                    <p className="admin-msg--ok">
-                      Creados: {createResult.created}. Quedan {createResult.remaining} por crear.
-                      {createResult.errors.length > 0 && (
-                        <span> {createResult.errors.length} errores: {createResult.errors.slice(0, 5).map((e) => `${e.name}: ${e.message}`).join(' · ')}</span>
-                      )}
-                    </p>
-                  ) : (
-                    <p className="admin-msg--error">{createResult.error}</p>
-                  )
-                )}
               </>
+            ) : null}
+            {createResult && (
+              createResult.ok ? (
+                <p className="admin-msg--ok">
+                  Creados: {createResult.created}. Quedan {createResult.remaining} por crear.
+                  {createResult.errors.length > 0 && (
+                    <span> {createResult.errors.length} errores: {createResult.errors.slice(0, 5).map((e) => `${e.name}: ${e.message}`).join(' · ')}</span>
+                  )}
+                </p>
+              ) : (
+                <p className="admin-msg--error">{createResult.error}</p>
+              )
             )}
           </div>
         )}
