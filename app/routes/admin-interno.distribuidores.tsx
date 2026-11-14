@@ -113,11 +113,19 @@ type ActionResult =
   | {intent: 'save-selection'; ok: false; error: string}
   | {intent: 'compare'; ok: true; supplierId: string; summary: DistributorSyncSummary}
   | {intent: 'compare'; ok: false; supplierId: string; error: string}
-  | {intent: 'create-batch'; ok: true; supplierId: string; created: number; errors: Array<{name: string; message: string}>; remaining: number}
+  | {
+      intent: 'create-batch';
+      ok: true;
+      supplierId: string;
+      created: number;
+      errors: Array<{name: string; message: string}>;
+      remaining: number;
+      summary: DistributorSyncSummary;
+    }
   | {intent: 'create-batch'; ok: false; error: string}
-  | {intent: 'apply-stock'; ok: true; supplierId: string; applied: number; errors: string[]}
+  | {intent: 'apply-stock'; ok: true; supplierId: string; applied: number; errors: string[]; summary: DistributorSyncSummary}
   | {intent: 'apply-stock'; ok: false; error: string}
-  | {intent: 'apply-price'; ok: true; supplierId: string; applied: number; errors: string[]}
+  | {intent: 'apply-price'; ok: true; supplierId: string; applied: number; errors: string[]; summary: DistributorSyncSummary}
   | {intent: 'apply-price'; ok: false; error: string}
   | {intent: 'draft-connected'; ok: true; ean: string}
   | {intent: 'draft-connected'; ok: false; ean: string; error: string};
@@ -149,6 +157,9 @@ export async function action({request, context}: Route.ActionArgs) {
       const products = await getDistributorProducts(context.env, supplierId);
       const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
       const result = await applyDistributorCreations(context.env, summary.toCreate);
+      // Se recalcula tras crear para que la tabla de la pantalla refleje lo
+      // que queda de verdad (y no obligue a pulsar "Comparar" otra vez).
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
       return data<ActionResult>(
         {
           intent: 'create-batch',
@@ -157,6 +168,7 @@ export async function action({request, context}: Route.ActionArgs) {
           created: result.created,
           errors: result.errors,
           remaining: Math.max(0, summary.toCreate.length - result.created),
+          summary: freshSummary,
         },
         {headers},
       );
@@ -178,8 +190,9 @@ export async function action({request, context}: Route.ActionArgs) {
         quantity: r.stockTo,
       }));
       const result = await applyStockChanges(context.env, locationId, changes);
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
       return data<ActionResult>(
-        {intent: 'apply-stock', ok: true, supplierId, applied: result.applied, errors: result.errors},
+        {intent: 'apply-stock', ok: true, supplierId, applied: result.applied, errors: result.errors, summary: freshSummary},
         {headers},
       );
     } catch (error) {
@@ -200,8 +213,9 @@ export async function action({request, context}: Route.ActionArgs) {
         price: r.priceTo,
       }));
       const result = await applyPriceChanges(context.env, changes);
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
       return data<ActionResult>(
-        {intent: 'apply-price', ok: true, supplierId, applied: result.applied, errors: result.errors},
+        {intent: 'apply-price', ok: true, supplierId, applied: result.applied, errors: result.errors, summary: freshSummary},
         {headers},
       );
     } catch (error) {
@@ -368,11 +382,16 @@ export default function AdminDistribuidores() {
   const selectedSet = new Set(selectedEans);
   const connectedSet = new Set(connectedEans);
 
-  const compareResult = actionData?.intent === 'compare' && actionData.supplierId === supplierId ? actionData : null;
-  const summary = compareResult?.ok ? compareResult.summary : null;
   const createResult = actionData?.intent === 'create-batch' ? actionData : null;
   const applyStockResult = actionData?.intent === 'apply-stock' ? actionData : null;
   const applyPriceResult = actionData?.intent === 'apply-price' ? actionData : null;
+  // "Comparar", "crear lote" y "actualizar stock/precio" devuelven todos un
+  // resumen actualizado — se usa el último que haya llegado, para el
+  // proveedor que se está viendo, así la tabla no desaparece después de
+  // aplicar un cambio y hace falta pulsar "Comparar" otra vez.
+  const summary =
+    actionData?.ok && 'summary' in actionData && actionData.supplierId === supplierId ? actionData.summary : null;
+  const compareError = actionData?.intent === 'compare' && !actionData.ok ? actionData.error : null;
 
   function pageHref(overrides: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
@@ -495,7 +514,7 @@ export default function AdminDistribuidores() {
           </button>
         </Form>
 
-        {compareResult && !compareResult.ok && <p className="admin-msg--error">{compareResult.error}</p>}
+        {compareError && <p className="admin-msg--error">{compareError}</p>}
 
         {summary && (
           <div style={{marginTop: 20}}>
