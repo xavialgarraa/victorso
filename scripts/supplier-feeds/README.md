@@ -2,6 +2,8 @@
 
 Oxygen (donde corre la tienda) no puede hablar FTP — solo HTTP. Este script sí puede, porque corre en GitHub Actions (Node normal), no en Oxygen. Cada noche descarga el catálogo de cada distribuidor y lo deja troceado en Firestore (colección `distributor_feed_chunks` + `distributor_feed_meta`), que es de donde lee el panel en `/admin-interno/distribuidores`.
 
+El workflow corre en un runner self-hosted (`vm-victorso-a1`, Oracle Cloud, IP fija 92.5.180.203) en vez del runner por defecto de GitHub, porque Zentralmedia y Midwich filtran las conexiones FTP por IP de origen y los runners de GitHub tienen IP variable.
+
 ## Secretos que hay que añadir en GitHub (Settings → Secrets and variables → Actions)
 
 No los pongo yo por ti — añádelos tú directamente ahí:
@@ -10,7 +12,7 @@ No los pongo yo por ti — añádelos tú directamente ahí:
 - `ZENTRALMEDIA_FTP_USER`, `ZENTRALMEDIA_FTP_PASSWORD`
 - `MIDWICH_FTP_USER`, `MIDWICH_FTP_PASSWORD`
 
-Audio-Technica queda fuera de momento: su servidor rechaza cualquier conexión que no venga de una IP ya autorizada por ellos, y los runners de GitHub Actions no tienen IP fija.
+Audio-Technica queda fuera de momento: su servidor rechaza cualquier conexión que no venga de una IP ya autorizada por ellos. Ahora que el runner tiene IP fija (92.5.180.203), solo falta pedirles a ellos que la den de alta.
 
 ## Ejecutar a mano
 
