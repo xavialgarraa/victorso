@@ -15,8 +15,16 @@ export type DistributorSyncSummary = {
   totalSelected: number;
   toCreate: Array<{product: DistributorProduct; category: DistributorCategory}>;
   toUpdateStock: Array<{product: DistributorProduct; catalogVariant: CatalogVariant; stockFrom: number; stockTo: number}>;
+  toUpdatePrice: Array<{product: DistributorProduct; catalogVariant: CatalogVariant; priceFrom: number; priceTo: number}>;
   unchanged: number;
 };
+
+// Comparación de precios en céntimos — dos floats que en la práctica son el
+// mismo precio pueden diferir en la última cifra decimal por redondeos del
+// propio feed del distribuidor, y eso no debe marcarse como "cambio".
+function pricesDiffer(a: number, b: number): boolean {
+  return Math.abs(a - b) >= 0.01;
+}
 
 /**
  * Igual que buildStelOrderSyncSummary pero para los productos marcados a
@@ -38,6 +46,7 @@ export async function buildDistributorSyncSummary(
 
   const toCreateRaw: DistributorProduct[] = [];
   const toUpdateStock: DistributorSyncSummary['toUpdateStock'] = [];
+  const toUpdatePrice: DistributorSyncSummary['toUpdatePrice'] = [];
   let unchanged = 0;
 
   for (const product of selected) {
@@ -46,16 +55,25 @@ export async function buildDistributorSyncSummary(
       toCreateRaw.push(product);
       continue;
     }
-    if (catalogVariant.inventoryQuantity !== product.stock) {
+    const stockChanged = catalogVariant.inventoryQuantity !== product.stock;
+    const priceChanged = pricesDiffer(catalogVariant.price, product.price);
+    if (stockChanged) {
       toUpdateStock.push({
         product,
         catalogVariant,
         stockFrom: catalogVariant.inventoryQuantity,
         stockTo: product.stock,
       });
-    } else {
-      unchanged++;
     }
+    if (priceChanged) {
+      toUpdatePrice.push({
+        product,
+        catalogVariant,
+        priceFrom: catalogVariant.price,
+        priceTo: product.price,
+      });
+    }
+    if (!stockChanged && !priceChanged) unchanged++;
   }
 
   const categories = await classifyDistributorProducts(env, toCreateRaw);
@@ -64,7 +82,7 @@ export async function buildDistributorSyncSummary(
     category: categories.get(product.ean) ?? 'Otros',
   }));
 
-  return {supplierId, totalSelected: selected.length, toCreate, toUpdateStock, unchanged};
+  return {supplierId, totalSelected: selected.length, toCreate, toUpdateStock, toUpdatePrice, unchanged};
 }
 
 // Igual límite que StelOrder: crear todo de golpe se pasaría del tiempo

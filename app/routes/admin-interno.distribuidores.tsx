@@ -15,7 +15,13 @@ import {
   buildDistributorSyncSummary,
   type DistributorSyncSummary,
 } from '~/lib/connectors/distributorSync.server';
-import {applyStockChanges, draftProducts, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
+import {
+  applyPriceChanges,
+  applyStockChanges,
+  draftProducts,
+  getPrimaryLocationId,
+  getShopifyCatalogByBarcode,
+} from '~/lib/shopifyProducts.server';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Distribuidores — Panel interno'}];
@@ -111,6 +117,8 @@ type ActionResult =
   | {intent: 'create-batch'; ok: false; error: string}
   | {intent: 'apply-stock'; ok: true; supplierId: string; applied: number; errors: string[]}
   | {intent: 'apply-stock'; ok: false; error: string}
+  | {intent: 'apply-price'; ok: true; supplierId: string; applied: number; errors: string[]}
+  | {intent: 'apply-price'; ok: false; error: string}
   | {intent: 'draft-connected'; ok: true; ean: string}
   | {intent: 'draft-connected'; ok: false; ean: string; error: string};
 
@@ -177,6 +185,28 @@ export async function action({request, context}: Route.ActionArgs) {
     } catch (error) {
       return data<ActionResult>(
         {intent: 'apply-stock', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+        {headers},
+      );
+    }
+  }
+
+  if (intent === 'apply-price') {
+    try {
+      const products = await getDistributorProducts(context.env, supplierId);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const changes = summary.toUpdatePrice.map((r) => ({
+        productId: r.catalogVariant.productId,
+        variantId: r.catalogVariant.variantId,
+        price: r.priceTo,
+      }));
+      const result = await applyPriceChanges(context.env, changes);
+      return data<ActionResult>(
+        {intent: 'apply-price', ok: true, supplierId, applied: result.applied, errors: result.errors},
+        {headers},
+      );
+    } catch (error) {
+      return data<ActionResult>(
+        {intent: 'apply-price', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
         {headers},
       );
     }
@@ -342,6 +372,7 @@ export default function AdminDistribuidores() {
   const summary = compareResult?.ok ? compareResult.summary : null;
   const createResult = actionData?.intent === 'create-batch' ? actionData : null;
   const applyStockResult = actionData?.intent === 'apply-stock' ? actionData : null;
+  const applyPriceResult = actionData?.intent === 'apply-price' ? actionData : null;
 
   function pageHref(overrides: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams);
@@ -452,8 +483,9 @@ export default function AdminDistribuidores() {
         <p className="admin-hint" style={{maxWidth: 640}}>
           Compara los {selectedCount} productos marcados de este distribuidor contra el catálogo real de Shopify
           (por EAN). Los que no existen se proponen para <strong>crear como borrador</strong> (hay que revisarlos y
-          publicarlos a mano en Shopify, no salen solos a la tienda); los que ya existen solo se les actualiza el
-          stock. La categoría de cada producto nuevo la decide la IA con las categorías reales de la web.
+          publicarlos a mano en Shopify, no salen solos a la tienda); a los que ya existen se les compara stock y
+          precio por separado, y cada uno se actualiza con su propio botón. La categoría de cada producto nuevo la
+          decide la IA con las categorías reales de la web.
         </p>
         <Form method="post">
           <input type="hidden" name="intent" value="compare" />
@@ -479,6 +511,10 @@ export default function AdminDistribuidores() {
               <div className="admin-stat">
                 <span className="admin-stat__value">{summary.toUpdateStock.length}</span>
                 <span className="admin-stat__label">Ya existen, stock distinto</span>
+              </div>
+              <div className="admin-stat">
+                <span className="admin-stat__value">{summary.toUpdatePrice.length}</span>
+                <span className="admin-stat__label">Ya existen, precio distinto</span>
               </div>
               <div className="admin-stat">
                 <span className="admin-stat__value">{summary.unchanged}</span>
@@ -526,6 +562,51 @@ export default function AdminDistribuidores() {
                     </p>
                   ) : (
                     <p className="admin-msg--error">{applyStockResult.error}</p>
+                  )
+                )}
+              </>
+            )}
+
+            {summary.toUpdatePrice.length > 0 && (
+              <>
+                <h3 style={{marginTop: 24}}>Actualizar precio ({summary.toUpdatePrice.length})</h3>
+                <div className="admin-scroll" style={{maxHeight: 240}}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summary.toUpdatePrice.slice(0, 200).map((r) => (
+                        <tr key={r.product.ean}>
+                          <td>{r.catalogVariant.title}</td>
+                          <td>
+                            {r.priceFrom.toFixed(2)}€ → {r.priceTo.toFixed(2)}€
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Form method="post" style={{marginTop: 12}}>
+                  <input type="hidden" name="intent" value="apply-price" />
+                  <input type="hidden" name="supplierId" value={supplierId} />
+                  <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                    {isBusy && busyIntent === 'apply-price'
+                      ? 'Actualizando…'
+                      : `Actualizar precio de ${summary.toUpdatePrice.length} productos`}
+                  </button>
+                </Form>
+                {applyPriceResult && (
+                  applyPriceResult.ok ? (
+                    <p className="admin-msg--ok">
+                      Precio actualizado en {applyPriceResult.applied} productos.
+                      {applyPriceResult.errors.length > 0 && ` ${applyPriceResult.errors.length} errores.`}
+                    </p>
+                  ) : (
+                    <p className="admin-msg--error">{applyPriceResult.error}</p>
                   )
                 )}
               </>
