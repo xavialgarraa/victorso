@@ -1029,6 +1029,13 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .view-toggle__btn:hover:not(.active) { background: var(--surface-alt); color: var(--text); }
 
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 28px; }
+/* La fila ".pagination--top" solo existe para el botón "anterior"; en la
+   página 1 (o con un solo resultado) Pagination no renderiza nada dentro
+   y el div se queda vacío — pero seguía reservando su margin-top de
+   28px, que no colapsa con nada (es un item de grid) y desalineaba el
+   principio de la cuadrícula de productos respecto al padding de
+   Filtros, en vez de empezar los dos a la misma altura. */
+.pagination:empty { display: none; }
 .pagination--single { justify-content: flex-end; }
 .pagination__nav, .pagination__num {
   display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 4px;
