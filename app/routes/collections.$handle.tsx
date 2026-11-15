@@ -10,6 +10,7 @@ import {jsonLdHtml} from '~/lib/jsonLd';
 import {getCollectionBanner} from '~/lib/collectionBanners.server';
 import {getLocaleFromRequest} from '~/lib/locales';
 import {CollectionBanner} from '~/components/CollectionBanner';
+import {parseLeafTitle} from '~/lib/connectors/categoryTaxonomy.server';
 
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
@@ -120,25 +121,55 @@ export default function Collection() {
     })),
   }));
 
+  // Colecciones "hoja" de la taxonomía nueva (título "Subcategoría —
+  // Grupo", ver categoryTaxonomy.server.ts): el breadcrumb muestra
+  // Categoría > Subcategoría en vez del título plano. El grupo no lleva
+  // enlace propio porque su colección "bare" no tiene productos (solo
+  // existe para el rail del mega-menú) — llevaría a una página vacía.
+  const leaf = parseLeafTitle(collection.title);
+
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      {'@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://www.victorso.es/'},
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: collection.title,
-        item: `https://www.victorso.es/collections/${collection.handle}`,
-      },
-    ],
+    itemListElement: leaf
+      ? [
+          {'@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://www.victorso.es/'},
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: leaf.group,
+            item: `https://www.victorso.es/collections/${leaf.groupHandle}`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: leaf.sub,
+            item: `https://www.victorso.es/collections/${collection.handle}`,
+          },
+        ]
+      : [
+          {'@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://www.victorso.es/'},
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: collection.title,
+            item: `https://www.victorso.es/collections/${collection.handle}`,
+          },
+        ],
   };
 
   return (
     <div className="collection">
       <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLdHtml(breadcrumbJsonLd)}} />
       <div className="breadcrumb container">
-        <a href="/">{t('breadcrumbHome')}</a> / {collection.title}
+        <a href="/">{t('breadcrumbHome')}</a>{' '}
+        {leaf ? (
+          <>
+            / <span>{leaf.group}</span> / <span aria-current="page">{leaf.sub}</span>
+          </>
+        ) : (
+          <>/ {collection.title}</>
+        )}
       </div>
       {banner && <CollectionBanner banner={banner} resultCount={resultCount} />}
       <div id="collection-products" />

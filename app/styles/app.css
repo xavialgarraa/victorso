@@ -489,9 +489,15 @@ body.search-open { overflow: hidden; }
 
   /* Mega-menu de escritorio: columna de grupos a la izquierda (ancho
      fijo), cuadrícula de iconos a la derecha — cambia con el grupo activo
-     al pasar el ratón por el rail. */
+     al pasar el ratón por el rail. El panel se centra bajo TODA la
+     cabecera (no bajo el botón "Categorías", que no está en el centro de
+     la barra) — por eso .mega-menu vuelve a position:static: así el
+     panel toma como referencia .header (sticky, ancho completo) en vez
+     de su propio trigger, y top:100% sigue cayendo justo debajo del menú
+     tanto arriba del todo como ya con el header pegado scrolleando. */
+  .mega-menu { position: static; }
   .mega-menu__panel {
-    position: absolute; top: 100%; left: 0; margin-top: 4px;
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
     flex-direction: row; align-items: stretch;
     background: var(--nav-bg); border: 1px solid var(--nav-border);
     border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.4); z-index: 95;
