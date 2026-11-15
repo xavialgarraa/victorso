@@ -101,12 +101,17 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
   const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
+  // parseLeafTitle vive en un módulo .server — tiene que resolverse aquí
+  // en el loader, no en el componente (el componente también se incluye
+  // en el bundle de cliente para la hidratación, y ese bundle no puede
+  // importar nada de un módulo .server).
+  const leaf = parseLeafTitle(collection.title);
 
-  return {collection, resultCount, banner};
+  return {collection, resultCount, banner, leaf};
 }
 
 export default function Collection() {
-  const {collection, resultCount, banner} = useLoaderData<typeof loader>();
+  const {collection, resultCount, banner, leaf} = useLoaderData<typeof loader>();
   const {t} = useI18n();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
@@ -121,13 +126,8 @@ export default function Collection() {
     })),
   }));
 
-  // Colecciones "hoja" de la taxonomía nueva (título "Subcategoría —
-  // Grupo", ver categoryTaxonomy.server.ts): el breadcrumb muestra
-  // Categoría > Subcategoría en vez del título plano. El grupo no lleva
-  // enlace propio porque su colección "bare" no tiene productos (solo
-  // existe para el rail del mega-menú) — llevaría a una página vacía.
-  const leaf = parseLeafTitle(collection.title);
-
+  // "leaf" (Categoría > Subcategoría para el breadcrumb) ya viene
+  // calculado del loader — ver el comentario junto a parseLeafTitle ahí.
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
