@@ -1,4 +1,4 @@
-import {redirect, useLoaderData} from 'react-router';
+import {redirect, useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/collections.$handle';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
 import type {ProductFilter} from '@shopify/hydrogen/storefront-api-types';
@@ -10,7 +10,14 @@ import {jsonLdHtml} from '~/lib/jsonLd';
 import {getCollectionBanner} from '~/lib/collectionBanners.server';
 import {getLocaleFromRequest} from '~/lib/locales';
 import {CollectionBanner} from '~/components/CollectionBanner';
-import {parseLeafTitle} from '~/lib/connectors/categoryTaxonomy.server';
+import {Icon} from '~/lib/icons';
+import {guessCategoryIcon} from '~/lib/categoryIcons';
+import {listCategoryCovers} from '~/lib/categoryCovers.server';
+import {
+  parseLeafTitle,
+  groupNameFromTitle,
+  subcategoryLinksForGroup,
+} from '~/lib/connectors/categoryTaxonomy.server';
 
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
@@ -75,7 +82,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     throw redirect('/collections');
   }
 
-  const [{collection}, {collection: countData}, banner] = await Promise.all([
+  const [{collection}, {collection: countData}, banner, categoryCovers] = await Promise.all([
     storefront.query(COLLECTION_QUERY, {
       variables: {
         handle,
@@ -92,6 +99,11 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
       variables: {handle, filters},
     }),
     getCollectionBanner(context.env, handle, locale),
+    // Solo hace falta para la cuadrícula de subcategorías de una página
+    // de grupo (ver groupLanding abajo) — pedirlo siempre y en paralelo
+    // es más simple que condicionarlo al handle antes de saber si es un
+    // grupo, y es la misma llamada barata que ya usa /collections.
+    listCategoryCovers(context.env).catch((): Record<string, string> => ({})),
   ]);
 
   if (!collection) {
@@ -101,17 +113,35 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
   const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
-  // parseLeafTitle vive en un módulo .server — tiene que resolverse aquí
-  // en el loader, no en el componente (el componente también se incluye
-  // en el bundle de cliente para la hidratación, y ese bundle no puede
-  // importar nada de un módulo .server).
+  // parseLeafTitle y groupNameFromTitle viven en un módulo .server —
+  // tienen que resolverse aquí en el loader, no en el componente (el
+  // componente también se incluye en el bundle de cliente para la
+  // hidratación, y ese bundle no puede importar nada de un módulo
+  // .server).
   const leaf = parseLeafTitle(collection.title);
+  const groupName = groupNameFromTitle(collection.title);
+  // Las 7 colecciones "grupo" (bare, 0 productos — solo existían para el
+  // rail del mega-menú) ahora son la página de aterrizaje de su grupo:
+  // en vez del listado de productos (vacío), muestran la cuadrícula de
+  // sus propias subcategorías para poder navegar de categoría a
+  // subcategoría.
+  const groupLanding = groupName
+    ? {
+        group: groupName,
+        tiles: subcategoryLinksForGroup(groupName).map(({sub, handle: subHandle}) => ({
+          sub,
+          handle: subHandle,
+          photo: categoryCovers[subHandle] ?? null,
+          fallbackIcon: guessCategoryIcon(sub),
+        })),
+      }
+    : null;
 
-  return {collection, resultCount, banner, leaf};
+  return {collection, resultCount, banner, leaf, groupLanding};
 }
 
 export default function Collection() {
-  const {collection, resultCount, banner, leaf} = useLoaderData<typeof loader>();
+  const {collection, resultCount, banner, leaf, groupLanding} = useLoaderData<typeof loader>();
   const {t} = useI18n();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
@@ -165,25 +195,53 @@ export default function Collection() {
         <a href="/">{t('breadcrumbHome')}</a>{' '}
         {leaf ? (
           <>
-            / <span>{leaf.group}</span> / <span aria-current="page">{leaf.sub}</span>
+            {' / '}
+            <Link to={`/collections/${leaf.groupHandle}`}>{leaf.group}</Link>
+            {' / '}
+            <span aria-current="page">{leaf.sub}</span>
           </>
         ) : (
           <>/ {collection.title}</>
         )}
       </div>
       {banner && <CollectionBanner banner={banner} resultCount={resultCount} />}
-      <div id="collection-products" />
-      <ProductListing
-        title={collection.title}
-        products={collection.products}
-        filters={listingFilters}
-        sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
-        resultCount={resultCount}
-      />
       {collection.description && (
         <div className="container">
           <p className="collection-description">{collection.description}</p>
         </div>
+      )}
+      {groupLanding ? (
+        // Página de un grupo (las 7 colecciones "bare" del mega-menú,
+        // siempre 0 productos): en vez del listado vacío, la cuadrícula
+        // de sus propias subcategorías — así se puede navegar de
+        // categoría a subcategoría también sin pasar por el mega-menú.
+        <div className="container category-landing">
+          <div className="category-landing__grid">
+            {groupLanding.tiles.map((tile) => (
+              <Link key={tile.handle} to={`/collections/${tile.handle}`} className="category-landing__tile">
+                <span className="category-landing__icon">
+                  {tile.photo ? (
+                    <img src={tile.photo} alt="" loading="lazy" />
+                  ) : (
+                    <Icon name={tile.fallbackIcon} />
+                  )}
+                </span>
+                <span className="category-landing__label">{tile.sub}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div id="collection-products" />
+          <ProductListing
+            title={collection.title}
+            products={collection.products}
+            filters={listingFilters}
+            sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
+            resultCount={resultCount}
+          />
+        </>
       )}
       <Analytics.CollectionView
         data={{

@@ -411,7 +411,7 @@ body.search-open { overflow: hidden; }
    de móvil el fondo resaltado ya basta para marcar cuál está activa. */
 .mega-menu__rail-item .icon ~ .icon { display: none; }
 .mega-menu__rail-item:hover { color: var(--nav-text); }
-.mega-menu__rail-item.active { background: var(--nav-accent); color: #fff; }
+.mega-menu__rail-item--active { background: var(--nav-accent); color: #fff; }
 
 .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 6px 16px 16px; }
 .mega-menu__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 6px; }
@@ -514,7 +514,7 @@ body.search-open { overflow: hidden; }
   .mega-menu__rail-item > span:not(.icon) { flex: 1; text-align: left; }
   .mega-menu__rail-item .icon ~ .icon { display: inline-flex; margin-left: 6px; font-size: .8rem; }
   .mega-menu__rail-item:hover { background: var(--nav-surface); color: var(--nav-text); }
-  .mega-menu__rail-item.active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
+  .mega-menu__rail-item--active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
 
   .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; }
   .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 420px; overflow-y: auto; }
@@ -1209,6 +1209,32 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .breadcrumb { max-width: var(--maxw); margin: 0 auto; box-sizing: border-box; font-size: .8rem; color: var(--text-soft); padding: 16px 16px 0; }
 .breadcrumb a { color: var(--text-muted); }
 .breadcrumb a:hover { color: var(--red); }
+
+/* ---------- Página de un grupo: cuadrícula de subcategorías ---------- */
+/* Las 7 colecciones "grupo" (bare, 0 productos — ver groupNameFromTitle
+   en collections.$handle.tsx) ahora aterrizan aquí en vez de un listado
+   vacío: una cuadrícula para navegar a cada subcategoría, con la misma
+   foto/icono que el mega-menú (ver categoryCovers / guessCategoryIcon). */
+.category-landing { padding: 28px 16px 48px; }
+.category-landing__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (min-width: 560px) { .category-landing__grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .category-landing__grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1240px) { .category-landing__grid { grid-template-columns: repeat(5, 1fr); } }
+.category-landing__tile {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 28px 14px; text-align: center; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.category-landing__tile:hover { border-color: var(--border-strong); transform: translateY(-3px); box-shadow: var(--shadow); }
+.category-landing__icon {
+  width: 76px; height: 76px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; background: var(--surface-alt);
+}
+.category-landing__icon img { width: 100%; height: 100%; object-fit: cover; }
+.category-landing__icon .icon { font-size: 1.9rem; color: var(--red); }
+.category-landing__label { font-weight: 650; font-size: .95rem; color: var(--text); line-height: 1.3; }
+.category-landing__tile:hover .category-landing__label { color: var(--red); }
 
 /* ---------- Product page ---------- */
 .pdp { max-width: var(--maxw); margin: 0 auto; padding: 16px; display: grid; gap: 26px; grid-template-columns: minmax(0, 1fr); }

@@ -537,21 +537,37 @@ function NavMegaMenu({
             {groups.map((group, i) => {
               const isActive = i === activeGroup;
               return (
-                <button
+                <NavLink
                   key={group.label || i}
-                  type="button"
-                  className={`mega-menu__rail-item${isActive ? ' active' : ''}`}
+                  to={group.href ?? '#'}
+                  // Ojo: NO se llama "active" — NavLink ya añade esa clase
+                  // literal por su cuenta (aunque className sea un string)
+                  // cuando la "to" coincide con la URL actual, y chocaría
+                  // con este estado propio (el grupo activo del rail, que
+                  // es otra cosa — cuál se está previsualizando).
+                  className={`mega-menu__rail-item${isActive ? ' mega-menu__rail-item--active' : ''}`}
                   onMouseEnter={() => setActiveGroup(i)}
                   onFocus={() => setActiveGroup(i)}
-                  // En escritorio el ratón ya cambia el grupo activo con el
-                  // hover de arriba; este onClick es sobre todo para móvil
-                  // (sin hover, hay que tocar para ver los iconos del grupo).
-                  onClick={() => setActiveGroup(i)}
+                  onClick={(e) => {
+                    // En escritorio el ratón ya dejó este grupo activo con
+                    // el hover de arriba, así que el click navega directo
+                    // a su página (categoría > subcategoría). En móvil, sin
+                    // hover, el primer toque solo cambia el grupo activo
+                    // para ver sus iconos — hace falta un segundo toque
+                    // (ya activo) para navegar.
+                    if (!group.href || !isActive) {
+                      e.preventDefault();
+                      setActiveGroup(i);
+                      return;
+                    }
+                    close();
+                    handleLinkClick(e, group.href);
+                  }}
                 >
                   <Icon name={group.icon} />
                   <span>{group.label}</span>
                   {isActive && <Icon name="chevronRight" />}
-                </button>
+                </NavLink>
               );
             })}
           </div>

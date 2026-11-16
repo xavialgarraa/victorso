@@ -181,3 +181,95 @@ export function parseLeafTitle(
   const groupName = group as CategoryGroupName;
   return {group: groupName, sub: title.slice(0, idx), groupHandle: GROUP_HANDLES[groupName]};
 }
+
+/** Si el título es exactamente uno de los 7 grupos (la colección "bare"
+ * en sí misma, 0 productos — ver GROUP_HANDLES), devuelve el nombre del
+ * grupo; si no, null. Se usa para detectar cuándo una colección.$handle
+ * es en realidad la página de un grupo y pintar ahí la cuadrícula de
+ * subcategorías en vez del listado de productos (vacío). */
+export function groupNameFromTitle(title: string): CategoryGroupName | null {
+  return title in CATEGORY_GROUPS ? (title as CategoryGroupName) : null;
+}
+
+/** Handle real de cada colección hoja ("Subcategoría — Grupo"), para
+ * construir los enlaces de la cuadrícula de subcategorías de la página
+ * de un grupo — confirmado a mano contra Shopify por la misma razón que
+ * GROUP_HANDLES (el handle no es un slugify trivial del título en todos
+ * los casos, p.ej. los que llevan "/" o acentos). */
+export const LEAF_HANDLES: Record<string, string> = {
+  'Controladoras — Alphatheta & Pioneer DJ': 'controladoras-alphatheta-pioneer-dj',
+  'All-in-one — Alphatheta & Pioneer DJ': 'all-in-one-alphatheta-pioneer-dj',
+  'Mixers — Alphatheta & Pioneer DJ': 'mixers-alphatheta-pioneer-dj',
+  'Reproductores — Alphatheta & Pioneer DJ': 'reproductores-alphatheta-pioneer-dj',
+  'Auriculares — Alphatheta & Pioneer DJ': 'auriculares-alphatheta-pioneer-dj',
+  'Monitores — Alphatheta & Pioneer DJ': 'monitores-alphatheta-pioneer-dj',
+  'Altavoces — Alphatheta & Pioneer DJ': 'altavoces-alphatheta-pioneer-dj',
+  'Giradiscos — Alphatheta & Pioneer DJ': 'giradiscos-alphatheta-pioneer-dj',
+  'Agujas — Alphatheta & Pioneer DJ': 'agujas-alphatheta-pioneer-dj',
+  'Fundas y bolsas — Alphatheta & Pioneer DJ': 'fundas-y-bolsas-alphatheta-pioneer-dj',
+  'Timecode — Alphatheta & Pioneer DJ': 'timecode-alphatheta-pioneer-dj',
+  'Controladoras — Zona DJ': 'controladoras-zona-dj',
+  'All-in-one — Zona DJ': 'all-in-one-zona-dj',
+  'Mixers — Zona DJ': 'mixers-zona-dj',
+  'Reproductores — Zona DJ': 'reproductores-zona-dj',
+  'Auriculares — Zona DJ': 'auriculares-zona-dj',
+  'Giradiscos — Zona DJ': 'giradiscos-zona-dj',
+  'Agujas — Zona DJ': 'agujas-zona-dj',
+  'Patinadores — Zona DJ': 'patinadores-zona-dj',
+  'Decksavers — Zona DJ': 'decksavers-zona-dj',
+  'Timecode — Zona DJ': 'timecode-zona-dj',
+  'Cables — Zona DJ': 'cables-zona-dj',
+  'Controladores MIDI — Material de estudio': 'controladores-midi-material-de-estudio',
+  'Teclados MIDI — Material de estudio': 'teclados-midi-material-de-estudio',
+  'Monitores de estudio — Material de estudio': 'monitores-de-estudio-material-de-estudio',
+  'Tarjetas de sonido — Material de estudio': 'tarjetas-de-sonido-material-de-estudio',
+  'Micrófonos — Material de estudio': 'microfonos-material-de-estudio',
+  'Auriculares — Material de estudio': 'auriculares-material-de-estudio',
+  'Accesorios — Material de estudio': 'accesorios-material-de-estudio',
+  'Altavoces activos — Sonido / PA': 'altavoces-activos-sonido-pa',
+  'Altavoces pasivos — Sonido / PA': 'altavoces-pasivos-sonido-pa',
+  'Subwoofers — Sonido / PA': 'subwoofers-sonido-pa',
+  'Mezcladores live — Sonido / PA': 'mezcladores-live-sonido-pa',
+  'Amplificadores — Sonido / PA': 'amplificadores-sonido-pa',
+  'Reproductores — Sonido / PA': 'reproductores-sonido-pa',
+  'Procesadores de señal — Sonido / PA': 'procesadores-de-senal-sonido-pa',
+  'Microfonía — Sonido / PA': 'microfonia-sonido-pa',
+  'Cables micrófono — Cables': 'cables-microfono-cables',
+  'Cables instrumento — Cables': 'cables-instrumento-cables',
+  'Cables audio — Cables': 'cables-audio-cables',
+  'Adaptadores — Cables': 'adaptadores-cables',
+  'Cables altavoz — Cables': 'cables-altavoz-cables',
+  'Conectores — Cables': 'conectores-cables',
+  'Cables híbridos — Cables': 'cables-hibridos-cables',
+  'Cables DMX — Cables': 'cables-dmx-cables',
+  'Flightcase — Flightcases y bolsas': 'flightcase-flightcases-y-bolsas',
+  'Racks — Flightcases y bolsas': 'racks-flightcases-y-bolsas',
+  'Bolsas — Flightcases y bolsas': 'bolsas-flightcases-y-bolsas',
+  'Muebles — Flightcases y bolsas': 'muebles-flightcases-y-bolsas',
+  'Iluminación estática — Iluminación': 'iluminacion-estatica-iluminacion',
+  'Cabezas móviles — Iluminación': 'cabezas-moviles-iluminacion',
+  'Flashes — Iluminación': 'flashes-iluminacion',
+  'Lásers — Iluminación': 'lasers-iluminacion',
+  'Sets de iluminación — Iluminación': 'sets-de-iluminacion-iluminacion',
+  'Control de iluminación — Iluminación': 'control-de-iluminacion-iluminacion',
+  'Efectos deco — Iluminación': 'efectos-deco-iluminacion',
+  'Máquinas de humo y niebla — Iluminación': 'maquinas-de-humo-y-niebla-iluminacion',
+  'Accesorios — Iluminación': 'accesorios-iluminacion',
+};
+
+/** Las subcategorías de un grupo, con su handle real — para la
+ * cuadrícula de navegación de la página de un grupo (ver
+ * groupNameFromTitle). Las hojas sin handle conocido (no debería pasar,
+ * ver LEAF_HANDLES) se omiten en vez de romper el render. */
+export function subcategoryLinksForGroup(
+  group: CategoryGroupName,
+): Array<{sub: string; title: string; handle: string}> {
+  const subs: readonly string[] = CATEGORY_GROUPS[group];
+  return subs
+    .map((sub) => {
+      const title = leafTitle(group, sub);
+      const handle = LEAF_HANDLES[title];
+      return handle ? {sub, title, handle} : null;
+    })
+    .filter((t): t is {sub: string; title: string; handle: string} => t !== null);
+}
