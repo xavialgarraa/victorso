@@ -393,13 +393,14 @@ body.search-open { overflow: hidden; }
 
 /* Mega-menu de "Categorías" (diseño acordado con Víctor, ver Header.tsx):
    en escritorio, una columna de iconos+nombres a la izquierda cambia la
-   cuadrícula de la derecha al pasar el ratón; en móvil se aplana a una
-   fila de pestañas deslizable arriba y la cuadrícula del grupo activo
-   debajo — nunca dos columnas lado a lado, no cabe en pantalla pequeña. */
+   cuadrícula de la derecha al pasar el ratón. En móvil no hay sitio
+   para dos columnas ni para la cuadrícula de iconos — solo la lista de
+   categorías, cada una llevando directa a su página (que ya tiene su
+   propia cuadrícula de subcategorías, ver collections.$handle.tsx). */
 .mega-menu__panel { display: none; flex-direction: column; background: rgba(0, 0, 0, .15); }
 .mega-menu__panel.open { display: flex; }
 
-.mega-menu__rail { display: flex; gap: 6px; padding: 10px 16px 2px; overflow-x: auto; scrollbar-width: thin; }
+.mega-menu__rail { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
 /* ".mega-menu__rail " delante (no solo ".mega-menu__rail-item") es a
    propósito: ".mainnav a, .mainnav__dropdown-trigger" más abajo tiene
    más especificidad (clase + elemento) que un solo ".mega-menu__rail-item"
@@ -407,19 +408,24 @@ body.search-open { overflow: hidden; }
    ".mega-menu__rail .mega-menu__rail-item" gana sin tocar esa regla,
    que hace falta para el resto de enlaces de la barra. */
 .mega-menu__rail .mega-menu__rail-item {
-  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
-  background: var(--nav-surface); border: none; border-radius: 20px;
-  padding: 8px 14px; font-size: .84rem; font-weight: 600; color: var(--nav-text-soft);
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: none; border: none; border-radius: 0; border-bottom: 1px solid var(--nav-border);
+  padding: 13px 20px; font-size: .95rem; font-weight: 500; color: var(--nav-text-soft);
   white-space: nowrap; transition: background .18s ease, color .18s ease;
 }
-.mega-menu__rail-item .icon:first-child { font-size: .95rem; }
-/* La flecha solo aporta en la columna de escritorio; en la pestaña suelta
-   de móvil el fondo resaltado ya basta para marcar cuál está activa. */
+.mega-menu__rail-item .icon:first-child { font-size: 1.05rem; }
+/* La flecha solo aporta en la columna de escritorio; en la lista suelta
+   de móvil cada fila ya lleva directa a su página, no hay "activa" que
+   marcar. */
 .mega-menu__rail-item .icon ~ .icon { display: none; }
 .mega-menu__rail-item:hover { color: var(--nav-text); }
-.mega-menu__rail-item--active { background: var(--nav-accent); color: #fff; }
+.mega-menu__rail-item--active { background: var(--nav-surface); color: var(--nav-accent); }
 
-.mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 6px 16px 16px; }
+/* La cuadrícula de iconos de escritorio no cabe (ni hace falta) en
+   móvil — cada categoría de la lista de arriba ya lleva directa a su
+   propia página con sus subcategorías. Se reactiva en el media query
+   de escritorio de más abajo. */
+.mega-menu__tiles-wrap { display: none; }
 .mega-menu__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 6px; }
 .mega-menu__tile { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 6px 2px; border-radius: var(--radius-sm); }
 .mega-menu__tile:hover { background: var(--nav-surface); }
@@ -520,7 +526,7 @@ body.search-open { overflow: hidden; }
     width: 260px; flex-shrink: 0; padding: 14px 10px;
     border-right: 1px solid var(--nav-border);
   }
-  .mega-menu__rail .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; }
+  .mega-menu__rail .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; border-bottom: none; font-size: .84rem; font-weight: 600; }
   .mega-menu__rail-item > span:not(.icon) {
     flex: 1; min-width: 0; text-align: left;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -537,7 +543,7 @@ body.search-open { overflow: hidden; }
      tenga producto) hay que subir este número a mano — medido en vivo
      con getBoundingClientRect, no a ojo, porque ".mainnav a" (más
      especificidad) cambia el padding real de cada item del rail. */
-  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
+  .mega-menu__tiles-wrap { display: flex; padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
   .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 100%; overflow-y: auto; }
   .mega-menu__tile-icon { width: 56px; height: 56px; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }

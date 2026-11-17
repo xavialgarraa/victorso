@@ -584,15 +584,14 @@ function NavMegaMenu({
                   onMouseEnter={() => setActiveGroup(i)}
                   onFocus={() => setActiveGroup(i)}
                   onClick={(e) => {
-                    // En escritorio el ratón ya dejó este grupo activo con
-                    // el hover de arriba, así que el click navega directo
-                    // a su página (categoría > subcategoría). En móvil, sin
-                    // hover, el primer toque solo cambia el grupo activo
-                    // para ver sus iconos — hace falta un segundo toque
-                    // (ya activo) para navegar.
-                    if (!group.href || !isActive) {
+                    // En escritorio el hover (o el foco, por teclado) ya
+                    // dejó este grupo activo antes de que pudiera llegar
+                    // el click, así que siempre navega directo a su
+                    // página (categoría > subcategoría). En móvil no hay
+                    // cuadrícula que previsualizar (ver CSS), así que
+                    // también navega directo al primer toque.
+                    if (!group.href) {
                       e.preventDefault();
-                      setActiveGroup(i);
                       return;
                     }
                     close();
