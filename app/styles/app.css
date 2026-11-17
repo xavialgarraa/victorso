@@ -400,7 +400,13 @@ body.search-open { overflow: hidden; }
 .mega-menu__panel.open { display: flex; }
 
 .mega-menu__rail { display: flex; gap: 6px; padding: 10px 16px 2px; overflow-x: auto; scrollbar-width: thin; }
-.mega-menu__rail-item {
+/* ".mega-menu__rail " delante (no solo ".mega-menu__rail-item") es a
+   propósito: ".mainnav a, .mainnav__dropdown-trigger" más abajo tiene
+   más especificidad (clase + elemento) que un solo ".mega-menu__rail-item"
+   y le ganaba el padding en silencio — con el padre delante,
+   ".mega-menu__rail .mega-menu__rail-item" gana sin tocar esa regla,
+   que hace falta para el resto de enlaces de la barra. */
+.mega-menu__rail .mega-menu__rail-item {
   display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
   background: var(--nav-surface); border: none; border-radius: 20px;
   padding: 8px 14px; font-size: .84rem; font-weight: 600; color: var(--nav-text-soft);
@@ -509,14 +515,12 @@ body.search-open { overflow: hidden; }
 
   .mega-menu__rail {
     flex-direction: column; overflow: visible; gap: 2px;
-    width: 230px; flex-shrink: 0; padding: 14px 10px;
+    /* 260px mide de sobra el nombre más largo ("Alphatheta & Pioneer
+       DJ", ~235px con icono+flecha) sin truncar con "…". */
+    width: 260px; flex-shrink: 0; padding: 14px 10px;
     border-right: 1px solid var(--nav-border);
   }
-  .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; }
-  /* min-width:0 es necesario para que un item flex pueda encoger por
-     debajo del ancho de su texto — si no, "Alphatheta & Pioneer DJ" (el
-     nombre más largo) no cabía en los 230px del rail y empujaba la
-     flecha fuera de su caja, invadiendo visualmente la cuadrícula. */
+  .mega-menu__rail .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; }
   .mega-menu__rail-item > span:not(.icon) {
     flex: 1; min-width: 0; text-align: left;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -525,11 +529,15 @@ body.search-open { overflow: hidden; }
   .mega-menu__rail-item:hover { background: var(--nav-surface); color: var(--nav-text); }
   .mega-menu__rail-item--active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
 
-  /* Alto fijo (de sobra para el grupo más grande, 11 subcategorías — 3
-     filas) — "height", no "min-height", para que no pueda ni encoger ni
-     crecer al pasar de un grupo a otro del rail aunque tenga menos
-     subcategorías con producto todavía. */
-  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; height: 460px; }
+  /* Alto fijo — igual al alto natural del rail con las categorías que
+     hay ahora (6), que es más alto que la cuadrícula de iconos del
+     grupo más grande actual, así que es él quien manda. "height", no
+     "min-height", para que tampoco pueda encoger ni crecer al cambiar
+     de grupo. Si se añaden más categorías (p.ej. Iluminación cuando
+     tenga producto) hay que subir este número a mano — medido en vivo
+     con getBoundingClientRect, no a ojo, porque ".mainnav a" (más
+     especificidad) cambia el padding real de cada item del rail. */
+  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
   .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 100%; overflow-y: auto; }
   .mega-menu__tile-icon { width: 56px; height: 56px; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }

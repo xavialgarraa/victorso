@@ -1,4 +1,4 @@
-import {redirect, useLoaderData, Link} from 'react-router';
+import {redirect, useLoaderData, Link, useSearchParams} from 'react-router';
 import type {Route} from './+types/collections.$handle';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
 import type {ProductFilter} from '@shopify/hydrogen/storefront-api-types';
@@ -18,6 +18,9 @@ import {
   groupNameFromHandle,
   subcategoryLinksForGroup,
 } from '~/lib/connectors/categoryTaxonomy.server';
+import type {ProductsByCollectionQuery} from 'storefrontapi.generated';
+
+type GroupProduct = NonNullable<ProductsByCollectionQuery['collection']>['products']['nodes'][number];
 
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
@@ -154,12 +157,54 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
       })()
     : null;
 
-  return {collection, resultCount, banner, leaf, groupLanding};
+  // Las 6 colecciones "grupo" bare (0 productos propios — todo lo que
+  // tienen está repartido en sus subcategorías) muestran aquí el
+  // catálogo combinado de todas sus subcategorías con producto, igual
+  // que la de Alphatheta (que sí tiene productos propios y no necesita
+  // esto). Se paginan y ordenan en memoria porque no existe ninguna
+  // colección real de Shopify que las junte.
+  let groupProducts: GroupProduct[] | null = null;
+  let groupResultCount = 0;
+  if (groupLanding && collection.products.nodes.length === 0 && groupLanding.tiles.length > 0) {
+    const perSubcategory = await Promise.all(
+      groupLanding.tiles.map((tile) =>
+        storefront.query(PRODUCTS_BY_COLLECTION_QUERY, {variables: {handle: tile.handle, first: 24}}),
+      ),
+    );
+    const seen = new Set<string>();
+    const merged = perSubcategory
+      .flatMap((d) => d.collection?.products.nodes ?? [])
+      .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+    groupResultCount = merged.length;
+    const sorted = sortGroupProducts(merged, sortConfig.value);
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    groupProducts = sorted.slice((page - 1) * perPage, page * perPage);
+  }
+
+  return {collection, resultCount, banner, leaf, groupLanding, groupProducts, groupResultCount, perPage};
+}
+
+function sortGroupProducts(products: GroupProduct[], sort: string): GroupProduct[] {
+  const copy = [...products];
+  switch (sort) {
+    case 'price-asc':
+      return copy.sort((a, b) => Number(a.priceRange.minVariantPrice.amount) - Number(b.priceRange.minVariantPrice.amount));
+    case 'price-desc':
+      return copy.sort((a, b) => Number(b.priceRange.minVariantPrice.amount) - Number(a.priceRange.minVariantPrice.amount));
+    case 'newest':
+      return copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    case 'title':
+      return copy.sort((a, b) => a.title.localeCompare(b.title));
+    default:
+      return copy;
+  }
 }
 
 export default function Collection() {
-  const {collection, resultCount, banner, leaf, groupLanding} = useLoaderData<typeof loader>();
+  const {collection, resultCount, banner, leaf, groupLanding, groupProducts, groupResultCount, perPage} =
+    useLoaderData<typeof loader>();
   const {t} = useI18n();
+  const [searchParams] = useSearchParams();
 
   const listingFilters: ListingFilter[] = (collection.products.filters ?? []).map((f) => ({
     id: f.id,
@@ -270,6 +315,27 @@ export default function Collection() {
           />
         </>
       )}
+      {/* Los 6 grupos "bare" (ver GROUP_HANDLES) no tienen productos
+          propios en Shopify — sus productos reales están repartidos en
+          sus subcategorías, juntados y paginados a mano en el loader
+          (ver groupProducts/sortGroupProducts) porque no hay ninguna
+          colección real que los contenga a todos. */}
+      {groupLanding && resultCount === 0 && groupProducts && groupProducts.length > 0 && (
+        <>
+          <div id="collection-products" />
+          <ProductListing
+            title={collection.title}
+            products={groupProducts}
+            filters={[]}
+            sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
+            resultCount={groupResultCount}
+            manualPagination={{
+              page: Math.max(1, Number(searchParams.get('page')) || 1),
+              totalPages: Math.max(1, Math.ceil(groupResultCount / perPage)),
+            }}
+          />
+        </>
+      )}
       <Analytics.CollectionView
         data={{
           collection: {
@@ -349,6 +415,27 @@ const COLLECTION_COUNT_QUERY = `#graphql
       products(first: 250, filters: $filters) {
         nodes {
           id
+        }
+      }
+    }
+  }
+` as const;
+
+// Para la página de un grupo "bare" (0 productos propios, ver
+// GROUP_HANDLES): sus productos reales viven repartidos en sus
+// subcategorías, no hay una sola colección que los tenga todos — se
+// piden en paralelo, una llamada por subcategoría con esta misma query
+// (forma fija, apta para codegen — una query con un número variable de
+// alias por grupo no lo sería), y se juntan y ordenan en loadGroupProducts.
+const PRODUCTS_BY_COLLECTION_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
+  query ProductsByCollection($handle: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      products(first: $first) {
+        nodes {
+          ...ProductCard
+          createdAt
         }
       }
     }
