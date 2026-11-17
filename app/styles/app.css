@@ -525,11 +525,12 @@ body.search-open { overflow: hidden; }
   .mega-menu__rail-item:hover { background: var(--nav-surface); color: var(--nav-text); }
   .mega-menu__rail-item--active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
 
-  /* Alto fijo (para el grupo más grande, 11 subcategorías — 3 filas) —
-     para que el panel no cambie de tamaño al pasar de un grupo a otro
-     del rail, aunque tenga menos subcategorías con producto todavía. */
-  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; min-height: 400px; }
-  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 420px; overflow-y: auto; }
+  /* Alto fijo (de sobra para el grupo más grande, 11 subcategorías — 3
+     filas) — "height", no "min-height", para que no pueda ni encoger ni
+     crecer al pasar de un grupo a otro del rail aunque tenga menos
+     subcategorías con producto todavía. */
+  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; height: 460px; }
+  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 100%; overflow-y: auto; }
   .mega-menu__tile-icon { width: 56px; height: 56px; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }
 
