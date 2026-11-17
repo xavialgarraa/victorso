@@ -15,7 +15,7 @@ import {guessCategoryIcon} from '~/lib/categoryIcons';
 import {listCategoryCovers} from '~/lib/categoryCovers.server';
 import {
   parseLeafTitle,
-  groupNameFromTitle,
+  groupNameFromHandle,
   subcategoryLinksForGroup,
 } from '~/lib/connectors/categoryTaxonomy.server';
 
@@ -82,7 +82,11 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     throw redirect('/collections');
   }
 
-  const [{collection}, {collection: countData}, banner, categoryCovers] = await Promise.all([
+  // Se sabe por la URL sola, antes incluso de pedir la colección — si no
+  // es ninguno de los 7 grupos no hace falta la llamada extra de abajo.
+  const groupName = groupNameFromHandle(handle);
+
+  const [{collection}, {collection: countData}, banner, categoryCovers, subcategoryData] = await Promise.all([
     storefront.query(COLLECTION_QUERY, {
       variables: {
         handle,
@@ -104,6 +108,11 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     // es más simple que condicionarlo al handle antes de saber si es un
     // grupo, y es la misma llamada barata que ya usa /collections.
     listCategoryCovers(context.env).catch((): Record<string, string> => ({})),
+    // Para filtrar la cuadrícula a solo las subcategorías con al menos
+    // un producto y usar la foto de uno de ellos como icono por defecto
+    // (si no hay carátula propia en categoryCovers). Solo se pide cuando
+    // hace falta — en una página normal de producto/hoja es coste cero.
+    groupName ? storefront.query(ALL_COLLECTIONS_SUMMARY_QUERY) : Promise.resolve(null),
   ]);
 
   if (!collection) {
@@ -113,28 +122,36 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
   const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
-  // parseLeafTitle y groupNameFromTitle viven en un módulo .server —
-  // tienen que resolverse aquí en el loader, no en el componente (el
-  // componente también se incluye en el bundle de cliente para la
-  // hidratación, y ese bundle no puede importar nada de un módulo
-  // .server).
+  // parseLeafTitle vive en un módulo .server — tiene que resolverse aquí
+  // en el loader, no en el componente (el componente también se incluye
+  // en el bundle de cliente para la hidratación, y ese bundle no puede
+  // importar nada de un módulo .server).
   const leaf = parseLeafTitle(collection.title);
-  const groupName = groupNameFromTitle(collection.title);
-  // Las 7 colecciones "grupo" (bare, 0 productos — solo existían para el
-  // rail del mega-menú) ahora son la página de aterrizaje de su grupo:
-  // en vez del listado de productos (vacío), muestran la cuadrícula de
-  // sus propias subcategorías para poder navegar de categoría a
-  // subcategoría.
+  // Las colecciones "grupo" (6 bare + "PIONEER DJ & ALPHATHETA", ver
+  // GROUP_HANDLES) ahora aterrizan aquí con la cuadrícula de sus propias
+  // subcategorías para poder navegar de categoría a subcategoría — y,
+  // si el grupo sí tiene productos propios (el caso de Alphatheta), la
+  // cuadrícula sale encima del listado normal en vez de sustituirlo.
   const groupLanding = groupName
-    ? {
-        group: groupName,
-        tiles: subcategoryLinksForGroup(groupName).map(({sub, handle: subHandle}) => ({
-          sub,
-          handle: subHandle,
-          photo: categoryCovers[subHandle] ?? null,
-          fallbackIcon: guessCategoryIcon(sub),
-        })),
-      }
+    ? (() => {
+        const summaryByHandle = new Map(
+          (subcategoryData?.collections.nodes ?? []).map((c) => [c.handle, c]),
+        );
+        const tiles = subcategoryLinksForGroup(groupName)
+          .map(({sub, handle: subHandle}) => {
+            const summary = summaryByHandle.get(subHandle);
+            if (!summary || summary.products.nodes.length === 0) return null;
+            const autoPhoto = summary.products.nodes[0]?.featuredImage?.url ?? null;
+            return {
+              sub,
+              handle: subHandle,
+              photo: categoryCovers[subHandle] ?? autoPhoto,
+              fallbackIcon: guessCategoryIcon(sub),
+            };
+          })
+          .filter((t): t is NonNullable<typeof t> => t !== null);
+        return {group: groupName, tiles};
+      })()
     : null;
 
   return {collection, resultCount, banner, leaf, groupLanding};
@@ -210,28 +227,38 @@ export default function Collection() {
           <p className="collection-description">{collection.description}</p>
         </div>
       )}
-      {groupLanding ? (
-        // Página de un grupo (las 7 colecciones "bare" del mega-menú,
-        // siempre 0 productos): en vez del listado vacío, la cuadrícula
-        // de sus propias subcategorías — así se puede navegar de
-        // categoría a subcategoría también sin pasar por el mega-menú.
+      {groupLanding && (
+        // Página de un grupo (ver GROUP_HANDLES): cuadrícula para
+        // navegar de categoría a subcategoría también sin pasar por el
+        // mega-menú — solo las que ya tienen al menos un producto.
         <div className="container category-landing">
-          <div className="category-landing__grid">
-            {groupLanding.tiles.map((tile) => (
-              <Link key={tile.handle} to={`/collections/${tile.handle}`} className="category-landing__tile">
-                <span className="category-landing__icon">
-                  {tile.photo ? (
-                    <img src={tile.photo} alt="" loading="lazy" />
-                  ) : (
-                    <Icon name={tile.fallbackIcon} />
-                  )}
-                </span>
-                <span className="category-landing__label">{tile.sub}</span>
-              </Link>
-            ))}
-          </div>
+          {groupLanding.tiles.length === 0 ? (
+            <p className="category-landing__empty">{t('categoryLandingEmpty')}</p>
+          ) : (
+            <>
+              {!collection.description && <p className="category-landing__hint">{t('categoryLandingHint')}</p>}
+              <div className="category-landing__grid">
+                {groupLanding.tiles.map((tile) => (
+                  <Link key={tile.handle} to={`/collections/${tile.handle}`} className="category-landing__tile">
+                    <span className="category-landing__icon">
+                      {tile.photo ? (
+                        <img src={tile.photo} alt="" loading="lazy" />
+                      ) : (
+                        <Icon name={tile.fallbackIcon} />
+                      )}
+                    </span>
+                    <span className="category-landing__label">{tile.sub}</span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
         </div>
-      ) : (
+      )}
+      {/* "Alphatheta & Pioneer DJ" es grupo Y colección con productos
+          propios a la vez (ver GROUP_HANDLES) — ahí la cuadrícula de
+          arriba sale además del listado normal, no en su lugar. */}
+      {(!groupLanding || resultCount > 0) && (
         <>
           <div id="collection-products" />
           <ProductListing
@@ -322,6 +349,31 @@ const COLLECTION_COUNT_QUERY = `#graphql
       products(first: 250, filters: $filters) {
         nodes {
           id
+        }
+      }
+    }
+  }
+` as const;
+
+// Resumen barato de todas las colecciones (sin productos reales, solo
+// cuánto tienen y una foto) — se usa para filtrar y dar icono a la
+// cuadrícula de subcategorías de una página de grupo. Son pocas decenas
+// de colecciones, así que pedirlas todas y filtrar en JS (ver
+// groupLanding arriba) es más simple que generar una query dinámica con
+// un alias por subcategoría.
+const ALL_COLLECTIONS_SUMMARY_QUERY = `#graphql
+  query AllCollectionsSummary($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    collections(first: 100, sortKey: TITLE) {
+      nodes {
+        handle
+        products(first: 1) {
+          nodes {
+            id
+            featuredImage {
+              url
+            }
+          }
         }
       }
     }

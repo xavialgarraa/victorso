@@ -414,7 +414,15 @@ export type HeaderQuery = {
   collections: {
     nodes: Array<
       Pick<StorefrontAPI.Collection, 'id' | 'title' | 'handle'> & {
-        products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
+        products: {
+          nodes: Array<
+            Pick<StorefrontAPI.Product, 'id'> & {
+              featuredImage?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Image, 'url'>
+              >;
+            }
+          >;
+        };
       }
     >;
   };
@@ -1078,6 +1086,29 @@ export type CollectionCountQuery = {
   collection?: StorefrontAPI.Maybe<{
     products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
   }>;
+};
+
+export type AllCollectionsSummaryQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type AllCollectionsSummaryQuery = {
+  collections: {
+    nodes: Array<
+      Pick<StorefrontAPI.Collection, 'handle'> & {
+        products: {
+          nodes: Array<
+            Pick<StorefrontAPI.Product, 'id'> & {
+              featuredImage?: StorefrontAPI.Maybe<
+                Pick<StorefrontAPI.Image, 'url'>
+              >;
+            }
+          >;
+        };
+      }
+    >;
+  };
 };
 
 export type AllCollectionsQueryVariables = StorefrontAPI.Exact<{
@@ -1797,7 +1828,7 @@ export type PredictiveSearchQuery = {
 };
 
 interface GeneratedQueryTypes {
-  '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n    collections(first: 20, sortKey: TITLE) {\n      nodes {\n        id\n        title\n        handle\n        products(first: 1) {\n          nodes {\n            id\n          }\n        }\n      }\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
+  '#graphql\n  fragment Shop on Shop {\n    id\n    name\n    description\n    primaryDomain {\n      url\n    }\n    brand {\n      logo {\n        image {\n          url\n        }\n      }\n    }\n  }\n  query Header(\n    $country: CountryCode\n    $headerMenuHandle: String!\n    $language: LanguageCode\n  ) @inContext(language: $language, country: $country) {\n    shop {\n      ...Shop\n    }\n    menu(handle: $headerMenuHandle) {\n      ...Menu\n    }\n    collections(first: 100, sortKey: TITLE) {\n      nodes {\n        id\n        title\n        handle\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n': {
     return: HeaderQuery;
     variables: HeaderQueryVariables;
   };
@@ -1880,6 +1911,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query CollectionCount(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n    $filters: [ProductFilter!]\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: 250, filters: $filters) {\n        nodes {\n          id\n        }\n      }\n    }\n  }\n': {
     return: CollectionCountQuery;
     variables: CollectionCountQueryVariables;
+  };
+  '#graphql\n  query AllCollectionsSummary($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 100, sortKey: TITLE) {\n      nodes {\n        handle\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n            }\n          }\n        }\n      }\n    }\n  }\n': {
+    return: AllCollectionsSummaryQuery;
+    variables: AllCollectionsSummaryQueryVariables;
   };
   '#graphql\n  query AllCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 50, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 1) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: AllCollectionsQuery;

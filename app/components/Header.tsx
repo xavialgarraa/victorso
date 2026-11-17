@@ -156,7 +156,7 @@ type NavCollection = {
   id: string;
   title: string;
   handle: string;
-  products: {nodes: Array<{id: string}>};
+  products: {nodes: Array<{id: string; featuredImage?: {url: string} | null}>};
 };
 
 type NavLinkData = {href: string; label: string; cls?: string; icon?: IconName};
@@ -217,6 +217,7 @@ function collectionHandleFromUrl(href: string | null): string | null {
 function buildMegaMenuGroups(
   item: ShopifyMenuItemLike | undefined,
   categoryCovers: Record<string, string>,
+  productInfo: Map<string, {hasProducts: boolean; photo: string | null}>,
 ): MegaMenuGroup[] | null {
   const children = item?.items;
   if (!children || children.length === 0) return null;
@@ -225,10 +226,15 @@ function buildMegaMenuGroups(
     const href = toRelativeUrl(entry.url);
     if (!href) return null;
     const handle = collectionHandleFromUrl(href);
+    const info = handle ? productInfo.get(handle) : undefined;
+    // Por ahora, mientras el catálogo no cubra todas las subcategorías
+    // de la taxonomía nueva, no se muestra una subcategoría sin ningún
+    // producto todavía (llevaría a una página vacía desde el menú).
+    if (info && !info.hasProducts) return null;
     return {
       href,
       label: entry.title,
-      photo: handle ? categoryCovers[handle] : undefined,
+      photo: (handle ? categoryCovers[handle] : undefined) ?? info?.photo ?? undefined,
       fallbackIcon: guessCategoryIcon(entry.title),
     };
   }
@@ -282,6 +288,16 @@ function useNavLinks(
       c.products.nodes.length > 0,
   );
 
+  // Para que el mega-menú solo enseñe subcategorías con al menos un
+  // producto (y use la foto de uno de ellos como icono si no hay
+  // carátula propia en categoryCovers) — ver buildMegaMenuGroups.
+  const productInfo = new Map(
+    collections.map((c) => [
+      c.handle,
+      {hasProducts: c.products.nodes.length > 0, photo: c.products.nodes[0]?.featuredImage?.url ?? null},
+    ]),
+  );
+
   const standalone = NAV_STANDALONE_HANDLES.map((handle) =>
     realCollections.find((c) => c.handle === handle),
   ).filter((c): c is NavCollection => Boolean(c));
@@ -300,7 +316,7 @@ function useNavLinks(
   // con subcategorías anidadas, se usa el mega-menú con iconos — si no
   // existe todavía (como ahora, hasta que se monte con la lista real),
   // cae al desplegable plano de siempre, con las colecciones tal cual.
-  const megaMenuGroups = buildMegaMenuGroups(categoriesMenuItem, categoryCovers);
+  const megaMenuGroups = buildMegaMenuGroups(categoriesMenuItem, categoryCovers, productInfo);
   if (megaMenuGroups) {
     entries.push({
       type: 'megamenu',

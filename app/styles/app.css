@@ -1211,11 +1211,13 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .breadcrumb a:hover { color: var(--red); }
 
 /* ---------- Página de un grupo: cuadrícula de subcategorías ---------- */
-/* Las 7 colecciones "grupo" (bare, 0 productos — ver groupNameFromTitle
-   en collections.$handle.tsx) ahora aterrizan aquí en vez de un listado
-   vacío: una cuadrícula para navegar a cada subcategoría, con la misma
-   foto/icono que el mega-menú (ver categoryCovers / guessCategoryIcon). */
+/* Las colecciones "grupo" (ver GROUP_HANDLES / groupNameFromHandle en
+   collections.$handle.tsx) aterrizan aquí con una cuadrícula para
+   navegar a cada subcategoría (solo las que ya tienen producto), con la
+   misma foto/icono que el mega-menú (ver categoryCovers / guessCategoryIcon). */
 .category-landing { padding: 28px 16px 48px; }
+.category-landing__hint { color: var(--text-muted); margin: 0 0 20px; font-size: .95rem; }
+.category-landing__empty { color: var(--text-muted); font-size: .95rem; padding: 24px 0; }
 .category-landing__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 @media (min-width: 560px) { .category-landing__grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 900px) { .category-landing__grid { grid-template-columns: repeat(4, 1fr); } }

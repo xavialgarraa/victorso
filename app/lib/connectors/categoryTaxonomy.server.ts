@@ -149,13 +149,17 @@ export const LEAF_TAXONOMY_GID: Partial<Record<string, string>> = {
   'Subwoofers — Sonido / PA': 'gid://shopify/TaxonomyCategory/el-2-2-10',
 };
 
-/** Handle real de cada colección "grupo" (bare, 0 productos — solo
- * existe para el rail del mega-menú, ver Header.tsx) — confirmado a mano
- * contra Shopify, no se puede derivar del título porque Shopify genera
- * el handle a su manera (p.ej. quita el "&"). Se usa en el breadcrumb de
- * las colecciones hoja, ver parseLeafTitle. */
+/** Handle real de la colección "landing" de cada grupo — la página a la
+ * que apuntan el breadcrumb y el rail del mega-menú. Para 6 de los 7
+ * grupos es la colección "bare" (0 productos) creada solo para esto;
+ * "Alphatheta & Pioneer DJ" usa en cambio "pioneer-dj-alphatheta", la
+ * colección de siempre con sus 46 productos reales y el banner
+ * sincronizado — no la bare "alphatheta-pioneer-dj" que se creó de más
+ * al montar la taxonomía nueva (se deja huérfana en Shopify, sin usar).
+ * Los handles no se pueden derivar del título porque Shopify los genera
+ * a su manera (p.ej. quita el "&") — confirmados a mano contra Shopify. */
 export const GROUP_HANDLES: Record<CategoryGroupName, string> = {
-  'Alphatheta & Pioneer DJ': 'alphatheta-pioneer-dj',
+  'Alphatheta & Pioneer DJ': 'pioneer-dj-alphatheta',
   'Zona DJ': 'zona-dj',
   'Material de estudio': 'material-de-estudio',
   'Sonido / PA': 'sonido-pa',
@@ -163,6 +167,17 @@ export const GROUP_HANDLES: Record<CategoryGroupName, string> = {
   'Flightcases y bolsas': 'flightcases-y-bolsas',
   Iluminación: 'iluminacion',
 };
+
+/** El inverso de GROUP_HANDLES — identifica si una colección (por su
+ * handle, no por el título: "PIONEER DJ & ALPHATHETA" no sigue el mismo
+ * patrón que los demás) es la página de aterrizaje de uno de los 7
+ * grupos, para pintar ahí la cuadrícula de subcategorías. */
+export function groupNameFromHandle(handle: string): CategoryGroupName | null {
+  const entry = (Object.entries(GROUP_HANDLES) as Array<[CategoryGroupName, string]>).find(
+    ([, h]) => h === handle,
+  );
+  return entry ? entry[0] : null;
+}
 
 /** Si el título de una colección sigue el patrón "Subcategoría — Grupo"
  * de esta taxonomía (ver leafTitle más arriba) y el grupo es uno de los
@@ -180,15 +195,6 @@ export function parseLeafTitle(
   if (!(group in CATEGORY_GROUPS)) return null;
   const groupName = group as CategoryGroupName;
   return {group: groupName, sub: title.slice(0, idx), groupHandle: GROUP_HANDLES[groupName]};
-}
-
-/** Si el título es exactamente uno de los 7 grupos (la colección "bare"
- * en sí misma, 0 productos — ver GROUP_HANDLES), devuelve el nombre del
- * grupo; si no, null. Se usa para detectar cuándo una colección.$handle
- * es en realidad la página de un grupo y pintar ahí la cuadrícula de
- * subcategorías en vez del listado de productos (vacío). */
-export function groupNameFromTitle(title: string): CategoryGroupName | null {
-  return title in CATEGORY_GROUPS ? (title as CategoryGroupName) : null;
 }
 
 /** Handle real de cada colección hoja ("Subcategoría — Grupo"), para
@@ -259,7 +265,7 @@ export const LEAF_HANDLES: Record<string, string> = {
 
 /** Las subcategorías de un grupo, con su handle real — para la
  * cuadrícula de navegación de la página de un grupo (ver
- * groupNameFromTitle). Las hojas sin handle conocido (no debería pasar,
+ * groupNameFromHandle). Las hojas sin handle conocido (no debería pasar,
  * ver LEAF_HANDLES) se omiten en vez de romper el render. */
 export function subcategoryLinksForGroup(
   group: CategoryGroupName,

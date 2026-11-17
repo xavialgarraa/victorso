@@ -270,7 +270,7 @@ export const HEADER_QUERY = `#graphql
     menu(handle: $headerMenuHandle) {
       ...Menu
     }
-    collections(first: 20, sortKey: TITLE) {
+    collections(first: 100, sortKey: TITLE) {
       nodes {
         id
         title
@@ -278,6 +278,9 @@ export const HEADER_QUERY = `#graphql
         products(first: 1) {
           nodes {
             id
+            featuredImage {
+              url
+            }
           }
         }
       }
