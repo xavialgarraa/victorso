@@ -502,7 +502,9 @@ body.search-open { overflow: hidden; }
     background: var(--nav-bg); border: 1px solid var(--nav-border);
     border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.4); z-index: 95;
   }
-  .mainnav__dropdown:hover .mega-menu__panel,
+  /* Ya no es ":hover" puro de CSS — el panel se centra lejos del botón
+     (ver arriba) y un ":hover" se corta en cuanto el ratón cruza ese
+     hueco. Lo controla React con un margen de 250ms, ver NavMegaMenu. */
   .mega-menu__panel.open { display: flex; }
 
   .mega-menu__rail {
@@ -511,12 +513,22 @@ body.search-open { overflow: hidden; }
     border-right: 1px solid var(--nav-border);
   }
   .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; }
-  .mega-menu__rail-item > span:not(.icon) { flex: 1; text-align: left; }
+  /* min-width:0 es necesario para que un item flex pueda encoger por
+     debajo del ancho de su texto — si no, "Alphatheta & Pioneer DJ" (el
+     nombre más largo) no cabía en los 230px del rail y empujaba la
+     flecha fuera de su caja, invadiendo visualmente la cuadrícula. */
+  .mega-menu__rail-item > span:not(.icon) {
+    flex: 1; min-width: 0; text-align: left;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .mega-menu__rail-item .icon ~ .icon { display: inline-flex; margin-left: 6px; font-size: .8rem; }
   .mega-menu__rail-item:hover { background: var(--nav-surface); color: var(--nav-text); }
   .mega-menu__rail-item--active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
 
-  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; }
+  /* Alto fijo (para el grupo más grande, 11 subcategorías — 3 filas) —
+     para que el panel no cambie de tamaño al pasar de un grupo a otro
+     del rail, aunque tenga menos subcategorías con producto todavía. */
+  .mega-menu__tiles-wrap { padding: 18px 22px; min-width: 460px; max-width: 680px; min-height: 400px; }
   .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 420px; overflow-y: auto; }
   .mega-menu__tile-icon { width: 56px; height: 56px; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }

@@ -17,6 +17,7 @@ import {getLocaleFromRequest} from '~/lib/locales';
 import {Faq} from '~/components/Faq';
 import {jsonLdHtml} from '~/lib/jsonLd';
 import {findBrandLogoByVendor} from '~/lib/brands';
+import {GROUP_HANDLES} from '~/lib/connectors/categoryTaxonomy.server';
 
 export const meta: Route.MetaFunction = () => {
   const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
@@ -87,13 +88,16 @@ export async function loader({context, request}: Route.LoaderArgs) {
   // producto real de esa categoría (nunca la imagen nativa de la colección
   // en Shopify Admin — todo se gestiona desde nuestro panel), siempre la
   // misma mientras no cambie el catálogo o se fije una carátula manual.
+  // Solo las 7 categorías "grupo" de la taxonomía (ver GROUP_HANDLES) —
+  // antes salían mezcladas con todas las subcategorías con producto,
+  // que aquí abultaban de más (p.ej. "Controladoras — Zona DJ" junto a
+  // "Zona DJ" mismo). No se filtra por "tiene producto propio": 6 de
+  // los 7 grupos son colecciones "bare" con 0 productos directos a
+  // propósito (sus productos están en las subcategorías) — exigir
+  // products.length>0 aquí las dejaría todas fuera menos Alphatheta.
+  const groupHandles = new Set(Object.values(GROUP_HANDLES));
   const collectionsWithProducts = collections.nodes
-    .filter(
-      (c) =>
-        c.handle !== 'frontpage' &&
-        c.handle !== 'novedades-destacadas-home' &&
-        c.products.nodes.length > 0,
-    )
+    .filter((c) => groupHandles.has(c.handle))
     // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
     // hay más categorías de las que caben aquí, "Ver todas las categorías"
     // lleva a /collections, que sí las muestra todas sin límite.
@@ -494,7 +498,7 @@ const HOME_PRODUCTS_QUERY = `#graphql
 const HOME_COLLECTIONS_QUERY = `#graphql
   query HomeCollections($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
-    collections(first: 20, sortKey: TITLE) {
+    collections(first: 100, sortKey: TITLE) {
       nodes {
         id
         handle

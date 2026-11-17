@@ -525,15 +525,34 @@ function NavMegaMenu({
   const [activeGroup, setActiveGroup] = useState(0);
   const hasGroupRail = groups.length > 1 || Boolean(groups[0]?.label);
   const current = groups[Math.min(activeGroup, groups.length - 1)] ?? groups[0];
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
   function close() {
     setOpen(false);
     setActiveGroup(0);
   }
 
+  // El panel ya no cuelga pegado debajo del botón (se centra bajo toda
+  // la cabecera, ver CSS) — un simple ":hover" se corta en cuanto el
+  // ratón cruza el hueco entre los dos y el menú se cerraba solo al
+  // bajar un poco. En vez de eso, el propio React controla la apertura
+  // con un pequeño margen: abre al entrar en CUALQUIER punto (botón o
+  // panel) y solo cierra si no ha vuelto a entrar en ninguno de los dos
+  // en 250ms — tiempo de sobra para cruzar ese hueco en diagonal.
+  function openNow() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setOpen(true);
+  }
+  function closeSoon() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(close, 250);
+  }
+
   return (
     <div
       className="mainnav__dropdown mega-menu"
+      onMouseEnter={openNow}
+      onMouseLeave={closeSoon}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) close();
       }}
