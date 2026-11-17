@@ -341,12 +341,21 @@ body.search-open { overflow: hidden; }
 .mainnav.open,
 .mainnav.closing {
   display: flex;
-  justify-content: space-evenly;
+  /* "flex-start", no "space-evenly": con contenido que no cabe y hay
+     que hacer scroll, "space-evenly" reparte el hueco sobrante TAMBIÉN
+     antes del primer item — así que con pantallas pequeñas y
+     "Categorías" desplegada, el principio del menú ("Inicio") podía
+     quedar cortado por ARRIBA sin forma de subir a verlo. */
+  justify-content: flex-start;
   position: fixed;
   top: var(--header-offset);
   left: 0; right: 0; bottom: 0;
   z-index: 80;
-  overflow: hidden;
+  /* "overflow-y: auto" — no "hidden": con "Categorías" desplegada
+     (hasta 7 subcategorías más todo lo demás de la barra) el contenido
+     ya no cabe en pantallas pequeñas sin cortarse, y con overflow
+     oculto no había forma de bajar a ver el resto. */
+  overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
   padding: 4px 0 20px;
   background: var(--nav-overlay);
   backdrop-filter: blur(22px) saturate(1.1);
