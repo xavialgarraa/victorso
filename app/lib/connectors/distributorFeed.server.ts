@@ -24,6 +24,7 @@ export type DistributorProduct = {
 const CHUNK_COLLECTION = 'distributor_feed_chunks';
 const META_COLLECTION = 'distributor_feed_meta';
 const SELECTION_COLLECTION = 'distributor_selection';
+const HISTORY_COLLECTION = 'distributor_sync_history';
 
 export type DistributorFeedMeta = {
   supplierId: string;
@@ -38,6 +39,39 @@ export type DistributorFeedMeta = {
  * corre en Node normal, no en el runtime de Oxygen. */
 export async function getDistributorFeedMeta(env: Env, supplierId: string): Promise<DistributorFeedMeta | null> {
   return getDoc<DistributorFeedMeta>(env, META_COLLECTION, supplierId);
+}
+
+/** Una ejecución del sync nocturno (ver scripts/supplier-feeds/sync-ftp-feeds.mjs),
+ * con el diff contra el catálogo de la vez anterior — para el historial
+ * del panel ("qué cambió cada día"). Si ese día falló (FTP caído,
+ * formato distinto...) viene con ok:false y el mensaje de error, sin
+ * las demás cifras. */
+export type DistributorSyncHistoryEntry = {
+  supplierId: string;
+  ranAt: string;
+  ok: boolean;
+  error?: string;
+  totalCount?: number;
+  added?: number;
+  removed?: number;
+  priceChanged?: number;
+  stockChanged?: number;
+};
+
+/** Las últimas ejecuciones de un proveedor, más recientes primero. El
+ * script externo ya solo conserva como mucho ~60 (ver HISTORY_KEEP
+ * ahí), así que traerlas todas y cortar aquí es simple y suficiente. */
+export async function listDistributorSyncHistory(
+  env: Env,
+  supplierId: string,
+  limit = 14,
+): Promise<DistributorSyncHistoryEntry[]> {
+  const docs = await listDocs<DistributorSyncHistoryEntry>(env, HISTORY_COLLECTION);
+  return docs
+    .map((d) => d.data)
+    .filter((h) => h.supplierId === supplierId)
+    .sort((a, b) => (a.ranAt < b.ranAt ? 1 : -1))
+    .slice(0, limit);
 }
 
 export async function listDistributorProducts(env: Env, supplierId: string): Promise<DistributorProduct[]> {

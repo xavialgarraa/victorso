@@ -140,6 +140,45 @@ async function firestoreListIds(token, projectId, collection) {
   return ids;
 }
 
+function fromFirestoreValue(value) {
+  if ('stringValue' in value) return value.stringValue;
+  if ('integerValue' in value) return Number(value.integerValue);
+  if ('doubleValue' in value) return value.doubleValue;
+  if ('booleanValue' in value) return value.booleanValue;
+  if ('nullValue' in value) return null;
+  if ('arrayValue' in value) return (value.arrayValue.values ?? []).map(fromFirestoreValue);
+  if ('mapValue' in value) return fromFirestoreFields(value.mapValue.fields ?? {});
+  return null;
+}
+
+function fromFirestoreFields(fields) {
+  const obj = {};
+  for (const [k, v] of Object.entries(fields)) obj[k] = fromFirestoreValue(v);
+  return obj;
+}
+
+async function firestoreGetDoc(token, projectId, collection, id) {
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${id}`;
+  const response = await fetch(url, {headers: {Authorization: `Bearer ${token}`}});
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Firestore GET ${collection}/${id} -> ${response.status}: ${await response.text()}`);
+  const doc = await response.json();
+  return fromFirestoreFields(doc.fields ?? {});
+}
+
+// Trae el catálogo que ya hubiera en Firestore ANTES de pisarlo con el
+// nuevo — para poder calcular el diff del historial (altas, bajas,
+// cambios de precio/stock) sin depender de que el script de la web lo
+// recalcule luego.
+async function fetchExistingProducts(token, projectId, supplierId) {
+  const existingIds = await firestoreListIds(token, projectId, 'distributor_feed_chunks');
+  const ourIds = existingIds.filter((id) => id.startsWith(`${supplierId}__`));
+  const docs = await Promise.all(
+    ourIds.map((id) => firestoreGetDoc(token, projectId, 'distributor_feed_chunks', id)),
+  );
+  return docs.flatMap((d) => d?.items ?? []);
+}
+
 async function firestoreDeleteDoc(token, projectId, collection, id) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${id}`;
   const response = await fetch(url, {method: 'DELETE', headers: {Authorization: `Bearer ${token}`}});
@@ -298,39 +337,110 @@ async function fetchMidwich() {
   }
 }
 
+// Compara el catálogo de antes y el de ahora (por EAN) para el
+// historial del panel — altas, bajas y cuántos cambiaron de precio o
+// de stock, no solo "cuántos productos hay hoy".
+function diffProducts(oldProducts, newProducts) {
+  const oldByEan = new Map(oldProducts.map((p) => [p.ean, p]));
+  const newByEan = new Map(newProducts.map((p) => [p.ean, p]));
+  let added = 0, removed = 0, priceChanged = 0, stockChanged = 0;
+  for (const ean of newByEan.keys()) if (!oldByEan.has(ean)) added++;
+  for (const ean of oldByEan.keys()) if (!newByEan.has(ean)) removed++;
+  for (const [ean, oldP] of oldByEan) {
+    const newP = newByEan.get(ean);
+    if (!newP) continue;
+    if (oldP.price !== newP.price) priceChanged++;
+    if (oldP.stock !== newP.stock) stockChanged++;
+  }
+  return {added, removed, priceChanged, stockChanged};
+}
+
+// Id de documento válido para Firestore (sin "/") y ordenable por fecha
+// a simple vista en el panel — un documento por ejecución, no uno por
+// día, así que si alguna vez se relanza a mano en el mismo día no se
+// pisan entre sí.
+function historyDocId(supplierId, isoDate) {
+  return `${supplierId}__${isoDate.replace(/[:.]/g, '-')}`;
+}
+
+const HISTORY_KEEP = 60; // ~2 meses de sync diaria — de sobra para el panel.
+
+// Corre una vez al día, así que sin esto el historial crecería para
+// siempre — se queda solo con las últimas HISTORY_KEEP ejecuciones de
+// cada proveedor (el id ya ordena por fecha al ser ISO).
+async function pruneHistory(token, projectId, supplierId) {
+  const allIds = await firestoreListIds(token, projectId, 'distributor_sync_history');
+  const ourIds = allIds.filter((id) => id.startsWith(`${supplierId}__`)).sort();
+  const toDelete = ourIds.slice(0, Math.max(0, ourIds.length - HISTORY_KEEP));
+  for (const id of toDelete) {
+    await firestoreDeleteDoc(token, projectId, 'distributor_sync_history', id);
+  }
+}
+
 // --- Orquestación: descarga, trocea y escribe en Firestore. ---
 
 async function syncSupplier(token, projectId, supplierId, fetchFn) {
-  console.log(`[${supplierId}] descargando...`);
-  const products = await fetchFn();
-  console.log(`[${supplierId}] ${products.length} productos con EAN.`);
+  const ranAt = new Date().toISOString();
+  let oldProducts = [];
+  try {
+    console.log(`[${supplierId}] descargando...`);
+    const products = await fetchFn();
+    console.log(`[${supplierId}] ${products.length} productos con EAN.`);
 
-  const existingIds = await firestoreListIds(token, projectId, 'distributor_feed_chunks');
-  const staleIds = existingIds.filter((id) => id.startsWith(`${supplierId}__`));
+    const existingIds = await firestoreListIds(token, projectId, 'distributor_feed_chunks');
+    const staleIds = existingIds.filter((id) => id.startsWith(`${supplierId}__`));
+    // El catálogo de antes se trae ANTES de pisar los chunks, para el
+    // diff del historial — solo hace falta si de verdad había algo ya.
+    if (staleIds.length > 0) {
+      const docs = await Promise.all(staleIds.map((id) => firestoreGetDoc(token, projectId, 'distributor_feed_chunks', id)));
+      oldProducts = docs.flatMap((d) => d?.items ?? []);
+    }
 
-  const chunkCount = Math.ceil(products.length / CHUNK_SIZE) || 0;
-  for (let i = 0; i < chunkCount; i++) {
-    const items = products.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-    await firestoreSetDoc(token, projectId, 'distributor_feed_chunks', `${supplierId}__${i}`, {
+    const chunkCount = Math.ceil(products.length / CHUNK_SIZE) || 0;
+    for (let i = 0; i < chunkCount; i++) {
+      const items = products.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      await firestoreSetDoc(token, projectId, 'distributor_feed_chunks', `${supplierId}__${i}`, {
+        supplierId,
+        chunkIndex: i,
+        items,
+      });
+    }
+
+    // Borra los chunks que ya no hacen falta si el catálogo se ha reducido.
+    for (const id of staleIds) {
+      const idx = Number(id.split('__')[1]);
+      if (!(idx < chunkCount)) await firestoreDeleteDoc(token, projectId, 'distributor_feed_chunks', id);
+    }
+
+    await firestoreSetDoc(token, projectId, 'distributor_feed_meta', supplierId, {
       supplierId,
-      chunkIndex: i,
-      items,
+      updatedAt: ranAt,
+      totalCount: products.length,
+      chunkCount,
     });
-  }
+    console.log(`[${supplierId}] escrito en Firestore (${chunkCount} chunks).`);
 
-  // Borra los chunks que ya no hacen falta si el catálogo se ha reducido.
-  for (const id of staleIds) {
-    const idx = Number(id.split('__')[1]);
-    if (!(idx < chunkCount)) await firestoreDeleteDoc(token, projectId, 'distributor_feed_chunks', id);
+    const diff = diffProducts(oldProducts, products);
+    await firestoreSetDoc(token, projectId, 'distributor_sync_history', historyDocId(supplierId, ranAt), {
+      supplierId,
+      ranAt,
+      ok: true,
+      totalCount: products.length,
+      ...diff,
+    });
+    await pruneHistory(token, projectId, supplierId);
+  } catch (error) {
+    // Un fallo (FTP caído, fichero con formato distinto...) también
+    // queda anotado — si no, un día sin sync pasa desapercibido en el
+    // panel hasta que alguien se fija en la fecha de "última sync".
+    await firestoreSetDoc(token, projectId, 'distributor_sync_history', historyDocId(supplierId, ranAt), {
+      supplierId,
+      ranAt,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }).catch((e) => console.error(`[${supplierId}] no se pudo anotar el fallo en el historial:`, e));
+    throw error;
   }
-
-  await firestoreSetDoc(token, projectId, 'distributor_feed_meta', supplierId, {
-    supplierId,
-    updatedAt: new Date().toISOString(),
-    totalCount: products.length,
-    chunkCount,
-  });
-  console.log(`[${supplierId}] escrito en Firestore (${chunkCount} chunks).`);
 }
 
 async function main() {

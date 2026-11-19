@@ -8,6 +8,7 @@ import {
   getDistributorProducts,
   getSelection,
   saveSelection,
+  listDistributorSyncHistory,
   type DistributorProduct,
 } from '~/lib/connectors/distributorFeed.server';
 import {
@@ -48,11 +49,31 @@ export async function loader({request, context}: Route.LoaderArgs) {
 
   const ftpSuppliers = SUPPLIERS.filter((s) => s.mode === 'ftp');
 
-  const [ftpMetas, allProducts, selection, catalog] = await Promise.all([
-    Promise.all(ftpSuppliers.map(async (s) => ({id: s.id, meta: await getDistributorFeedMeta(context.env, s.id)}))),
+  const [ftpMetas, allProducts, selection, catalog, overviewSelection] = await Promise.all([
+    // El historial completo (14 ejecuciones) solo hace falta del
+    // proveedor que se está viendo — de los demás basta la última, para
+    // el punto de estado de la fila de arriba ("conectado"/"falló").
+    Promise.all(
+      ftpSuppliers.map(async (s) => {
+        const [meta, history] = await Promise.all([
+          getDistributorFeedMeta(context.env, s.id),
+          listDistributorSyncHistory(context.env, s.id, s.id === supplierId ? 14 : 1),
+        ]);
+        return {id: s.id, meta, history};
+      }),
+    ),
     getDistributorProducts(context.env, supplierId),
     getSelection(context.env, supplierId),
     getShopifyCatalogByBarcode(context.env),
+    // Cuántos productos hay marcados de CADA proveedor (no solo el que se
+    // está viendo) — barato, un documento por proveedor, para la fila de
+    // estado de arriba.
+    Promise.all(
+      SUPPLIERS.map(async (s) => ({
+        id: s.id,
+        selectedCount: (await getSelection(context.env, s.id))?.selectedEans.length ?? 0,
+      })),
+    ),
   ]);
 
   const selectedEans = new Set(selection?.selectedEans ?? []);
@@ -86,6 +107,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
     {
       user,
       ftpMetas,
+      overviewSelection,
       supplierId,
       q,
       onlySelected,
@@ -361,6 +383,7 @@ export default function AdminDistribuidores() {
   const {
     user,
     ftpMetas,
+    overviewSelection,
     supplierId,
     q,
     onlySelected,
@@ -414,27 +437,113 @@ export default function AdminDistribuidores() {
       <div className="dist-tabs">
         {SUPPLIERS.map((s) => {
           const active = s.id === supplierId;
-          const meta = s.mode === 'ftp' ? ftpMetas.find((m) => m.id === s.id)?.meta : null;
+          const info = s.mode === 'ftp' ? ftpMetas.find((m) => m.id === s.id) : null;
+          const meta = info?.meta ?? null;
+          const lastRun = info?.history[0] ?? null;
+          const selectedForSupplier = overviewSelection.find((o) => o.id === s.id)?.selectedCount ?? 0;
+          // Punto de estado: rojo si la última sincronización falló (lo
+          // anota el propio script, ver sync-ftp-feeds.mjs), ámbar si
+          // nunca ha sincronizado, verde si hay un catálogo al día —
+          // para verlo de un vistazo sin entrar en cada pestaña.
+          const dotClass =
+            s.mode === 'live'
+              ? 'dist-tab__dot--ok'
+              : lastRun && !lastRun.ok
+                ? 'dist-tab__dot--error'
+                : meta
+                  ? 'dist-tab__dot--ok'
+                  : 'dist-tab__dot--pending';
           return (
             <a key={s.id} href={`?supplier=${s.id}`} className={`dist-tab${active ? ' dist-tab--active' : ''}`}>
-              <span className="dist-tab__name">{s.name}</span>
+              <span className="dist-tab__name">
+                <span className={`dist-tab__dot ${dotClass}`} aria-hidden="true" />
+                {s.name}
+              </span>
               {s.mode === 'live' ? (
                 <span className="dist-tab__badge">En vivo</span>
               ) : meta ? (
                 <span className="dist-tab__meta">
-                  {meta.totalCount} productos · {new Date(meta.updatedAt).toLocaleDateString()}
+                  {meta.totalCount} productos · act. {new Date(meta.updatedAt).toLocaleString('es-ES', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'})}
+                  {lastRun && !lastRun.ok && <> · ⚠ falló la última sync</>}
                 </span>
               ) : (
                 <span className="dist-tab__meta">Sin sincronizar</span>
               )}
+              <span className="dist-tab__meta">{selectedForSupplier} marcados para la web</span>
             </a>
           );
         })}
         <div className="dist-tab dist-tab--disabled">
-          <span className="dist-tab__name">Audio-Technica</span>
+          <span className="dist-tab__name">
+            <span className="dist-tab__dot dist-tab__dot--pending" aria-hidden="true" />
+            Audio-Technica
+          </span>
           <span className="dist-tab__meta">Pendiente — su FTP bloquea el acceso</span>
         </div>
       </div>
+
+      {(() => {
+        const activeInfo = ftpMetas.find((m) => m.id === supplierId);
+        if (!activeInfo) return null;
+        return (
+          <div className="admin-card" style={{marginBottom: 18}}>
+            <strong>Historial de sincronización — {SUPPLIERS.find((s) => s.id === supplierId)?.name}</strong>
+            <p className="admin-hint" style={{marginTop: 4}}>
+              Una fila por cada vez que se ha ejecutado el proceso nocturno (sobre las 4-5h de España). "Altas" y
+              "bajas" son productos que han aparecido o desaparecido del feed del distribuidor; "precio"/"stock" son
+              cuántos productos ya existentes cambiaron de precio o de stock ese día.
+            </p>
+            {activeInfo.history.length === 0 ? (
+              <p className="admin-hint">Todavía no hay ninguna ejecución registrada para este distribuidor.</p>
+            ) : (
+              <div className="admin-scroll" style={{maxHeight: 260, marginTop: 8}}>
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Resultado</th>
+                      <th>Productos</th>
+                      <th>Altas</th>
+                      <th>Bajas</th>
+                      <th>Precio</th>
+                      <th>Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeInfo.history.map((h) => (
+                      <tr key={h.ranAt}>
+                        <td>
+                          {new Date(h.ranAt).toLocaleString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td>
+                          {h.ok ? (
+                            <span style={{color: '#1a9c53', fontWeight: 600}}>OK</span>
+                          ) : (
+                            <span className="admin-msg--error" title={h.error}>
+                              Falló{h.error ? `: ${h.error.slice(0, 80)}` : ''}
+                            </span>
+                          )}
+                        </td>
+                        <td>{h.ok ? h.totalCount : '—'}</td>
+                        <td>{h.ok ? `+${h.added}` : '—'}</td>
+                        <td>{h.ok ? `-${h.removed}` : '—'}</td>
+                        <td>{h.ok ? h.priceChanged : '—'}</td>
+                        <td>{h.ok ? h.stockChanged : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <Form method="get" className="dist-toolbar">
         <input type="hidden" name="supplier" value={supplierId} />

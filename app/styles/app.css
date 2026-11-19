@@ -2161,8 +2161,14 @@ aside li { margin-bottom: .125rem; }
 .dist-tab:hover { border-color: #c7c7cf; }
 .dist-tab--active { border-color: var(--red); border-width: 2px; background: #fff; }
 .dist-tab--disabled { opacity: .55; cursor: default; }
-.dist-tab__name { font-weight: 700; font-size: .9rem; }
+.dist-tab__name { font-weight: 700; font-size: .9rem; display: inline-flex; align-items: center; }
 .dist-tab__meta { font-size: .76rem; color: #6b6b73; }
+.dist-tab__dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; flex-shrink: 0;
+}
+.dist-tab__dot--ok { background: #1a9c53; }
+.dist-tab__dot--error { background: var(--red); }
+.dist-tab__dot--pending { background: #c9a227; }
 .dist-tab__badge {
   display: inline-flex; align-items: center; gap: 4px; font-size: .68rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .04em; color: #7a5200; background: #fdf1da;
