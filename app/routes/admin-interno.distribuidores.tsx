@@ -49,7 +49,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
 
   const ftpSuppliers = SUPPLIERS.filter((s) => s.mode === 'ftp');
 
-  const [ftpMetas, allProducts, selection, catalog, overviewSelection] = await Promise.all([
+  const [ftpMetas, allProducts, selection, catalog] = await Promise.all([
     // El historial completo (14 ejecuciones) solo hace falta del
     // proveedor que se está viendo — de los demás basta la última, para
     // el punto de estado de la fila de arriba ("conectado"/"falló").
@@ -65,23 +65,44 @@ export async function loader({request, context}: Route.LoaderArgs) {
     getDistributorProducts(context.env, supplierId),
     getSelection(context.env, supplierId),
     getShopifyCatalogByBarcode(context.env),
-    // Cuántos productos hay marcados de CADA proveedor (no solo el que se
-    // está viendo) — barato, un documento por proveedor, para la fila de
-    // estado de arriba.
-    Promise.all(
-      SUPPLIERS.map(async (s) => ({
-        id: s.id,
-        selectedCount: (await getSelection(context.env, s.id))?.selectedEans.length ?? 0,
-      })),
-    ),
   ]);
 
-  const selectedEans = new Set(selection?.selectedEans ?? []);
+  const savedEans = new Set(selection?.selectedEans ?? []);
   // Productos cuyo EAN ya existe en Shopify — para Walkasse esto es "ya se
   // sincroniza" por el mecanismo de siempre (ver /admin-interno/proveedores),
   // así que no hace falta marcarlos aquí: se muestran ya conectados en vez
   // de pedir que se seleccionen.
   const connectedEans = new Set(allProducts.filter((p) => catalog.has(p.ean)).map((p) => p.ean));
+  // Antes de guardar nada para este proveedor, un producto ya conectado
+  // sale marcado por defecto (tiene sentido: ya está en la tienda). Pero
+  // en cuanto se ha guardado una vez, esa elección manual es la que
+  // manda — si alguien desmarca uno conectado y guarda, tiene que
+  // quedarse desmarcado, no volver a aparecer marcado solo porque sigue
+  // existiendo en Shopify (eso pasaba antes: el checkbox hacía
+  // selected || connected siempre, ignorando lo guardado).
+  const selectedEans = selection ? savedEans : new Set([...savedEans, ...connectedEans]);
+
+  // Cuántos productos hay "marcados para la web" de CADA proveedor (no
+  // solo el que se está viendo), para la fila de estado de arriba.
+  // Walkasse no usa esta selección manual en absoluto (se conecta solo
+  // por EAN existente, ver más arriba) — ahí lo que importa es cuántos
+  // de sus productos ya están de verdad en la tienda, reutilizando el
+  // mismo catálogo de Shopify que ya se ha pedido para éste proveedor,
+  // no una selección guardada que para Walkasse nunca se rellena.
+  const overviewSelection = await Promise.all(
+    SUPPLIERS.map(async (s) => {
+      if (s.mode === 'live') {
+        if (s.id === supplierId) {
+          return {id: s.id, selectedCount: connectedEans.size};
+        }
+        const products = await getDistributorProducts(context.env, s.id);
+        return {id: s.id, selectedCount: products.filter((p) => catalog.has(p.ean)).length};
+      }
+      if (s.id === supplierId) return {id: s.id, selectedCount: selectedEans.size};
+      const sel = await getSelection(context.env, s.id);
+      return {id: s.id, selectedCount: sel?.selectedEans.length ?? 0};
+    }),
+  );
 
   let filtered = allProducts;
   if (q) {
@@ -95,7 +116,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
     );
   }
   if (onlySelected) {
-    filtered = filtered.filter((p) => selectedEans.has(p.ean) || connectedEans.has(p.ean));
+    filtered = filtered.filter((p) => selectedEans.has(p.ean));
   }
 
   const totalFiltered = filtered.length;
@@ -115,7 +136,7 @@ export async function loader({request, context}: Route.LoaderArgs) {
       totalPages,
       totalFiltered,
       totalAll: allProducts.length,
-      selectedCount: new Set([...selectedEans, ...connectedEans]).size,
+      selectedCount: selectedEans.size,
       pageItems,
       selectedEans: Array.from(selectedEans),
       connectedEans: Array.from(connectedEans),
@@ -271,7 +292,23 @@ export async function action({request, context}: Route.ActionArgs) {
     // selección previa completa y solo se actualiza el estado de los EANs
     // que estaban visibles en esta página (ver "pageEans" más abajo).
     const existing = await getSelection(context.env, supplierId);
-    const prevSelected = new Set(existing?.selectedEans ?? []);
+    let prevSelected: Set<string>;
+    if (existing) {
+      prevSelected = new Set(existing.selectedEans);
+    } else {
+      // Primer guardado de este proveedor: antes de esto, un producto ya
+      // conectado a Shopify salía marcado "de oficio" en pantalla (ver el
+      // loader) sin que esa elección estuviera guardada en ningún sitio.
+      // Si aquí se partiera de un set vacío, guardar solo esta página
+      // "olvidaría" los conectados de las demás páginas que nadie ha
+      // tocado todavía — se parte del conjunto completo de conectados
+      // como base, y encima se aplican los cambios de esta página.
+      const [products, catalog] = await Promise.all([
+        getDistributorProducts(context.env, supplierId),
+        getShopifyCatalogByBarcode(context.env),
+      ]);
+      prevSelected = new Set(products.filter((p) => catalog.has(p.ean)).map((p) => p.ean));
+    }
     const pageEans = formData.getAll('pageEans').map(String);
     const checkedEans = new Set(formData.getAll('ean').map(String));
 
@@ -571,7 +608,7 @@ export default function AdminDistribuidores() {
             <ProductCard
               key={p.ean}
               product={p}
-              checked={selectedSet.has(p.ean) || connectedSet.has(p.ean)}
+              checked={selectedSet.has(p.ean)}
               connected={connectedSet.has(p.ean)}
               connectedProductId={connectedProductIds[p.ean]}
               supplierId={supplierId}
