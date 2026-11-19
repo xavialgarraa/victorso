@@ -3,7 +3,7 @@ import type {Route} from './+types/collections.$handle';
 import {getPaginationVariables, Analytics} from '@shopify/hydrogen';
 import type {ProductFilter} from '@shopify/hydrogen/storefront-api-types';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
-import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {PRODUCT_CARD_FRAGMENT, MENU_FRAGMENT} from '~/lib/fragments';
 import {ProductListing, type ListingFilter} from '~/components/ProductListing';
 import {useI18n} from '~/lib/i18n';
 import {jsonLdHtml} from '~/lib/jsonLd';
@@ -14,10 +14,11 @@ import {Icon} from '~/lib/icons';
 import {guessCategoryIcon} from '~/lib/categoryIcons';
 import {listCategoryCovers} from '~/lib/categoryCovers.server';
 import {
-  parseLeafTitle,
-  groupNameFromHandle,
-  subcategoryLinksForGroup,
-} from '~/lib/connectors/categoryTaxonomy.server';
+  findCategoriesMenuItem,
+  groupByHandle,
+  subcategoriesOf,
+  leafContext,
+} from '~/lib/categoryMenu';
 import type {ProductsByCollectionQuery} from 'storefrontapi.generated';
 
 type GroupProduct = NonNullable<ProductsByCollectionQuery['collection']>['products']['nodes'][number];
@@ -85,11 +86,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     throw redirect('/collections');
   }
 
-  // Se sabe por la URL sola, antes incluso de pedir la colección — si no
-  // es ninguno de los 7 grupos no hace falta la llamada extra de abajo.
-  const groupName = groupNameFromHandle(handle);
-
-  const [{collection}, {collection: countData}, banner, categoryCovers, subcategoryData] = await Promise.all([
+  const [{collection}, {collection: countData}, banner, categoryCovers, {menu}] = await Promise.all([
     storefront.query(COLLECTION_QUERY, {
       variables: {
         handle,
@@ -106,16 +103,13 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
       variables: {handle, filters},
     }),
     getCollectionBanner(context.env, handle, locale),
-    // Solo hace falta para la cuadrícula de subcategorías de una página
-    // de grupo (ver groupLanding abajo) — pedirlo siempre y en paralelo
-    // es más simple que condicionarlo al handle antes de saber si es un
-    // grupo, y es la misma llamada barata que ya usa /collections.
     listCategoryCovers(context.env).catch((): Record<string, string> => ({})),
-    // Para filtrar la cuadrícula a solo las subcategorías con al menos
-    // un producto y usar la foto de uno de ellos como icono por defecto
-    // (si no hay carátula propia en categoryCovers). Solo se pide cuando
-    // hace falta — en una página normal de producto/hoja es coste cero.
-    groupName ? storefront.query(ALL_COLLECTIONS_SUMMARY_QUERY) : Promise.resolve(null),
+    // El árbol "Categorías" del menú de Shopify es la única fuente de
+    // verdad de qué es una categoría y qué es una subcategoría de cuál
+    // (ver CATEGORIAS.md) — no una lista fija en el código, para que
+    // Víctor pueda reordenar/renombrar/mover desde el editor de
+    // Navegación de Shopify sin tocar nada aquí.
+    storefront.query(CATEGORIES_MENU_QUERY),
   ]);
 
   if (!collection) {
@@ -125,37 +119,43 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   redirectIfHandleIsLocalized(request, {handle, data: collection});
 
   const resultCount = countData?.products.nodes.length ?? collection.products.nodes.length;
-  // parseLeafTitle vive en un módulo .server — tiene que resolverse aquí
-  // en el loader, no en el componente (el componente también se incluye
-  // en el bundle de cliente para la hidratación, y ese bundle no puede
-  // importar nada de un módulo .server).
-  const leaf = parseLeafTitle(collection.title);
-  // Las colecciones "grupo" (6 bare + "PIONEER DJ & ALPHATHETA", ver
-  // GROUP_HANDLES) ahora aterrizan aquí con la cuadrícula de sus propias
-  // subcategorías para poder navegar de categoría a subcategoría — y,
-  // si el grupo sí tiene productos propios (el caso de Alphatheta), la
-  // cuadrícula sale encima del listado normal en vez de sustituirlo.
-  const groupLanding = groupName
-    ? (() => {
-        const summaryByHandle = new Map(
-          (subcategoryData?.collections.nodes ?? []).map((c) => [c.handle, c]),
-        );
-        const tiles = subcategoryLinksForGroup(groupName)
-          .map(({sub, handle: subHandle}) => {
-            const summary = summaryByHandle.get(subHandle);
-            if (!summary || summary.products.nodes.length === 0) return null;
-            const autoPhoto = summary.products.nodes[0]?.featuredImage?.url ?? null;
-            return {
-              sub,
-              handle: subHandle,
-              photo: categoryCovers[subHandle] ?? autoPhoto,
-              fallbackIcon: guessCategoryIcon(sub),
-            };
-          })
-          .filter((t): t is NonNullable<typeof t> => t !== null);
-        return {group: groupName, tiles};
-      })()
+  // findCategoriesMenuItem/leafContext/groupByHandle viven en un módulo
+  // normal (no ".server") a propósito — ver ~/lib/categoryMenu — pero
+  // igualmente se resuelven aquí en el loader, no en el componente: la
+  // query del menú solo se pide del lado del servidor.
+  const categoriesItem = findCategoriesMenuItem(menu);
+  const leafRef = leafContext(categoriesItem, handle);
+  const leaf = leafRef
+    ? {group: leafRef.group.title, groupHandle: leafRef.group.handle, sub: leafRef.sub.title}
     : null;
+  const groupRef = groupByHandle(categoriesItem, handle);
+
+  // Las categorías principales (6 "bare" + "PIONEER DJ & ALPHATHETA",
+  // fusionada a mano en el menú de Shopify) aterrizan aquí con la
+  // cuadrícula de sus propias subcategorías para poder navegar de
+  // categoría a subcategoría — y, si la categoría sí tiene productos
+  // propios (el caso de Alphatheta), la cuadrícula sale encima del
+  // listado normal en vez de sustituirlo.
+  let groupLanding: {group: string; tiles: Array<{sub: string; handle: string; photo: string | null; fallbackIcon: ReturnType<typeof guessCategoryIcon>}>} | null = null;
+  if (groupRef) {
+    const subs = subcategoriesOf(categoriesItem, groupRef.handle);
+    const summaryData = subs.length > 0 ? await storefront.query(ALL_COLLECTIONS_SUMMARY_QUERY) : null;
+    const summaryByHandle = new Map((summaryData?.collections.nodes ?? []).map((c) => [c.handle, c]));
+    const tiles = subs
+      .map((sub) => {
+        const summary = summaryByHandle.get(sub.handle);
+        if (!summary || summary.products.nodes.length === 0) return null;
+        const autoPhoto = summary.products.nodes[0]?.featuredImage?.url ?? null;
+        return {
+          sub: sub.title,
+          handle: sub.handle,
+          photo: categoryCovers[sub.handle] ?? autoPhoto,
+          fallbackIcon: guessCategoryIcon(sub.title),
+        };
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+    groupLanding = {group: groupRef.title, tiles};
+  }
 
   // Las 6 colecciones "grupo" bare (0 productos propios — todo lo que
   // tienen está repartido en sus subcategorías) muestran aquí el
@@ -273,7 +273,7 @@ export default function Collection() {
         </div>
       )}
       {groupLanding && (
-        // Página de un grupo (ver GROUP_HANDLES): cuadrícula para
+        // Página de una categoría principal (ver ~/lib/categoryMenu): cuadrícula para
         // navegar de categoría a subcategoría también sin pasar por el
         // mega-menú — solo las que ya tienen al menos un producto.
         <div className="container category-landing">
@@ -300,9 +300,11 @@ export default function Collection() {
           )}
         </div>
       )}
-      {/* "Alphatheta & Pioneer DJ" es grupo Y colección con productos
-          propios a la vez (ver GROUP_HANDLES) — ahí la cuadrícula de
-          arriba sale además del listado normal, no en su lugar. */}
+      {/* "Alphatheta & Pioneer DJ" es categoría principal Y colección
+          con productos propios a la vez (el menú de Shopify enlaza esa
+          categoría a la colección real, no a una "bare") — ahí la
+          cuadrícula de arriba sale además del listado normal, no en su
+          lugar. */}
       {(!groupLanding || resultCount > 0) && (
         <>
           <div id="collection-products" />
@@ -315,7 +317,7 @@ export default function Collection() {
           />
         </>
       )}
-      {/* Los 6 grupos "bare" (ver GROUP_HANDLES) no tienen productos
+      {/* Las categorías principales "bare" no tienen productos
           propios en Shopify — sus productos reales están repartidos en
           sus subcategorías, juntados y paginados a mano en el loader
           (ver groupProducts/sortGroupProducts) porque no hay ninguna
@@ -421,12 +423,26 @@ const COLLECTION_COUNT_QUERY = `#graphql
   }
 ` as const;
 
-// Para la página de un grupo "bare" (0 productos propios, ver
-// GROUP_HANDLES): sus productos reales viven repartidos en sus
+// El árbol "Categorías" del menú de Shopify — ver ~/lib/categoryMenu y
+// CATEGORIAS.md. Es la misma query que usa el header (MENU_FRAGMENT en
+// ~/lib/fragments), pedida aparte aquí porque esta ruta no comparte el
+// loader de la raíz.
+const CATEGORIES_MENU_QUERY = `#graphql
+  ${MENU_FRAGMENT}
+  query CategoriesMenu($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    menu(handle: "main-menu") {
+      ...Menu
+    }
+  }
+` as const;
+
+// Para la página de una categoría principal "bare" (0 productos
+// propios): sus productos reales viven repartidos en sus
 // subcategorías, no hay una sola colección que los tenga todos — se
 // piden en paralelo, una llamada por subcategoría con esta misma query
 // (forma fija, apta para codegen — una query con un número variable de
-// alias por grupo no lo sería), y se juntan y ordenan en loadGroupProducts.
+// alias por grupo no lo sería), y se juntan y ordenan en sortGroupProducts.
 const PRODUCTS_BY_COLLECTION_QUERY = `#graphql
   ${PRODUCT_CARD_FRAGMENT}
   query ProductsByCollection($handle: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)

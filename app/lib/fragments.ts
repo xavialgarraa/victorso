@@ -211,7 +211,7 @@ export const CART_QUERY_FRAGMENT = `#graphql
   }
 ` as const;
 
-const MENU_FRAGMENT = `#graphql
+export const MENU_FRAGMENT = `#graphql
   fragment MenuItem on MenuItem {
     id
     resourceId

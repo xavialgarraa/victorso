@@ -637,6 +637,38 @@ export type HomeProductsQuery = {
   }>;
 };
 
+export type CategoriesMenuHomeQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type CategoriesMenuHomeQuery = {
+  menu?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id'> & {
+      items: Array<
+        Pick<
+          StorefrontAPI.MenuItem,
+          'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+        > & {
+          items: Array<
+            Pick<
+              StorefrontAPI.MenuItem,
+              'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+            > & {
+              items: Array<
+                Pick<
+                  StorefrontAPI.MenuItem,
+                  'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+                >
+              >;
+            }
+          >;
+        }
+      >;
+    }
+  >;
+};
+
 export type HomeCollectionsQueryVariables = StorefrontAPI.Exact<{
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
@@ -1086,6 +1118,38 @@ export type CollectionCountQuery = {
   collection?: StorefrontAPI.Maybe<{
     products: {nodes: Array<Pick<StorefrontAPI.Product, 'id'>>};
   }>;
+};
+
+export type CategoriesMenuQueryVariables = StorefrontAPI.Exact<{
+  country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
+  language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
+}>;
+
+export type CategoriesMenuQuery = {
+  menu?: StorefrontAPI.Maybe<
+    Pick<StorefrontAPI.Menu, 'id'> & {
+      items: Array<
+        Pick<
+          StorefrontAPI.MenuItem,
+          'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+        > & {
+          items: Array<
+            Pick<
+              StorefrontAPI.MenuItem,
+              'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+            > & {
+              items: Array<
+                Pick<
+                  StorefrontAPI.MenuItem,
+                  'id' | 'resourceId' | 'tags' | 'title' | 'type' | 'url'
+                >
+              >;
+            }
+          >;
+        }
+      >;
+    }
+  >;
 };
 
 export type ProductsByCollectionQueryVariables = StorefrontAPI.Exact<{
@@ -1896,6 +1960,10 @@ interface GeneratedQueryTypes {
     return: HomeProductsQuery;
     variables: HomeProductsQueryVariables;
   };
+  '#graphql\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n  query CategoriesMenuHome($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    menu(handle: "main-menu") {\n      ...Menu\n    }\n  }\n': {
+    return: CategoriesMenuHomeQuery;
+    variables: CategoriesMenuHomeQueryVariables;
+  };
   '#graphql\n  query HomeCollections($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collections(first: 100, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        products(first: 10) {\n          nodes {\n            id\n            featuredImage {\n              url\n              altText\n            }\n          }\n        }\n      }\n    }\n  }\n': {
     return: HomeCollectionsQuery;
     variables: HomeCollectionsQueryVariables;
@@ -1959,6 +2027,10 @@ interface GeneratedQueryTypes {
   '#graphql\n  query CollectionCount(\n    $handle: String!\n    $country: CountryCode\n    $language: LanguageCode\n    $filters: [ProductFilter!]\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: 250, filters: $filters) {\n        nodes {\n          id\n        }\n      }\n    }\n  }\n': {
     return: CollectionCountQuery;
     variables: CollectionCountQueryVariables;
+  };
+  '#graphql\n  #graphql\n  fragment MenuItem on MenuItem {\n    id\n    resourceId\n    tags\n    title\n    type\n    url\n  }\n  fragment GrandchildMenuItem on MenuItem {\n    ...MenuItem\n  }\n  fragment ChildMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...GrandchildMenuItem\n    }\n  }\n  fragment ParentMenuItem on MenuItem {\n    ...MenuItem\n    items {\n      ...ChildMenuItem\n    }\n  }\n  fragment Menu on Menu {\n    id\n    items {\n      ...ParentMenuItem\n    }\n  }\n\n  query CategoriesMenu($country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    menu(handle: "main-menu") {\n      ...Menu\n    }\n  }\n': {
+    return: CategoriesMenuQuery;
+    variables: CategoriesMenuQueryVariables;
   };
   '#graphql\n  #graphql\n  fragment ProductCardPrice on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    description(truncateAt: 110)\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n      id\n      availableForSale\n      quantityAvailable\n    }\n    reviewsMetafield: metafield(namespace: "reviews", key: "reviews") {\n      value\n    }\n  }\n\n  query ProductsByCollection($handle: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: $first) {\n        nodes {\n          ...ProductCard\n          createdAt\n        }\n      }\n    }\n  }\n': {
     return: ProductsByCollectionQuery;

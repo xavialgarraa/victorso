@@ -5,6 +5,12 @@ import type {HeaderQuery, CartApiQueryFragment} from 'storefrontapi.generated';
 import {useAside} from '~/components/Aside';
 import {Icon, type IconName} from '~/lib/icons';
 import {guessCategoryIcon} from '~/lib/categoryIcons';
+import {
+  findCategoriesMenuItem,
+  toRelativeUrl,
+  collectionHandleFromUrl,
+  type ShopifyMenuItemLike,
+} from '~/lib/categoryMenu';
 import {ThemeToggle} from '~/components/ThemeToggle';
 import {LOCALES, useI18n, type LocaleCode} from '~/lib/i18n';
 import {
@@ -27,12 +33,9 @@ export function Header({header, isLoggedIn, cart, categoryCovers}: HeaderProps) 
   const {t} = useI18n();
   const mainNav = useMainNav();
   // Item "Categorías" del menú de Shopify (Admin > Contenido >
-  // Navegación), si Víctor lo ha montado con subcategorías anidadas — ver
-  // buildMegaMenuGroups. Insensible a mayúsculas/acentos para no depender
-  // de que lo escriba exactamente igual.
-  const categoriesMenuItem = header.menu?.items.find((item) =>
-    item.title.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() === 'categorias',
-  );
+  // Navegación), si Víctor lo ha montado con subcategorías anidadas —
+  // ver buildMegaMenuGroups y ~/lib/categoryMenu.
+  const categoriesMenuItem = findCategoriesMenuItem(header.menu);
 
   return (
     <>
@@ -167,39 +170,10 @@ type NavEntry =
   | {type: 'dropdown'; label: string; items: Array<{href: string; label: string}>}
   | {type: 'megamenu'; label: string; groups: MegaMenuGroup[]; viewAllHref?: string};
 
-// Mínimo común de lo que necesitamos de un MenuItem de Shopify, a 3
-// niveles (Shopify permite anidar hasta 3 en el editor de Navegación) —
-// evita acoplar este parseo al tipo generado exacto de un fragment en
-// concreto, basta con que tenga esta forma.
-type ShopifyMenuItemLike = {
-  title: string;
-  url?: string | null;
-  items?: Array<{
-    title: string;
-    url?: string | null;
-    items?: Array<{title: string; url?: string | null}> | null;
-  }> | null;
-};
-
-/** Quita el dominio de una URL de menú de Shopify (siempre viene absoluta,
- * tipo https://tienda.myshopify.com/collections/altavoces) para poder
- * usarla con <NavLink>/<Link> de React Router. */
-function toRelativeUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).pathname + new URL(url).search;
-  } catch {
-    return url.startsWith('/') ? url : null;
-  }
-}
-
-/** Handle de colección a partir de una URL de menú tipo
- * "/collections/altavoces" — para buscar su carátula (ver
- * categoryCovers.server.ts) y usarla como icono de la pestaña. */
-function collectionHandleFromUrl(href: string | null): string | null {
-  const match = href?.match(/\/collections\/([^/?#]+)/);
-  return match ? match[1] : null;
-}
+// ShopifyMenuItemLike, toRelativeUrl y collectionHandleFromUrl viven en
+// ~/lib/categoryMenu (compartidas con las páginas de colección y la
+// home, ver CATEGORIAS.md) — una sola fuente de verdad para parsear el
+// menú "Categorías" de Shopify.
 
 /**
  * Construye el mega-menú de "Categorías" a partir de un item del menú de

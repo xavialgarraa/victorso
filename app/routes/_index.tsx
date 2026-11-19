@@ -1,7 +1,8 @@
 import {useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
 import {Money} from '@shopify/hydrogen';
-import {PRODUCT_CARD_FRAGMENT} from '~/lib/fragments';
+import {PRODUCT_CARD_FRAGMENT, MENU_FRAGMENT} from '~/lib/fragments';
+import {findCategoriesMenuItem, categoryGroups} from '~/lib/categoryMenu';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {QuoteForm} from '~/components/QuoteForm';
@@ -17,7 +18,6 @@ import {getLocaleFromRequest} from '~/lib/locales';
 import {Faq} from '~/components/Faq';
 import {jsonLdHtml} from '~/lib/jsonLd';
 import {findBrandLogoByVendor} from '~/lib/brands';
-import {GROUP_HANDLES} from '~/lib/connectors/categoryTaxonomy.server';
 
 export const meta: Route.MetaFunction = () => {
   const title = 'Victor So Professional — Equipos DJ, Sonido y Audiovisuales';
@@ -38,7 +38,7 @@ export const meta: Route.MetaFunction = () => {
 export async function loader({context, request}: Route.LoaderArgs) {
   const {storefront} = context;
   const locale = getLocaleFromRequest(request);
-  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers] =
+  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers, {menu}] =
     await Promise.all([
       storefront.query(HOME_PRODUCTS_QUERY),
       storefront.query(HOME_COLLECTIONS_QUERY),
@@ -46,6 +46,10 @@ export async function loader({context, request}: Route.LoaderArgs) {
       getHeroSettings(context.env),
       listFaqItems(context.env, locale),
       listCategoryCovers(context.env),
+      // El árbol "Categorías" del menú de Shopify — misma fuente de
+      // verdad que el mega-menú y las páginas de categoría, ver
+      // ~/lib/categoryMenu y CATEGORIAS.md.
+      storefront.query(CATEGORIES_MENU_QUERY),
     ]);
 
   // Slides del hero vinculados a un producto (ver /admin-interno/hero): el
@@ -88,14 +92,15 @@ export async function loader({context, request}: Route.LoaderArgs) {
   // producto real de esa categoría (nunca la imagen nativa de la colección
   // en Shopify Admin — todo se gestiona desde nuestro panel), siempre la
   // misma mientras no cambie el catálogo o se fije una carátula manual.
-  // Solo las 7 categorías "grupo" de la taxonomía (ver GROUP_HANDLES) —
+  // Solo las categorías principales del menú "Categorías" de Shopify —
   // antes salían mezcladas con todas las subcategorías con producto,
   // que aquí abultaban de más (p.ej. "Controladoras — Zona DJ" junto a
-  // "Zona DJ" mismo). No se filtra por "tiene producto propio": 6 de
-  // los 7 grupos son colecciones "bare" con 0 productos directos a
-  // propósito (sus productos están en las subcategorías) — exigir
-  // products.length>0 aquí las dejaría todas fuera menos Alphatheta.
-  const groupHandles = new Set(Object.values(GROUP_HANDLES));
+  // "Zona DJ" mismo). No se filtra por "tiene producto propio": la
+  // mayoría de categorías son colecciones "bare" con 0 productos
+  // directos a propósito (sus productos están en las subcategorías) —
+  // exigir products.length>0 aquí las dejaría casi todas fuera.
+  const categoriesItem = findCategoriesMenuItem(menu);
+  const groupHandles = new Set(categoryGroups(categoriesItem).map((g) => g.handle));
   const collectionsWithProducts = collections.nodes
     .filter((c) => groupHandles.has(c.handle))
     // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
@@ -491,6 +496,20 @@ const HOME_PRODUCTS_QUERY = `#graphql
           ...ProductCard
         }
       }
+    }
+  }
+` as const;
+
+// El árbol "Categorías" del menú de Shopify — ver ~/lib/categoryMenu y
+// CATEGORIAS.md. Misma query que usa el header (MENU_FRAGMENT en
+// ~/lib/fragments), pedida aparte aquí porque esta ruta no comparte el
+// loader de la raíz.
+const CATEGORIES_MENU_QUERY = `#graphql
+  ${MENU_FRAGMENT}
+  query CategoriesMenuHome($country: CountryCode, $language: LanguageCode)
+    @inContext(country: $country, language: $language) {
+    menu(handle: "main-menu") {
+      ...Menu
     }
   }
 ` as const;
