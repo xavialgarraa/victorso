@@ -552,7 +552,7 @@ body.search-open { overflow: hidden; }
      tenga producto) hay que subir este número a mano — medido en vivo
      con getBoundingClientRect, no a ojo, porque ".mainnav a" (más
      especificidad) cambia el padding real de cada item del rail. */
-  .mega-menu__tiles-wrap { display: flex; padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
+  .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
   .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 100%; overflow-y: auto; }
   .mega-menu__tile-icon { width: 56px; height: 56px; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }
