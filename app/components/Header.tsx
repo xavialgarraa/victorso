@@ -213,10 +213,10 @@ function buildCategoryTiles(
   return items.length > 0 ? items : null;
 }
 
-// Handles que se quedan como item propio en la barra, fuera del
-// desplegable "Categorías" — no son una categoría de producto más, son
-// secciones especiales (ofertas, marca insignia de la tienda).
-const NAV_STANDALONE_HANDLES = ['outlet', 'pioneer-dj-alphatheta'];
+// Handles que se quedan como link suelto en la barra en vez de pasar
+// por el bucle de categorías de abajo — OUTLET no es una categoría de
+// producto con subcategorías, es una sección especial (ofertas).
+const NAV_STANDALONE_HANDLES = ['outlet'];
 
 function useNavLinks(
   collections: NavCollection[] = [],
@@ -257,18 +257,13 @@ function useNavLinks(
     .filter((c) => !NAV_STANDALONE_HANDLES.includes(c.handle))
     .map((c) => ({href: `/collections/${c.handle}`, label: c.title}));
 
-  const entries: NavEntry[] = [
-    {type: 'link', href: '/', label: t('navHome')},
-    {type: 'link', href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
-  ];
+  const entries: NavEntry[] = [];
   // Cada categoría del menú "Categorías" de Shopify (Admin > Contenido >
   // Navegación) sale como su propio item en la barra, igual que OUTLET
-  // o PIONEER DJ & ALPHATHETA — al pasar el ratón se abre un mega-menú
-  // plano con solo sus subcategorías (sin columna de grupos, ya que
-  // cada categoría es su propio item, no hay entre qué elegir). Se
-  // salta la que ya tenga su propio link suelto en la barra (Alphatheta
-  // & Pioneer DJ → PIONEER DJ & ALPHATHETA, ver NAV_STANDALONE_HANDLES)
-  // para no enseñar la misma marca dos veces.
+  // — al pasar el ratón se abre un mega-menú plano con solo sus
+  // subcategorías (sin columna de grupos, ya que cada categoría es su
+  // propio item, no hay entre qué elegir). Incluye Alphatheta & Pioneer
+  // DJ, que antes tenía un link suelto a parte sin subcategorías.
   const categoryChildren = categoriesMenuItem?.items ?? [];
   let addedAnyCategory = false;
   for (const child of categoryChildren) {
