@@ -13,12 +13,14 @@ import {syncRunLabel} from '~/lib/syncRunLabel';
 import {
   deleteSupplier,
   getSupplier,
+  listLatestSyncRunPerSupplier,
   listRecentSyncRuns,
   listSuppliers,
   logSyncRun,
   resolveFeedUrl,
   saveSupplier,
   type SupplierConfig,
+  type SyncRunLog,
 } from '~/lib/connectors/suppliers.server';
 import {
   applyPriceChanges,
@@ -53,12 +55,40 @@ function slugify(name: string): string {
 
 export async function loader({request, context}: Route.LoaderArgs) {
   const {user, headers} = await requireAdminUser(request, context.env);
-  const [suppliers, recentRuns] = await Promise.all([
+  const [suppliers, recentRuns, latestRunBySupplier] = await Promise.all([
     listSuppliers(context.env),
     listRecentSyncRuns(context.env, 8),
+    listLatestSyncRunPerSupplier(context.env),
   ]);
   const storeHandle = context.env.PUBLIC_STORE_DOMAIN.replace(/\.myshopify\.com$/, '');
-  return data({user, suppliers, recentRuns, storeHandle}, {headers});
+  return data(
+    {user, suppliers, recentRuns, latestRuns: Object.fromEntries(latestRunBySupplier), storeHandle},
+    {headers},
+  );
+}
+
+/** Insignia de "última sincronización" para la cabecera de cada tarjeta
+ * de proveedor — para ver de un vistazo si está al día o si la última
+ * vez falló, sin bajar a la tabla de "Últimas sincronizaciones". */
+function LastRunBadge({run}: {run: SyncRunLog | undefined}) {
+  if (!run) return <span className="admin-hint" style={{fontSize: '.78rem'}}>Nunca sincronizado</span>;
+  const failed = run.errors.length > 0;
+  return (
+    <span
+      className={`admin-badge ${failed ? 'admin-badge--error' : 'admin-badge--apply'}`}
+      title={failed ? run.errors.slice(0, 3).join(' · ') : undefined}
+    >
+      {failed ? '⚠ ' : ''}
+      Última: {new Date(run.finishedAt).toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+      {' · '}
+      {run.changedCount} cambios
+    </span>
+  );
 }
 
 // Los precios de StelOrder nunca se aplican desde aquí (ver nota en
@@ -516,7 +546,7 @@ export async function action({request, context}: Route.ActionArgs) {
 }
 
 export default function AdminProveedores() {
-  const {user, suppliers, recentRuns, storeHandle} = useLoaderData<typeof loader>();
+  const {user, suppliers, recentRuns, latestRuns, storeHandle} = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isBusy = navigation.state !== 'idle';
@@ -562,9 +592,12 @@ export default function AdminProveedores() {
       </p>
 
       <div className="admin-card">
-        <div>
-          <strong>StelOrder</strong>{' '}
-          <span className="admin-badge admin-badge--apply">Activo</span>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8}}>
+          <div>
+            <strong>StelOrder</strong>{' '}
+            <span className="admin-badge admin-badge--apply">Activo</span>
+          </div>
+          <LastRunBadge run={latestRuns['stelorder']} />
         </div>
         <p className="admin-hint" style={{marginTop: 8, maxWidth: 640}}>
           A diferencia de los demás proveedores, StelOrder puede traer productos que{' '}
@@ -774,9 +807,12 @@ export default function AdminProveedores() {
       </div>
 
       <div className="admin-card">
-        <div>
-          <strong>Productos migrados (por SKU)</strong>{' '}
-          <span className="admin-badge admin-badge--apply">Activo</span>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8}}>
+          <div>
+            <strong>Productos migrados (por SKU)</strong>{' '}
+            <span className="admin-badge admin-badge--apply">Activo</span>
+          </div>
+          <LastRunBadge run={latestRuns['stelorder-sku']} />
         </div>
         <p className="admin-hint" style={{marginTop: 8, maxWidth: 640}}>
           Para el catálogo migrado de LiveCommerce (subido una vez por CSV nativo de Shopify, no por este
@@ -950,12 +986,13 @@ export default function AdminProveedores() {
 
       {suppliers.map(({id, config}) => (
         <div key={id} className="admin-card">
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8}}>
             <div>
               <strong>{config.name}</strong>{' '}
               <span className={`admin-badge ${config.active ? 'admin-badge--apply' : 'admin-badge--dry'}`}>
                 {config.active ? 'Activo' : 'Inactivo'}
-              </span>
+              </span>{' '}
+              <LastRunBadge run={latestRuns[id]} />
             </div>
             <Form
               method="post"

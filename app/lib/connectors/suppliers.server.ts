@@ -80,3 +80,19 @@ export async function listRecentSyncRuns(env: Env, limit = 10): Promise<Array<{i
     .sort((a, b) => (a.run.finishedAt < b.run.finishedAt ? 1 : -1))
     .slice(0, limit);
 }
+
+/** La última ejecución registrada de CADA proveedor (incluye "stelorder"
+ * y "stelorder-sku", que solo se escriben desde el cron diario — ver
+ * api.sync-trigger.tsx — nunca desde los botones de "Comparar" de este
+ * panel, que son solo una vista previa). Para el estado de arriba de
+ * cada tarjeta en admin-interno/proveedores, sin tener que bajar a la
+ * tabla de "Últimas sincronizaciones" a buscar la fila que toca. */
+export async function listLatestSyncRunPerSupplier(env: Env): Promise<Map<string, SyncRunLog>> {
+  const docs = await listDocs<SyncRunLog>(env, 'sync_runs');
+  const latest = new Map<string, SyncRunLog>();
+  for (const {data: run} of docs) {
+    const current = latest.get(run.supplierId);
+    if (!current || current.finishedAt < run.finishedAt) latest.set(run.supplierId, run);
+  }
+  return latest;
+}
