@@ -485,21 +485,17 @@ body.search-open { overflow: hidden; }
   /* Mega-menu de escritorio: cada categoría es ya su propio item de la
      barra (ver Header.tsx), así que el panel es siempre una única
      cuadrícula de iconos de sus subcategorías — sin columna de grupos.
-     Se centra bajo TODA la cabecera (no bajo su propio botón, que no
-     está en el centro de la barra) — por eso .mega-menu vuelve a
-     position:static: así el panel toma como referencia .header (sticky,
-     ancho completo) en vez de su propio trigger, y top:100% sigue
-     cayendo justo debajo del menú tanto arriba del todo como ya con el
-     header pegado scrolleando. */
-  .mega-menu { position: static; }
+     Se abre centrado bajo SU PROPIO botón (.mainnav__dropdown ya es
+     position:relative, igual que el resto de desplegables de la barra),
+     no bajo toda la cabecera. */
   .mega-menu__panel {
     position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
     background: var(--nav-bg); border: 1px solid var(--nav-border);
     border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.4); z-index: 95;
   }
-  /* Ya no es ":hover" puro de CSS — el panel se centra lejos del botón
-     (ver arriba) y un ":hover" se corta en cuanto el ratón cruza ese
-     hueco. Lo controla React con un margen de 250ms, ver NavMegaMenu. */
+  /* Ya no es ":hover" puro de CSS porque el cierre lleva un margen de
+     250ms para poder cruzar el hueco entre botón y panel — lo controla
+     React, ver NavMegaMenu. */
   .mega-menu__panel.open { display: flex; }
 
   /* Víctor pidió más tamaño (iconos pequeños, referencia Madrid HiFi) —
@@ -507,10 +503,10 @@ body.search-open { overflow: hidden; }
      alto que necesite (3-4 filas según cuántas subcategorías tenga)
      hasta ese tope, con scroll solo si alguna llega a tener muchas más
      en el futuro. */
-  .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 22px 28px; min-width: 460px; max-width: 720px; }
-  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 26px 14px; max-height: 420px; overflow-y: auto; }
-  .mega-menu__tile-icon { width: 68px; height: 68px; }
-  .mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .82rem; }
+  .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 26px 32px; min-width: 500px; max-width: 780px; }
+  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 30px 16px; max-height: 460px; overflow-y: auto; }
+  .mega-menu__tile-icon { width: 76px; height: 76px; }
+  .mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .86rem; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }
 
   /* Franja tipo tira LED que separa el menu de categorias de la cabecera,
