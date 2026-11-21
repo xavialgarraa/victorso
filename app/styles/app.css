@@ -113,7 +113,19 @@ input[type=checkbox], input[type=radio] { accent-color: var(--red); }
    visible: 100vw en .storehero mide el ancho de la ventana CONTANDO la
    barra de scroll vertical, así que siempre se pasa por esos ~15-17px del
    ancho real visible y crea scroll horizontal en toda la página. */
-html { scroll-behavior: smooth; overflow-x: clip; }
+html {
+  scroll-behavior: smooth; overflow-x: clip;
+  scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+}
+/* Barra de scroll de toda la página, a juego con el resto de la marca —
+   fina y discreta, roja al pasar el ratón por encima (mismo tratamiento
+   que ya tenía el scroll horizontal de "Encuentra tu equipo", ver
+   .catrow). Firefox solo soporta scrollbar-width/color de arriba (sin
+   el cambio al pasar el ratón); esto es solo para Chrome/Edge/Safari. */
+html::-webkit-scrollbar { width: 10px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 2px solid var(--bg); background-clip: padding-box; }
+html::-webkit-scrollbar-thumb:hover { background: var(--red); border-color: var(--bg); background-clip: padding-box; }
 body {
   margin: 0;
   font-family: var(--font-body);
