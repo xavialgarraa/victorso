@@ -1,8 +1,9 @@
+import type {CSSProperties} from 'react';
 import {useLoaderData, Link} from 'react-router';
 import type {Route} from './+types/_index';
 import {Money} from '@shopify/hydrogen';
 import {PRODUCT_CARD_FRAGMENT, MENU_FRAGMENT} from '~/lib/fragments';
-import {findCategoriesMenuItem, categoryGroups} from '~/lib/categoryMenu';
+import {findCategoriesMenuItem, categoryGroups, subcategoriesOf} from '~/lib/categoryMenu';
 import {ProductCard} from '~/components/ProductCard';
 import {StoreHero, type HeroSlide} from '~/components/StoreHero';
 import {QuoteForm} from '~/components/QuoteForm';
@@ -101,6 +102,21 @@ export async function loader({context, request}: Route.LoaderArgs) {
   // exigir products.length>0 aquí las dejaría casi todas fuera.
   const categoriesItem = findCategoriesMenuItem(menu);
   const groupHandles = new Set(categoryGroups(categoriesItem).map((g) => g.handle));
+  const collectionByHandle = new Map(collections.nodes.map((c) => [c.handle, c]));
+  // La propia colección "bare" de la categoría casi nunca tiene producto
+  // directo (vive en sus subcategorías, ver nota de abajo) — si no tiene
+  // foto propia, se busca la primera foto entre sus subcategorías antes
+  // de rendirse al icono genérico.
+  function firstPhotoFor(c: (typeof collections.nodes)[number]) {
+    const ownPhoto = c.products.nodes.find((p) => p.featuredImage)?.featuredImage;
+    if (ownPhoto) return ownPhoto;
+    for (const sub of subcategoriesOf(categoriesItem, c.handle)) {
+      const subCollection = collectionByHandle.get(sub.handle);
+      const photo = subCollection?.products.nodes.find((p) => p.featuredImage)?.featuredImage;
+      if (photo) return photo;
+    }
+    return null;
+  }
   const collectionsWithProducts = collections.nodes
     .filter((c) => groupHandles.has(c.handle))
     // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
@@ -109,16 +125,22 @@ export async function loader({context, request}: Route.LoaderArgs) {
     .slice(0, 10)
     .map((c) => {
       const override = categoryCovers[c.handle];
-      const withPhoto = c.products.nodes.filter((p) => p.featuredImage);
-      const firstPhoto = withPhoto.length ? withPhoto[0].featuredImage : null;
       return {
         id: c.id,
         handle: c.handle,
         title: c.title,
-        photo: override ? {url: override, altText: c.title} : firstPhoto,
+        photo: override ? {url: override, altText: c.title} : firstPhotoFor(c),
         hasCustomCover: Boolean(override),
       };
     });
+  // Para que la fila salga en filas completas en vez de una fila larga
+  // con una suelta al final (p.ej. 6 categorías en "5 y 1") — una sola
+  // fila si caben todas, si no la cuadrícula se reparte en dos filas lo
+  // más parejas posible, con 5 columnas como máximo.
+  const catColumns =
+    collectionsWithProducts.length <= 5
+      ? Math.max(collectionsWithProducts.length, 1)
+      : Math.min(5, Math.ceil(collectionsWithProducts.length / 2));
 
   return {
     newest,
@@ -126,6 +148,7 @@ export async function loader({context, request}: Route.LoaderArgs) {
     offers,
     bestsellers,
     collections: collectionsWithProducts,
+    catColumns,
     manualSlides,
     heroSettings,
     linkedProducts,
@@ -146,7 +169,7 @@ function categoryIcon(title: string): IconName {
 }
 
 export default function Homepage() {
-  const {newest, bestselling, offers, bestsellers, collections, manualSlides, heroSettings, linkedProducts, faq} =
+  const {newest, bestselling, offers, bestsellers, collections, catColumns, manualSlides, heroSettings, linkedProducts, faq} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
 
@@ -313,7 +336,7 @@ export default function Homepage() {
               {t('viewAllCategories')} <Icon name="arrowRight" />
             </Link>
           </div>
-          <div className="catrow">
+          <div className="catrow" style={{'--cat-cols': catColumns} as CSSProperties}>
             {collections.map((c) => {
               const photo = c.photo;
               const hasCustomCover = c.hasCustomCover;

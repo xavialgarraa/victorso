@@ -414,6 +414,11 @@ body.search-open { overflow: hidden; }
 .mega-menu__tile:hover { background: var(--nav-surface); }
 .mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .78rem; font-weight: 500; color: var(--nav-text); line-height: 1.25; }
 .mega-menu__tile:hover > span:not(.mega-menu__tile-icon) { color: var(--nav-accent); }
+/* NavLink añade su propia clase "active" cuando la subcategoría es la
+   página actual — sin esto el navegador subraya su texto por defecto. */
+.mega-menu__tile, .mega-menu__tile.active, .mega-menu__tile:hover, .mega-menu__tile > span {
+  text-decoration: none;
+}
 
 .mega-menu__tile-icon {
   width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
@@ -795,7 +800,7 @@ body.nav-open { overflow: hidden; }
    más de 10 en el catálogo, "Ver todas las categorías" lleva a
    /collections, que las lista todas sin límite. */
 @media (min-width: 1000px) {
-  #categorySection .catrow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; }
+  #categorySection .catrow { display: grid; grid-template-columns: repeat(var(--cat-cols, 5), minmax(0, 1fr)); overflow: visible; }
   #categorySection .catrow__card { width: 100%; max-width: none; aspect-ratio: 1.15 / 1; }
 }
 @media (min-width: 561px) and (max-width: 999px) {
