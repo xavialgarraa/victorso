@@ -27,7 +27,7 @@ const ICON_OPTIONS: Array<{value: CollectionBannerFeature['icon']; label: string
 
 const ADMIN_COLLECTIONS_QUERY = `#graphql
   query AdminCollectionsForBanners {
-    collections(first: 50, sortKey: TITLE) {
+    collections(first: 100, sortKey: TITLE) {
       nodes { id handle title }
     }
   }

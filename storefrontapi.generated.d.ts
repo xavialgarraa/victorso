@@ -1972,7 +1972,7 @@ interface GeneratedQueryTypes {
     return: AdminCategoriesQuery;
     variables: AdminCategoriesQueryVariables;
   };
-  '#graphql\n  query AdminCollectionsForBanners {\n    collections(first: 50, sortKey: TITLE) {\n      nodes { id handle title }\n    }\n  }\n': {
+  '#graphql\n  query AdminCollectionsForBanners {\n    collections(first: 100, sortKey: TITLE) {\n      nodes { id handle title }\n    }\n  }\n': {
     return: AdminCollectionsForBannersQuery;
     variables: AdminCollectionsForBannersQueryVariables;
   };
