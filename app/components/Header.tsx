@@ -164,78 +164,53 @@ type NavCollection = {
 
 type NavLinkData = {href: string; label: string; cls?: string; icon?: IconName};
 type MegaMenuTile = {href: string; label: string; photo?: string; fallbackIcon: IconName};
-type MegaMenuGroup = {label: string; href?: string; icon: IconName; items: MegaMenuTile[]};
 type NavEntry =
   | ({type: 'link'} & NavLinkData)
   | {type: 'dropdown'; label: string; items: Array<{href: string; label: string}>}
-  | {type: 'megamenu'; label: string; groups: MegaMenuGroup[]; viewAllHref?: string};
+  | {type: 'megamenu'; label: string; items: MegaMenuTile[]; viewAllHref?: string};
 
 // ShopifyMenuItemLike, toRelativeUrl y collectionHandleFromUrl viven en
 // ~/lib/categoryMenu (compartidas con las páginas de colección y la
 // home, ver CATEGORIAS.md) — una sola fuente de verdad para parsear el
 // menú "Categorías" de Shopify.
 
-/**
- * Construye el mega-menú de "Categorías" a partir de un item del menú de
- * Shopify (Admin > Contenido > Navegación) con hijos anidados — ver
- * admin-interno/colecciones para el símil con los banners. Dos modos,
- * igual que la referencia que pidió Víctor (Madrid HiFi):
- *  - Si ningún hijo tiene a su vez hijos propios: modo "plano", todos los
- *    hijos salen como un único panel de iconos (p.ej. "Iluminación").
- *  - Si algún hijo SÍ tiene hijos: modo "agrupado", cada hijo es un grupo
- *    en la columna izquierda y sus propios hijos son los iconos de la
- *    derecha (p.ej. "Sonido y Audio" → "Sonido Profesional" → iconos).
- * Si el item no existe o no tiene hijos, devuelve null — el caller cae
- * entonces al desplegable plano de siempre (ver useNavLinks).
- */
-function buildMegaMenuGroups(
-  item: ShopifyMenuItemLike | undefined,
+type ProductInfoMap = Map<string, {hasProducts: boolean; photo: string | null}>;
+
+/** Un icono del mega-menú a partir de un item del menú de Shopify (una
+ * subcategoría) — null si no tiene URL válida o si todavía no tiene
+ * ningún producto (llevaría a una página vacía desde el menú). */
+function tile(
+  entry: {title: string; url?: string | null},
   categoryCovers: Record<string, string>,
-  productInfo: Map<string, {hasProducts: boolean; photo: string | null}>,
-): MegaMenuGroup[] | null {
-  const children = item?.items;
-  if (!children || children.length === 0) return null;
+  productInfo: ProductInfoMap,
+): MegaMenuTile | null {
+  const href = toRelativeUrl(entry.url);
+  if (!href) return null;
+  const handle = collectionHandleFromUrl(href);
+  const info = handle ? productInfo.get(handle) : undefined;
+  if (info && !info.hasProducts) return null;
+  return {
+    href,
+    label: entry.title,
+    photo: (handle ? categoryCovers[handle] : undefined) ?? info?.photo ?? undefined,
+    fallbackIcon: guessCategoryIcon(entry.title),
+  };
+}
 
-  function tile(entry: {title: string; url?: string | null}): MegaMenuTile | null {
-    const href = toRelativeUrl(entry.url);
-    if (!href) return null;
-    const handle = collectionHandleFromUrl(href);
-    const info = handle ? productInfo.get(handle) : undefined;
-    // Por ahora, mientras el catálogo no cubra todas las subcategorías
-    // de la taxonomía nueva, no se muestra una subcategoría sin ningún
-    // producto todavía (llevaría a una página vacía desde el menú).
-    if (info && !info.hasProducts) return null;
-    return {
-      href,
-      label: entry.title,
-      photo: (handle ? categoryCovers[handle] : undefined) ?? info?.photo ?? undefined,
-      fallbackIcon: guessCategoryIcon(entry.title),
-    };
-  }
-
-  const isGrouped = children.some((c) => c.items && c.items.length > 0);
-
-  if (!isGrouped) {
-    const items = children.map(tile).filter((t): t is MegaMenuTile => t !== null);
-    return items.length > 0 ? [{label: '', icon: guessCategoryIcon(item?.title ?? ''), items}] : null;
-  }
-
-  const groups = children
-    .map((child): MegaMenuGroup | null => {
-      const subItems = (child.items && child.items.length > 0 ? child.items : [child])
-        .map(tile)
-        .filter((t): t is MegaMenuTile => t !== null);
-      if (subItems.length === 0) return null;
-      return {
-        label: child.title,
-        href: toRelativeUrl(child.url) ?? undefined,
-        icon: guessCategoryIcon(child.title),
-        items: subItems,
-      };
-    })
-    .filter((g): g is MegaMenuGroup => g !== null);
-
-  return groups.length > 0 ? groups : null;
+/** El mega-menú de una sola categoría suelta en la barra (ver
+ * useNavLinks) — un panel plano con sus propias subcategorías como
+ * iconos, sin columna de grupos (cada categoría ya es su propio item
+ * de la barra, no hace falta elegir entre varias). null si no le queda
+ * ninguna subcategoría con producto. */
+function buildCategoryTiles(
+  categoryItem: {title: string; items?: Array<{title: string; url?: string | null}> | null},
+  categoryCovers: Record<string, string>,
+  productInfo: ProductInfoMap,
+): MegaMenuTile[] | null {
+  const items = (categoryItem.items ?? [])
+    .map((child) => tile(child, categoryCovers, productInfo))
+    .filter((t): t is MegaMenuTile => t !== null);
+  return items.length > 0 ? items : null;
 }
 
 // Handles que se quedan como item propio en la barra, fuera del
@@ -286,19 +261,33 @@ function useNavLinks(
     {type: 'link', href: '/', label: t('navHome')},
     {type: 'link', href: '/marcas', label: t('navBrands'), cls: 'mainnav__brands', icon: 'star'},
   ];
-  // Si en Shopify (Admin > Contenido > Navegación) hay un item "Categorías"
-  // con subcategorías anidadas, se usa el mega-menú con iconos — si no
-  // existe todavía (como ahora, hasta que se monte con la lista real),
-  // cae al desplegable plano de siempre, con las colecciones tal cual.
-  const megaMenuGroups = buildMegaMenuGroups(categoriesMenuItem, categoryCovers, productInfo);
-  if (megaMenuGroups) {
+  // Cada categoría del menú "Categorías" de Shopify (Admin > Contenido >
+  // Navegación) sale como su propio item en la barra, igual que OUTLET
+  // o PIONEER DJ & ALPHATHETA — al pasar el ratón se abre un mega-menú
+  // plano con solo sus subcategorías (sin columna de grupos, ya que
+  // cada categoría es su propio item, no hay entre qué elegir). Se
+  // salta la que ya tenga su propio link suelto en la barra (Alphatheta
+  // & Pioneer DJ → PIONEER DJ & ALPHATHETA, ver NAV_STANDALONE_HANDLES)
+  // para no enseñar la misma marca dos veces.
+  const categoryChildren = categoriesMenuItem?.items ?? [];
+  let addedAnyCategory = false;
+  for (const child of categoryChildren) {
+    const handle = collectionHandleFromUrl(toRelativeUrl(child.url));
+    if (handle && NAV_STANDALONE_HANDLES.includes(handle)) continue;
+    const tiles = buildCategoryTiles(child, categoryCovers, productInfo);
+    if (!tiles) continue;
     entries.push({
       type: 'megamenu',
-      label: categoriesMenuItem?.title || t('navCategories'),
-      groups: megaMenuGroups,
-      viewAllHref: toRelativeUrl(categoriesMenuItem?.url) ?? '/collections/all',
+      label: child.title,
+      items: tiles,
+      viewAllHref: toRelativeUrl(child.url) ?? undefined,
     });
-  } else if (categoryItems.length > 0) {
+    addedAnyCategory = true;
+  }
+  // Si el menú "Categorías" todavía no existe en Shopify (no debería
+  // pasar ya, pero por si acaso) cae al desplegable plano de toda la
+  // vida con las colecciones tal cual, para no dejar la barra sin nada.
+  if (!addedAnyCategory && categoryItems.length > 0) {
     entries.push({type: 'dropdown', label: t('navCategories'), items: categoryItems});
   }
   for (const c of standalone) {
@@ -477,33 +466,28 @@ function MegaMenuTileIcon({photo, fallbackIcon}: {photo?: string; fallbackIcon: 
   );
 }
 
-/** Desplegable de "Categorías" con iconos — diseño acordado con Víctor:
- * en escritorio, si hay grupos, una columna de la izquierda (con icono +
- * nombre, la activa resaltada en rojo con flecha) cambia la cuadrícula de
- * iconos de la derecha al pasar el ratón; si no hay grupos, es una sola
- * cuadrícula. En móvil se aplana a una lista con acordeón (ver mobile
- * CSS), sin el panel de dos columnas — no cabe cómodamente en una
- * pantalla pequeña. */
+/** Desplegable de una categoría con iconos — cada categoría es ya su
+ * propio item de la barra (ver useNavLinks), así que esto es siempre un
+ * panel plano: una sola cuadrícula con sus subcategorías, sin columna
+ * de grupos (no hay entre qué elegir, ya se eligió la categoría al
+ * pasar el ratón por su propio item). En móvil se aplana a una lista
+ * con acordeón (ver mobile CSS). */
 function NavMegaMenu({
   label,
-  groups,
+  items,
   viewAllHref,
   handleLinkClick,
 }: {
   label: string;
-  groups: MegaMenuGroup[];
+  items: MegaMenuTile[];
   viewAllHref?: string;
   handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [activeGroup, setActiveGroup] = useState(0);
-  const hasGroupRail = groups.length > 1 || Boolean(groups[0]?.label);
-  const current = groups[Math.min(activeGroup, groups.length - 1)] ?? groups[0];
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
   function close() {
     setOpen(false);
-    setActiveGroup(0);
   }
 
   // El panel ya no cuelga pegado debajo del botón (se centra bajo toda
@@ -540,49 +524,10 @@ function NavMegaMenu({
       >
         {label} <Icon name="chevronDown" />
       </button>
-      <div className={`mega-menu__panel${open ? ' open' : ''}${hasGroupRail ? ' mega-menu__panel--grouped' : ''}`}>
-        {hasGroupRail && (
-          <div className="mega-menu__rail">
-            {groups.map((group, i) => {
-              const isActive = i === activeGroup;
-              return (
-                <NavLink
-                  key={group.label || i}
-                  to={group.href ?? '#'}
-                  // Ojo: NO se llama "active" — NavLink ya añade esa clase
-                  // literal por su cuenta (aunque className sea un string)
-                  // cuando la "to" coincide con la URL actual, y chocaría
-                  // con este estado propio (el grupo activo del rail, que
-                  // es otra cosa — cuál se está previsualizando).
-                  className={`mega-menu__rail-item${isActive ? ' mega-menu__rail-item--active' : ''}`}
-                  onMouseEnter={() => setActiveGroup(i)}
-                  onFocus={() => setActiveGroup(i)}
-                  onClick={(e) => {
-                    // En escritorio el hover (o el foco, por teclado) ya
-                    // dejó este grupo activo antes de que pudiera llegar
-                    // el click, así que siempre navega directo a su
-                    // página (categoría > subcategoría). En móvil no hay
-                    // cuadrícula que previsualizar (ver CSS), así que
-                    // también navega directo al primer toque.
-                    if (!group.href) {
-                      e.preventDefault();
-                      return;
-                    }
-                    close();
-                    handleLinkClick(e, group.href);
-                  }}
-                >
-                  <Icon name={group.icon} />
-                  <span>{group.label}</span>
-                  {isActive && <Icon name="chevronRight" />}
-                </NavLink>
-              );
-            })}
-          </div>
-        )}
+      <div className={`mega-menu__panel${open ? ' open' : ''}`}>
         <div className="mega-menu__tiles-wrap">
           <div className="mega-menu__tiles">
-            {current?.items.map((item) => (
+            {items.map((item) => (
               <NavLink
                 key={item.href}
                 className="mega-menu__tile"
@@ -607,7 +552,7 @@ function NavMegaMenu({
                 handleLinkClick(e, viewAllHref);
               }}
             >
-              Ver todas las categorías <Icon name="arrowRight" />
+              Ver toda la categoría <Icon name="arrowRight" />
             </NavLink>
           )}
         </div>
@@ -652,7 +597,7 @@ function MainNavPanel({
             <NavMegaMenu
               key={entry.label}
               label={entry.label}
-              groups={entry.groups}
+              items={entry.items}
               viewAllHref={entry.viewAllHref}
               handleLinkClick={handleLinkClick}
             />

@@ -400,49 +400,23 @@ body.search-open { overflow: hidden; }
 .mainnav.open .mainnav__dropdown-link, .mainnav.closing .mainnav__dropdown-link { padding: 4px 28px 4px 48px; font-size: 1rem; font-weight: 500; border-bottom: none; }
 .mainnav__dropdown-link:hover { color: var(--nav-accent); }
 
-/* Mega-menu de "Categorías" (diseño acordado con Víctor, ver Header.tsx):
-   en escritorio, una columna de iconos+nombres a la izquierda cambia la
-   cuadrícula de la derecha al pasar el ratón. En móvil no hay sitio
-   para dos columnas ni para la cuadrícula de iconos — solo la lista de
-   categorías, cada una llevando directa a su página (que ya tiene su
-   propia cuadrícula de subcategorías, ver collections.$handle.tsx). */
+/* Mega-menu de cada categoría suelta en la barra (diseño acordado con
+   Víctor, ver Header.tsx): cada categoría ya es su propio item, así que
+   el panel es siempre una única cuadrícula con sus subcategorías — sin
+   columna de grupos que elegir. En móvil se aplana en una cuadrícula
+   dentro del acordeón de esa categoría (ver mainnav.open más abajo). */
 .mega-menu__panel { display: none; flex-direction: column; background: rgba(0, 0, 0, .15); }
 .mega-menu__panel.open { display: flex; }
 
-.mega-menu__rail { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
-/* ".mega-menu__rail " delante (no solo ".mega-menu__rail-item") es a
-   propósito: ".mainnav a, .mainnav__dropdown-trigger" más abajo tiene
-   más especificidad (clase + elemento) que un solo ".mega-menu__rail-item"
-   y le ganaba el padding en silencio — con el padre delante,
-   ".mega-menu__rail .mega-menu__rail-item" gana sin tocar esa regla,
-   que hace falta para el resto de enlaces de la barra. */
-.mega-menu__rail .mega-menu__rail-item {
-  display: flex; align-items: center; gap: 12px; width: 100%;
-  background: none; border: none; border-radius: 0; border-bottom: 1px solid var(--nav-border);
-  padding: 13px 20px; font-size: .95rem; font-weight: 500; color: var(--nav-text-soft);
-  white-space: nowrap; transition: background .18s ease, color .18s ease;
-}
-.mega-menu__rail-item .icon:first-child { font-size: 1.05rem; }
-/* La flecha solo aporta en la columna de escritorio; en la lista suelta
-   de móvil cada fila ya lleva directa a su página, no hay "activa" que
-   marcar. */
-.mega-menu__rail-item .icon ~ .icon { display: none; }
-.mega-menu__rail-item:hover { color: var(--nav-text); }
-.mega-menu__rail-item--active { background: var(--nav-surface); color: var(--nav-accent); }
-
-/* La cuadrícula de iconos de escritorio no cabe (ni hace falta) en
-   móvil — cada categoría de la lista de arriba ya lleva directa a su
-   propia página con sus subcategorías. Se reactiva en el media query
-   de escritorio de más abajo. */
-.mega-menu__tiles-wrap { display: none; }
-.mega-menu__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 6px; }
+.mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 10px 16px 16px; }
+.mega-menu__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 8px; }
 .mega-menu__tile { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 6px 2px; border-radius: var(--radius-sm); }
 .mega-menu__tile:hover { background: var(--nav-surface); }
-.mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .76rem; font-weight: 500; color: var(--nav-text); line-height: 1.25; }
+.mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .78rem; font-weight: 500; color: var(--nav-text); line-height: 1.25; }
 .mega-menu__tile:hover > span:not(.mega-menu__tile-icon) { color: var(--nav-accent); }
 
 .mega-menu__tile-icon {
-  width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+  width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   background: var(--nav-surface); border: 1px solid var(--nav-border);
   transition: border-color .18s ease;
@@ -508,18 +482,18 @@ body.search-open { overflow: hidden; }
   .mainnav__dropdown-link { padding: 9px 16px; border-radius: 6px; border-bottom: none; }
   .mainnav__dropdown-link:hover { background: var(--nav-surface); }
 
-  /* Mega-menu de escritorio: columna de grupos a la izquierda (ancho
-     fijo), cuadrícula de iconos a la derecha — cambia con el grupo activo
-     al pasar el ratón por el rail. El panel se centra bajo TODA la
-     cabecera (no bajo el botón "Categorías", que no está en el centro de
-     la barra) — por eso .mega-menu vuelve a position:static: así el
-     panel toma como referencia .header (sticky, ancho completo) en vez
-     de su propio trigger, y top:100% sigue cayendo justo debajo del menú
-     tanto arriba del todo como ya con el header pegado scrolleando. */
+  /* Mega-menu de escritorio: cada categoría es ya su propio item de la
+     barra (ver Header.tsx), así que el panel es siempre una única
+     cuadrícula de iconos de sus subcategorías — sin columna de grupos.
+     Se centra bajo TODA la cabecera (no bajo su propio botón, que no
+     está en el centro de la barra) — por eso .mega-menu vuelve a
+     position:static: así el panel toma como referencia .header (sticky,
+     ancho completo) en vez de su propio trigger, y top:100% sigue
+     cayendo justo debajo del menú tanto arriba del todo como ya con el
+     header pegado scrolleando. */
   .mega-menu { position: static; }
   .mega-menu__panel {
     position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
-    flex-direction: row; align-items: stretch;
     background: var(--nav-bg); border: 1px solid var(--nav-border);
     border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.4); z-index: 95;
   }
@@ -528,33 +502,15 @@ body.search-open { overflow: hidden; }
      hueco. Lo controla React con un margen de 250ms, ver NavMegaMenu. */
   .mega-menu__panel.open { display: flex; }
 
-  .mega-menu__rail {
-    flex-direction: column; overflow: visible; gap: 2px;
-    /* 260px mide de sobra el nombre más largo ("Alphatheta & Pioneer
-       DJ", ~235px con icono+flecha) sin truncar con "…". */
-    width: 260px; flex-shrink: 0; padding: 14px 10px;
-    border-right: 1px solid var(--nav-border);
-  }
-  .mega-menu__rail .mega-menu__rail-item { width: 100%; border-radius: 10px; padding: 10px 12px; background: none; border-bottom: none; font-size: .84rem; font-weight: 600; }
-  .mega-menu__rail-item > span:not(.icon) {
-    flex: 1; min-width: 0; text-align: left;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .mega-menu__rail-item .icon ~ .icon { display: inline-flex; margin-left: 6px; font-size: .8rem; }
-  .mega-menu__rail-item:hover { background: var(--nav-surface); color: var(--nav-text); }
-  .mega-menu__rail-item--active { background: rgba(255,91,98,.12); color: var(--nav-accent); }
-
-  /* Alto fijo — igual al alto natural del rail con las categorías que
-     hay ahora (6), que es más alto que la cuadrícula de iconos del
-     grupo más grande actual, así que es él quien manda. "height", no
-     "min-height", para que tampoco pueda encoger ni crecer al cambiar
-     de grupo. Si se añaden más categorías (p.ej. Iluminación cuando
-     tenga producto) hay que subir este número a mano — medido en vivo
-     con getBoundingClientRect, no a ojo, porque ".mainnav a" (más
-     especificidad) cambia el padding real de cada item del rail. */
-  .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 18px 22px; min-width: 460px; max-width: 680px; height: 296px; }
-  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 20px 10px; max-height: 100%; overflow-y: auto; }
-  .mega-menu__tile-icon { width: 56px; height: 56px; }
+  /* Víctor pidió más tamaño (iconos pequeños, referencia Madrid HiFi) —
+     "max-height", no "height", para que cada categoría tome solo el
+     alto que necesite (3-4 filas según cuántas subcategorías tenga)
+     hasta ese tope, con scroll solo si alguna llega a tener muchas más
+     en el futuro. */
+  .mega-menu__tiles-wrap { display: flex; flex-direction: column; padding: 22px 28px; min-width: 460px; max-width: 720px; }
+  .mega-menu__tiles { grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 26px 14px; max-height: 420px; overflow-y: auto; }
+  .mega-menu__tile-icon { width: 68px; height: 68px; }
+  .mega-menu__tile > span:not(.mega-menu__tile-icon) { font-size: .82rem; }
   .mega-menu__viewall { justify-content: flex-end; margin-top: 10px; }
 
   /* Franja tipo tira LED que separa el menu de categorias de la cabecera,
