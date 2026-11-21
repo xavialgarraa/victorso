@@ -497,6 +497,11 @@ body.search-open { overflow: hidden; }
      250ms para poder cruzar el hueco entre botón y panel — lo controla
      React, ver NavMegaMenu. */
   .mega-menu__panel.open { display: flex; }
+  /* El primer item de la barra (Alphatheta & Pioneer DJ, ver
+     useNavLinks) está tan pegado al borde izquierdo que centrar el
+     panel bajo él lo cortaba por la izquierda — ese de sobra se alinea
+     por la izquierda en vez de centrarse. */
+  .mainnav > .mega-menu:first-child .mega-menu__panel { left: 0; transform: none; }
 
   /* Víctor pidió más tamaño (iconos pequeños, referencia Madrid HiFi) —
      "max-height", no "height", para que cada categoría tome solo el
