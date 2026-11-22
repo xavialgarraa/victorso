@@ -402,10 +402,8 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* 3. Productos destacados, con pestañas (sustituye a "Más valorados" + "Ofertas") */}
-      <FeaturedProducts bestsellers={bestsellers} newest={newest} offers={offers} />
-
-      {/* 4. Carrusel de marcas */}
+      {/* 3. Carrusel de marcas — entre categorías y productos destacados,
+          a petición de Víctor (2026-11-22). */}
       <section className="section reveal">
         <div className="container">
           <div className="section__head">
@@ -414,6 +412,9 @@ export default function Homepage() {
         </div>
         <BrandsTicker />
       </section>
+
+      {/* 4. Productos destacados, con pestañas (sustituye a "Más valorados" + "Ofertas") */}
+      <FeaturedProducts bestsellers={bestsellers} newest={newest} offers={offers} />
 
       {/* Banda de envío gratis, de separador entre Marcas y Ofertas */}
       <div className="shipband">
