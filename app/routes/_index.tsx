@@ -115,24 +115,45 @@ export async function loader({context, request}: Route.LoaderArgs) {
     }
     return null;
   }
-  // El producto real que representa cada categoría (misma lógica que
-  // firstPhotoFor, pero devolviendo la ficha entera) — para el relleno
-  // de "más vendidos" mientras no haya ventas de verdad, ver nota en
+  // Productos reales de una categoría (misma lógica que firstPhotoFor,
+  // pero la lista entera, no solo el primero) — para el relleno de "más
+  // vendidos" mientras no haya ventas de verdad, ver nota en
   // heroSlides.server.ts (useRealBestsellers).
-  function firstProductFor(c: (typeof collections.nodes)[number]) {
-    if (c.products.nodes[0]) return c.products.nodes[0];
+  function productsFor(c: (typeof collections.nodes)[number]) {
+    if (c.products.nodes.length) return c.products.nodes;
     for (const sub of subcategoriesOf(categoriesItem, c.handle)) {
       const subCollection = collectionByHandle.get(sub.handle);
-      if (subCollection?.products.nodes[0]) return subCollection.products.nodes[0];
+      if (subCollection?.products.nodes.length) return subCollection.products.nodes;
     }
-    return null;
+    return [];
   }
-  const oneProductPerCategory = Array.from(groupHandles)
-    .map((handle) => {
+  // Uno de cada categoría primero (variedad) y, si con eso no se llega a
+  // targetCount (p.ej. 6 categorías para una fila de 4 completa, ver
+  // .prodgrid), una segunda vuelta con el siguiente producto de cada
+  // categoría que le quede — así no deja huecos al final de la fila sin
+  // amontonar todo el relleno en una sola categoría.
+  function representativeProducts(handles: string[], targetCount: number) {
+    const perCategory = handles.map((handle) => {
       const c = collectionByHandle.get(handle);
-      return c ? firstProductFor(c) : null;
-    })
-    .filter((p): p is NonNullable<typeof p> => p !== null);
+      return c ? productsFor(c) : [];
+    });
+    const seen = new Set<string>();
+    const result: (typeof products.nodes)[number][] = [];
+    for (let round = 0; result.length < targetCount; round++) {
+      let addedAny = false;
+      for (const list of perCategory) {
+        if (result.length >= targetCount) break;
+        const candidate = list[round];
+        if (candidate && !seen.has(candidate.id)) {
+          seen.add(candidate.id);
+          result.push(candidate);
+          addedAny = true;
+        }
+      }
+      if (!addedAny) break;
+    }
+    return result;
+  }
   // Sin ventas reales todavía, el ranking "más vendidos" de Shopify
   // (sortKey BEST_SELLING) no significa nada — con todo empatado a 0
   // ventas, Shopify deshace el empate con algún criterio interno que en
@@ -141,12 +162,11 @@ export async function loader({context, request}: Route.LoaderArgs) {
   // (/admin-interno/hero), se enseña un producto de cada categoría en
   // su lugar, para que salga variado — en cuanto Víctor lo active desde
   // ahí, vuelve a usar el ranking real de Shopify sin tocar código.
+  const bestsellersFallback = representativeProducts(Array.from(groupHandles), 8);
   const bestselling = heroSettings.useRealBestsellers
     ? (products.nodes[0] ?? null)
-    : (oneProductPerCategory[0] ?? products.nodes[0] ?? null);
-  const bestsellers = heroSettings.useRealBestsellers
-    ? products.nodes.slice(0, 8)
-    : oneProductPerCategory.slice(0, 8);
+    : (bestsellersFallback[0] ?? products.nodes[0] ?? null);
+  const bestsellers = heroSettings.useRealBestsellers ? products.nodes.slice(0, 8) : bestsellersFallback;
   const collectionsWithProducts = collections.nodes
     .filter((c) => groupHandles.has(c.handle))
     // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
@@ -163,14 +183,9 @@ export async function loader({context, request}: Route.LoaderArgs) {
         hasCustomCover: Boolean(override),
       };
     });
-  // Para que la fila salga en filas completas en vez de una fila larga
-  // con una suelta al final (p.ej. 6 categorías en "5 y 1") — una sola
-  // fila si caben todas, si no la cuadrícula se reparte en dos filas lo
-  // más parejas posible, con 5 columnas como máximo.
-  const catColumns =
-    collectionsWithProducts.length <= 5
-      ? Math.max(collectionsWithProducts.length, 1)
-      : Math.min(5, Math.ceil(collectionsWithProducts.length / 2));
+  // Víctor pidió (2026-11-22) que todas las categorías salgan en una
+  // sola fila, nunca repartidas en dos.
+  const catColumns = Math.max(collectionsWithProducts.length, 1);
 
   return {
     newest,
