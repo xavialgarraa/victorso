@@ -68,6 +68,15 @@ export type HeroSettings = {
   leftAutoFallback: boolean;
   rightAutoFallback: boolean;
   hiddenAutoKeys: string[];
+  /** Víctor (2026-11-22): todavía no hay ventas reales en la tienda, así
+   * que el ranking "más vendidos" de Shopify (sortKey BEST_SELLING) no
+   * dice nada de verdad — con cero ventas, Shopify deshace el empate por
+   * algún orden interno que en la práctica salía "todo lo último que se
+   * ha añadido" (p.ej. todo cables). Mientras esto esté en false, la
+   * home usa en su lugar un producto de cada categoría (ver _index.tsx)
+   * para que salga variado; en cuanto haya ventas reales, se activa
+   * desde aquí para que pase a usar el ranking real de Shopify. */
+  useRealBestsellers: boolean;
 };
 
 const SETTINGS_COLLECTION = 'hero_settings';
@@ -75,7 +84,7 @@ const SETTINGS_ID = 'config';
 
 export async function getHeroSettings(env: Env): Promise<HeroSettings> {
   const doc = await getDoc<HeroSettings>(env, SETTINGS_COLLECTION, SETTINGS_ID);
-  return {leftAutoFallback: true, rightAutoFallback: true, hiddenAutoKeys: [], ...doc};
+  return {leftAutoFallback: true, rightAutoFallback: true, hiddenAutoKeys: [], useRealBestsellers: false, ...doc};
 }
 
 export async function setHeroSettings(env: Env, settings: HeroSettings): Promise<void> {

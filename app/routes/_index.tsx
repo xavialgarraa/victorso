@@ -39,7 +39,7 @@ export const meta: Route.MetaFunction = () => {
 export async function loader({context, request}: Route.LoaderArgs) {
   const {storefront} = context;
   const locale = getLocaleFromRequest(request);
-  const [{products, newest: newestByDate, featuredHome}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers, {menu}] =
+  const [{products, newest: newestByDate}, {collections}, manualSlides, heroSettings, faqItems, categoryCovers, {menu}] =
     await Promise.all([
       storefront.query(HOME_PRODUCTS_QUERY),
       storefront.query(HOME_COLLECTIONS_QUERY),
@@ -66,14 +66,13 @@ export async function loader({context, request}: Route.LoaderArgs) {
       ).products.nodes
     : [];
 
-  // "Novedades" del hero: si Iván ha metido productos a mano en la colección
-  // "Novedades destacadas (Home)" (Shopify > Colecciones), se usan esos en
-  // el orden que él les dé; si la deja vacía, se muestran los 3 productos
-  // más nuevos de verdad (por fecha de creación real, no por nombre/handle).
-  const newest = featuredHome?.products?.nodes?.length
-    ? featuredHome.products.nodes.slice(0, 3)
-    : newestByDate.nodes;
-  const bestselling = products.nodes[0] ?? null;
+  // "Novedades": Víctor pidió (2026-11-22) que esto sean siempre, de
+  // verdad, los últimos productos añadidos a Shopify (por fecha de
+  // creación real, no por nombre/handle) — antes una colección de
+  // curación manual ("Novedades destacadas (Home)") podía pisar esto,
+  // y se quedó con un solo producto puesto hace tiempo sin que nadie se
+  // diera cuenta de que ya no mostraba lo último de verdad.
+  const newest = newestByDate.nodes;
   const offers = products.nodes
     .filter(
       (p) =>
@@ -82,7 +81,6 @@ export async function loader({context, request}: Route.LoaderArgs) {
           parseFloat(p.priceRange.minVariantPrice.amount),
     )
     .slice(0, 4);
-  const bestsellers = products.nodes.slice(0, 8);
   // "frontpage" es la colección automática de Shopify con todos los
   // productos; no es una categoría real. "novedades-destacadas-home" es de
   // uso interno (elige qué sale en el hero) y tampoco debe listarse como
@@ -117,6 +115,38 @@ export async function loader({context, request}: Route.LoaderArgs) {
     }
     return null;
   }
+  // El producto real que representa cada categoría (misma lógica que
+  // firstPhotoFor, pero devolviendo la ficha entera) — para el relleno
+  // de "más vendidos" mientras no haya ventas de verdad, ver nota en
+  // heroSlides.server.ts (useRealBestsellers).
+  function firstProductFor(c: (typeof collections.nodes)[number]) {
+    if (c.products.nodes[0]) return c.products.nodes[0];
+    for (const sub of subcategoriesOf(categoriesItem, c.handle)) {
+      const subCollection = collectionByHandle.get(sub.handle);
+      if (subCollection?.products.nodes[0]) return subCollection.products.nodes[0];
+    }
+    return null;
+  }
+  const oneProductPerCategory = Array.from(groupHandles)
+    .map((handle) => {
+      const c = collectionByHandle.get(handle);
+      return c ? firstProductFor(c) : null;
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+  // Sin ventas reales todavía, el ranking "más vendidos" de Shopify
+  // (sortKey BEST_SELLING) no significa nada — con todo empatado a 0
+  // ventas, Shopify deshace el empate con algún criterio interno que en
+  // la práctica salía siempre "lo último que se ha subido" (p.ej. todo
+  // cables). Mientras heroSettings.useRealBestsellers esté apagado
+  // (/admin-interno/hero), se enseña un producto de cada categoría en
+  // su lugar, para que salga variado — en cuanto Víctor lo active desde
+  // ahí, vuelve a usar el ranking real de Shopify sin tocar código.
+  const bestselling = heroSettings.useRealBestsellers
+    ? (products.nodes[0] ?? null)
+    : (oneProductPerCategory[0] ?? products.nodes[0] ?? null);
+  const bestsellers = heroSettings.useRealBestsellers
+    ? products.nodes.slice(0, 8)
+    : oneProductPerCategory.slice(0, 8);
   const collectionsWithProducts = collections.nodes
     .filter((c) => groupHandles.has(c.handle))
     // Tope de 10 (2 filas de 5) para que las tarjetas salgan grandes — si
@@ -508,16 +538,9 @@ const HOME_PRODUCTS_QUERY = `#graphql
         ...ProductCard
       }
     }
-    newest: products(first: 3, sortKey: CREATED_AT, reverse: true) {
+    newest: products(first: 8, sortKey: CREATED_AT, reverse: true) {
       nodes {
         ...ProductCard
-      }
-    }
-    featuredHome: collectionByHandle(handle: "novedades-destacadas-home") {
-      products(first: 3) {
-        nodes {
-          ...ProductCard
-        }
       }
     }
   }
@@ -537,7 +560,13 @@ const CATEGORIES_MENU_QUERY = `#graphql
   }
 ` as const;
 
+// Productos completos (no solo id+foto) de cada colección — hace falta
+// para poder enseñar un producto real de cada categoría como relleno
+// de "más vendidos" mientras no haya ventas de verdad (ver más abajo,
+// heroSettings.useRealBestsellers). Primeros 3 de cada una, de sobra
+// para encontrar uno con foto sin pedir el catálogo entero de golpe.
 const HOME_COLLECTIONS_QUERY = `#graphql
+  ${PRODUCT_CARD_FRAGMENT}
   query HomeCollections($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
     collections(first: 100, sortKey: TITLE) {
@@ -545,13 +574,9 @@ const HOME_COLLECTIONS_QUERY = `#graphql
         id
         handle
         title
-        products(first: 10) {
+        products(first: 3) {
           nodes {
-            id
-            featuredImage {
-              url
-              altText
-            }
+            ...ProductCard
           }
         }
       }

@@ -194,6 +194,7 @@ export async function action({request, context}: Route.ActionArgs) {
       ...current,
       leftAutoFallback: formData.get('leftAutoFallback') === 'on',
       rightAutoFallback: formData.get('rightAutoFallback') === 'on',
+      useRealBestsellers: formData.get('useRealBestsellers') === 'on',
     });
     return data<ActionResult>({intent: 'save-settings', ok: true}, {headers});
   }
@@ -681,6 +682,17 @@ export default function AdminHero() {
               <span>Tarjetas de "escríbenos" / "ven a la tienda"</span>
             </div>
             <input type="checkbox" className="hero-admin__switch" name="rightAutoFallback" defaultChecked={settings.rightAutoFallback} />
+          </div>
+          <div className="hero-admin__toggle-row">
+            <div className="hero-admin__toggle-text">
+              <strong>"Más vendidos" usa el ranking real de Shopify</strong>
+              <span>
+                Déjalo apagado mientras no haya ventas de verdad — con 0 ventas Shopify no tiene nada que
+                rankear y acaba enseñando lo último que se ha subido (p.ej. todo cables). Apagado, la home
+                enseña un producto de cada categoría en su lugar. Actívalo en cuanto empiecen a entrar pedidos.
+              </span>
+            </div>
+            <input type="checkbox" className="hero-admin__switch" name="useRealBestsellers" defaultChecked={settings.useRealBestsellers} />
           </div>
           <button type="submit" className="admin-btn admin-btn--outline" style={{marginTop: 14}} disabled={isBusy}>
             Guardar
