@@ -461,46 +461,68 @@ function MegaMenuTileIcon({photo, fallbackIcon}: {photo?: string; fallbackIcon: 
   );
 }
 
+/** Un solo mega-menú abierto a la vez entre todas las categorías de la
+ * barra, compartido vía label — ver la nota en NavMegaMenu de por qué
+ * (saltar de una categoría a la de al lado dejaba las dos a la vez un
+ * instante con un estado "open" propio de cada una). */
+function useActiveMegaMenu() {
+  const [activeLabel, setActiveLabel] = useState<string | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  function openNow(label: string) {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setActiveLabel(label);
+  }
+  function close() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setActiveLabel(null);
+  }
+  // 250ms de margen solo para cruzar en diagonal el hueco entre el
+  // botón y el panel (que no cuelga pegado, ver CSS) sin que se cierre
+  // de camino — saltar a OTRA categoría pasa por openNow, que cancela
+  // este timer antes de que llegue a disparar.
+  function closeSoon() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setActiveLabel(null), 250);
+  }
+
+  return {activeLabel, openNow, closeSoon, close};
+}
+
 /** Desplegable de una categoría con iconos — cada categoría es ya su
  * propio item de la barra (ver useNavLinks), así que esto es siempre un
  * panel plano: una sola cuadrícula con sus subcategorías, sin columna
  * de grupos (no hay entre qué elegir, ya se eligió la categoría al
  * pasar el ratón por su propio item). En móvil se aplana a una lista
- * con acordeón (ver mobile CSS). */
+ * con acordeón (ver mobile CSS).
+ *
+ * open/openNow/closeSoon/close vienen del padre (useActiveMegaMenu) en
+ * vez de un estado propio de cada categoría — con uno por categoría,
+ * saltar de una a la de al lado dejaba las DOS abiertas a la vez un
+ * instante (el margen de 250ms para cerrar la de antes no le daba
+ * tiempo a terminar antes de que la siguiente ya estuviera abierta).
+ * Con el estado compartido, abrir una cierra la anterior en el mismo
+ * render — el margen de 250ms solo importa para el caso de salir del
+ * todo de la barra sin entrar en ninguna otra categoría. */
 function NavMegaMenu({
   label,
   items,
   viewAllHref,
   handleLinkClick,
+  open,
+  openNow,
+  closeSoon,
+  close,
 }: {
   label: string;
   items: MegaMenuTile[];
   viewAllHref?: string;
   handleLinkClick: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
+  open: boolean;
+  openNow: () => void;
+  closeSoon: () => void;
+  close: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  function close() {
-    setOpen(false);
-  }
-
-  // El panel ya no cuelga pegado debajo del botón (se centra bajo toda
-  // la cabecera, ver CSS) — un simple ":hover" se corta en cuanto el
-  // ratón cruza el hueco entre los dos y el menú se cerraba solo al
-  // bajar un poco. En vez de eso, el propio React controla la apertura
-  // con un pequeño margen: abre al entrar en CUALQUIER punto (botón o
-  // panel) y solo cierra si no ha vuelto a entrar en ninguno de los dos
-  // en 250ms — tiempo de sobra para cruzar ese hueco en diagonal.
-  function openNow() {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
-  }
-  function closeSoon() {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(close, 250);
-  }
-
   return (
     <div
       className="mainnav__dropdown mega-menu"
@@ -515,7 +537,7 @@ function NavMegaMenu({
         className="mainnav__item mainnav__dropdown-trigger"
         aria-haspopup="true"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close() : openNow())}
       >
         {label} <Icon name="chevronDown" />
       </button>
@@ -576,6 +598,7 @@ function MainNavPanel({
   const navLinks = useNavLinks(collections, categoriesMenuItem, categoryCovers ?? {});
   const {locale, setLocale} = useI18n();
   const isOpenish = state === 'open' || state === 'closing';
+  const megaMenu = useActiveMegaMenu();
 
   return (
     <nav
@@ -595,6 +618,10 @@ function MainNavPanel({
               items={entry.items}
               viewAllHref={entry.viewAllHref}
               handleLinkClick={handleLinkClick}
+              open={megaMenu.activeLabel === entry.label}
+              openNow={() => megaMenu.openNow(entry.label)}
+              closeSoon={megaMenu.closeSoon}
+              close={megaMenu.close}
             />
           );
         }
