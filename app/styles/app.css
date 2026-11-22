@@ -452,7 +452,13 @@ body.search-open { overflow: hidden; }
 
 .mainnav__brands { display: inline-flex; align-items: center; gap: 5px; }
 .mainnav__brands .icon { font-size: .8em; color: #f2b400; flex-shrink: 0; }
-.mainnav__utils { display: flex; align-items: center; gap: 10px; padding: 0 24px; }
+/* margin-top:auto — Víctor (2026-11-22): quedaba mucho hueco vacío al
+   final del menú móvil, entre este bloque (idioma/modo oscuro) y la
+   barra inferior. En vez de ese hueco suelto al final, empuja este
+   bloque al fondo del panel cuando sobra alto (si el contenido ya
+   llena/desborda la pantalla, el margen simplemente no tiene hueco que
+   absorber y no cambia nada). */
+.mainnav__utils { display: flex; align-items: center; gap: 10px; padding: 0 24px; margin-top: auto; padding-top: 18px; }
 .mainnav__lang-select { flex: 1; padding: 10px 14px; border-radius: 20px; background: var(--nav-surface); border: none; color: var(--nav-text); font-size: .85rem; font-weight: 600; font-family: inherit; }
 .mainnav__lang-select option { color: #17171a; }
 .mainnav__theme { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 20px; background: var(--nav-surface); border: none; color: var(--nav-text); font-size: .88rem; font-weight: 600; flex-shrink: 0; }
@@ -975,7 +981,12 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
 .pcard__reviews { color: var(--text-soft); }
 .pcard__desc { display: none; }
 .pcard__footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 12px 14px; }
-.pcard__price { display: flex; flex-direction: column; line-height: 1.2; }
+/* min-width:0 — por defecto un hijo de flex no encoge por debajo del
+   ancho de su contenido ("auto"), así que un precio largo (4 cifras,
+   p.ej. "1.149,00 €") empujaba la tarjeta más ancha que el botón de
+   añadir al carrito (flex-shrink:0, ver .pcard__addbtn) y la tarjeta
+   (overflow:hidden) lo recortaba por el borde derecho. */
+.pcard__price { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .pcard__price .now { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); }
 .pcard__price .was { text-decoration: line-through; color: var(--text-soft); font-size: .76rem; }
 .pcard__pricebadge { display: none; }

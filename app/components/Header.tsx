@@ -526,8 +526,17 @@ function NavMegaMenu({
   return (
     <div
       className="mainnav__dropdown mega-menu"
-      onMouseEnter={openNow}
-      onMouseLeave={closeSoon}
+      // Solo ratón de verdad — en touch, un toque dispara igualmente
+      // "pointerenter" (abre) justo antes del "click" del propio botón
+      // (abajo), que entonces ve open=true y lo vuelve a cerrar: hacía
+      // falta tocar dos veces para que se quedara abierto. Con el
+      // pointerType filtrado, en touch solo manda el click.
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'mouse') openNow();
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === 'mouse') closeSoon();
+      }}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) close();
       }}
