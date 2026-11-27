@@ -387,7 +387,17 @@ function ProductCard({
             <span className={`dist-card__stock ${product.stock > 0 ? 'dist-card__stock--in' : 'dist-card__stock--out'}`}>
               {product.stock > 0 ? `Stock ${product.stock}` : 'Sin stock'}
             </span>
-            {connected && <span className="dist-card__connected">Ya en la tienda</span>}
+            {connected ? (
+              <span className="dist-card__shopify-state dist-card__shopify-state--connected">
+                <span className="dist-card__shopify-state-dot" aria-hidden="true" />
+                En Shopify
+              </span>
+            ) : checked ? (
+              <span className="dist-card__shopify-state dist-card__shopify-state--pending">
+                <span className="dist-card__shopify-state-dot" aria-hidden="true" />
+                Pendiente de crear
+              </span>
+            ) : null}
           </div>
           <div className="dist-card__ean">EAN {product.ean}</div>
         </div>
@@ -439,6 +449,10 @@ export default function AdminDistribuidores() {
   const actionData = useActionData<typeof action>();
   const isBusy = navigation.state !== 'idle';
   const busyIntent = navigation.formData?.get('intent');
+  // "loading" (sin formData) = cambiar de pestaña, página o filtro — una
+  // navegación GET normal, no una acción. Ahí es donde antes no se veía
+  // ningún indicador de que la pantalla se estaba actualizando.
+  const isLoadingList = navigation.state === 'loading' && !navigation.formData;
   const selectedSet = new Set(selectedEans);
   const connectedSet = new Set(connectedEans);
 
@@ -468,7 +482,8 @@ export default function AdminDistribuidores() {
       <p className="admin-hint" style={{maxWidth: 680}}>
         Marca qué productos de cada distribuidor quieres que existan en la web — solo esos se crean/actualizan, el
         resto del catálogo se ignora. Zentralmedia y Midwich solo hablan FTP, así que su catálogo lo refresca un
-        proceso aparte cada noche; Walkasse se lee en vivo cada vez que entras aquí.
+        proceso aparte cada noche; Walkasse se lee en vivo cada vez que entras aquí. El precio que ves aquí es el
+        del distribuidor, no el de Shopify — nunca se aplica solo, hace falta pulsar "Actualizar precio" más abajo.
       </p>
 
       <div className="dist-tabs">
@@ -598,29 +613,39 @@ export default function AdminDistribuidores() {
       </Form>
 
       <Form method="post">
+        <input type="hidden" name="intent" value="save-selection" />
         <input type="hidden" name="supplierId" value={supplierId} />
         {pageItems.map((p) => (
           <input key={`page-${p.ean}`} type="hidden" name="pageEans" value={p.ean} />
         ))}
 
-        <div className="dist-grid">
-          {pageItems.map((p) => (
-            <ProductCard
-              key={p.ean}
-              product={p}
-              checked={selectedSet.has(p.ean)}
-              connected={connectedSet.has(p.ean)}
-              connectedProductId={connectedProductIds[p.ean]}
-              supplierId={supplierId}
-            />
-          ))}
+        <div className="dist-grid-wrap">
+          {isLoadingList && (
+            <div className="dist-grid-overlay">
+              <span className="admin-spinner" aria-hidden="true" />
+              Actualizando catálogo…
+            </div>
+          )}
+          <div className="dist-grid">
+            {pageItems.map((p) => (
+              <ProductCard
+                key={p.ean}
+                product={p}
+                checked={selectedSet.has(p.ean)}
+                connected={connectedSet.has(p.ean)}
+                connectedProductId={connectedProductIds[p.ean]}
+                supplierId={supplierId}
+              />
+            ))}
+          </div>
         </div>
 
         {pageItems.length === 0 && <p className="admin-hint">No hay productos que coincidan con el filtro.</p>}
 
         <div className="dist-selectbar">
           <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
-            {isBusy ? 'Guardando…' : 'Guardar selección de esta página'}
+            {isBusy && busyIntent === 'save-selection' && <span className="admin-spinner" aria-hidden="true" />}
+            {isBusy && busyIntent === 'save-selection' ? 'Guardando…' : 'Guardar selección de esta página'}
           </button>
 
           <div className="dist-pagination">
@@ -656,6 +681,7 @@ export default function AdminDistribuidores() {
           <input type="hidden" name="intent" value="compare" />
           <input type="hidden" name="supplierId" value={supplierId} />
           <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+            {isBusy && busyIntent === 'compare' && <span className="admin-spinner" aria-hidden="true" />}
             {isBusy && busyIntent === 'compare' ? 'Comparando…' : 'Comparar con Shopify'}
           </button>
         </Form>
@@ -714,6 +740,7 @@ export default function AdminDistribuidores() {
                   <input type="hidden" name="intent" value="apply-stock" />
                   <input type="hidden" name="supplierId" value={supplierId} />
                   <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                    {isBusy && busyIntent === 'apply-stock' && <span className="admin-spinner" aria-hidden="true" />}
                     {isBusy && busyIntent === 'apply-stock'
                       ? 'Actualizando…'
                       : `Actualizar stock de ${summary.toUpdateStock.length} productos`}
@@ -735,12 +762,21 @@ export default function AdminDistribuidores() {
             {summary.toUpdatePrice.length > 0 ? (
               <>
                 <h3 style={{marginTop: 24}}>Actualizar precio ({summary.toUpdatePrice.length})</h3>
+                <p className="dist-price-note">
+                  <span aria-hidden="true">💶</span>
+                  <span>
+                    <strong>El precio de Shopify nunca cambia solo.</strong> Si lo tocas a mano en Shopify, se
+                    queda como lo pongas — el precio del distribuidor de aquí abajo es solo informativo, nada lo
+                    aplica automáticamente. La única forma de que el precio de un producto cambie es pulsando el
+                    botón de abajo, y solo afecta a los productos listados en ese momento.
+                  </span>
+                </p>
                 <div className="admin-scroll" style={{maxHeight: 240}}>
                   <table className="admin-table">
                     <thead>
                       <tr>
                         <th>Producto</th>
-                        <th>Precio</th>
+                        <th>Shopify → Distribuidor</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -759,6 +795,7 @@ export default function AdminDistribuidores() {
                   <input type="hidden" name="intent" value="apply-price" />
                   <input type="hidden" name="supplierId" value={supplierId} />
                   <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                    {isBusy && busyIntent === 'apply-price' && <span className="admin-spinner" aria-hidden="true" />}
                     {isBusy && busyIntent === 'apply-price'
                       ? 'Actualizando…'
                       : `Actualizar precio de ${summary.toUpdatePrice.length} productos`}
@@ -808,6 +845,7 @@ export default function AdminDistribuidores() {
                   <input type="hidden" name="intent" value="create-batch" />
                   <input type="hidden" name="supplierId" value={supplierId} />
                   <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+                    {isBusy && busyIntent === 'create-batch' && <span className="admin-spinner" aria-hidden="true" />}
                     {isBusy && busyIntent === 'create-batch' ? 'Creando…' : 'Crear siguiente lote (borrador)'}
                   </button>
                 </Form>

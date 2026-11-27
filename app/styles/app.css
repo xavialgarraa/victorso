@@ -2244,12 +2244,42 @@ aside li { margin-bottom: .125rem; }
 .dist-card__stock { font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
 .dist-card__stock--in { background: #e3f5e8; color: #16743a; }
 .dist-card__stock--out { background: #f1eee4; color: #8a7a4a; }
-.dist-card__connected {
-  font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 20px;
-  background: #e8eefc; color: #2a4f9e;
-}
 .dist-card__ean { font-size: .68rem; color: #b0b0b6; margin-top: 4px; }
 .dist-card__draft-btn { align-self: flex-start; padding: 4px 10px; font-size: .74rem; }
+
+/* Spinner genérico del panel — mismo giro que addtocart-spin (arriba),
+   para overlays de carga y botones ocupados. */
+.admin-spinner {
+  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(23,23,26,.15); border-top-color: var(--red);
+  animation: addtocart-spin .7s linear infinite;
+}
+.admin-btn--primary .admin-spinner { border-color: rgba(255,255,255,.35); border-top-color: #fff; }
+@media (prefers-reduced-motion: reduce) { .admin-spinner { animation-duration: 1.4s; } }
+
+.dist-grid-wrap { position: relative; }
+.dist-grid-overlay {
+  position: absolute; inset: 0; background: rgba(255,255,255,.82); border-radius: 12px; z-index: 5;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: .85rem; font-weight: 600; color: #3d3d42;
+}
+
+/* Estado de conexión con Shopify por tarjeta — antes era un texto suelto
+   ("Ya en la tienda") que solo aparecía si estaba conectado, sin nada que
+   mostrar lo contrario; ahora hay un estado explícito para los dos casos. */
+.dist-card__shopify-state {
+  display: inline-flex; align-items: center; gap: 4px; font-size: .68rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; white-space: nowrap;
+}
+.dist-card__shopify-state--connected { background: #e3f5e8; color: #16743a; }
+.dist-card__shopify-state--pending { background: #fdf1da; color: #7a5200; }
+.dist-card__shopify-state-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.dist-price-note {
+  display: flex; gap: 10px; align-items: flex-start; background: #eef4ff; border: 1px solid #d5e3fb;
+  border-radius: 10px; padding: 12px 14px; font-size: .82rem; color: #1f3d6e; margin: 10px 0 16px;
+}
+.dist-price-note strong { color: #16305e; }
 
 .dist-selectbar {
   display: flex; align-items: center; gap: 14px; position: sticky; bottom: 16px;
