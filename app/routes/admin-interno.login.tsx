@@ -49,19 +49,19 @@ export default function AdminLogin() {
   return (
     <div className="admin-login">
       <div className="admin-login__box">
-        <h1 style={{fontFamily: "'Space Grotesk', sans-serif", fontSize: '1.3rem', margin: '0 0 4px'}}>
-          Panel interno
-        </h1>
-        <p style={{fontSize: '.85rem', color: '#6b6b73', margin: '0 0 8px'}}>
-          Acceso restringido a personal autorizado.
-        </p>
+        <div className="admin-login__brand">
+          <span className="admin-login__brand-dot" aria-hidden="true" />
+          <span className="admin-login__brand-name">Victor So</span>
+        </div>
+        <h1 className="admin-login__title">Panel interno</h1>
+        <p className="admin-login__subtitle">Acceso restringido a personal autorizado.</p>
         <Form method="post" className="admin-form">
           <input type="hidden" name="next" value={next} />
           <label htmlFor="email">Email</label>
-          <input id="email" type="email" name="email" required autoFocus />
+          <input id="email" type="email" name="email" required autoFocus autoComplete="username" />
           <label htmlFor="password">Contraseña</label>
-          <input id="password" type="password" name="password" required />
-          <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 16, width: '100%', justifyContent: 'center'}}>
+          <input id="password" type="password" name="password" required autoComplete="current-password" />
+          <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 20, width: '100%', justifyContent: 'center'}}>
             Entrar
           </button>
           {actionData?.error && <p className="admin-msg--error">{actionData.error}</p>}

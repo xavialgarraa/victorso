@@ -365,7 +365,7 @@ function ProductCard({
         name="ean"
         value={product.ean}
         defaultChecked={checked}
-        className="dist-card__checkbox"
+        className="admin-check dist-card__checkbox"
         title={connected ? 'Ya existe en Shopify — puedes desmarcarlo si no quieres que siga así' : undefined}
       />
       <label htmlFor={checkboxId} className="dist-card__clickarea">
@@ -515,7 +515,7 @@ export default function AdminDistribuidores() {
             <span className="dist-tab__dot dist-tab__dot--pending" aria-hidden="true" />
             Audio-Technica
           </span>
-          <span className="dist-tab__meta">Pendiente — su FTP bloquea el acceso</span>
+          <span className="dist-tab__meta">Pendiente — esperando que autoricen nuestra IP fija</span>
         </div>
       </div>
 
@@ -586,7 +586,7 @@ export default function AdminDistribuidores() {
         <input type="hidden" name="supplier" value={supplierId} />
         <input type="text" name="q" defaultValue={q} placeholder="Buscar por nombre, marca, EAN..." />
         <label className="dist-toolbar__check">
-          <input type="checkbox" name="onlySelected" value="1" defaultChecked={onlySelected} />
+          <input type="checkbox" name="onlySelected" value="1" defaultChecked={onlySelected} className="admin-check" />
           Solo seleccionados
         </label>
         <button type="submit" className="admin-btn admin-btn--outline">
