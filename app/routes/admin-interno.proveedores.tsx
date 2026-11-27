@@ -178,7 +178,8 @@ function PriceRowActions({
           style={{padding: '4px 9px', fontSize: '.74rem'}}
           disabled={busyHere}
         >
-          {busyHere ? '…' : 'Actualizar precio'}
+          {busyHere && <span className="admin-spinner" aria-hidden="true" />}
+          {busyHere ? 'Aplicando…' : 'Actualizar precio'}
         </button>
       </Form>
       {canOffer && (
@@ -194,7 +195,8 @@ function PriceRowActions({
             style={{padding: '4px 9px', fontSize: '.74rem'}}
             disabled={busyHere}
           >
-            {busyHere ? '…' : 'Actualizar como oferta'}
+            {busyHere && <span className="admin-spinner" aria-hidden="true" />}
+            {busyHere ? 'Aplicando…' : 'Actualizar como oferta'}
           </button>
         </Form>
       )}
@@ -612,6 +614,7 @@ export default function AdminProveedores() {
         <Form method="post" style={{marginTop: 12}}>
           <input type="hidden" name="intent" value="stelorder-sync" />
           <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+            {isBusy && busyIntent === 'stelorder-sync' && <span className="admin-spinner" aria-hidden="true" />}
             {isBusy && busyIntent === 'stelorder-sync' ? 'Comparando…' : 'Comparar con Shopify'}
           </button>
         </Form>
@@ -680,6 +683,7 @@ export default function AdminProveedores() {
                 <Form method="post" style={{marginTop: 12}}>
                   <input type="hidden" name="intent" value="stelorder-update-stock" />
                   <button type="submit" className="admin-btn admin-btn--outline" disabled={isBusy}>
+                    {isBusy && busyIntent === 'stelorder-update-stock' && <span className="admin-spinner" aria-hidden="true" />}
                     {isBusy && busyIntent === 'stelorder-update-stock'
                       ? 'Actualizando…'
                       : `Actualizar stock de ${stelorderSummary.toUpdateStock.length} productos`}
@@ -764,7 +768,8 @@ export default function AdminProveedores() {
                 <Form method="post" style={{marginTop: 12}}>
                   <input type="hidden" name="intent" value="stelorder-create-batch" />
                   <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
-                    {isBusy && busyIntent === 'stelorder-create-batch' ? 'Creando…' : 'Crear siguiente lote'}
+                    {isBusy && busyIntent === 'stelorder-create-batch' && <span className="admin-spinner" aria-hidden="true" />}
+            {isBusy && busyIntent === 'stelorder-create-batch' ? 'Creando…' : 'Crear siguiente lote'}
                   </button>
                 </Form>
               </>
@@ -826,6 +831,7 @@ export default function AdminProveedores() {
         <Form method="post" style={{marginTop: 12}}>
           <input type="hidden" name="intent" value="stelorder-sku-sync" />
           <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+            {isBusy && busyIntent === 'stelorder-sku-sync' && <span className="admin-spinner" aria-hidden="true" />}
             {isBusy && busyIntent === 'stelorder-sku-sync' ? 'Cruzando…' : 'Cruzar por SKU con StelOrder'}
           </button>
         </Form>
@@ -882,6 +888,7 @@ export default function AdminProveedores() {
                 <Form method="post" style={{marginTop: 12}}>
                   <input type="hidden" name="intent" value="stelorder-sku-apply-stock" />
                   <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+                    {isBusy && busyIntent === 'stelorder-sku-apply-stock' && <span className="admin-spinner" aria-hidden="true" />}
                     {isBusy && busyIntent === 'stelorder-sku-apply-stock'
                       ? 'Aplicando…'
                       : `Actualizar stock de ${skuStockChangedRows.length} productos`}
@@ -1031,7 +1038,7 @@ export default function AdminProveedores() {
               <label>Contraseña</label>
               <input type="password" name="feedPassword" defaultValue={config.feedPassword} />
               <label style={{display: 'flex', alignItems: 'center', gap: 6, marginTop: 10}}>
-                <input type="checkbox" name="active" defaultChecked={config.active} style={{width: 'auto'}} />
+                <input type="checkbox" name="active" defaultChecked={config.active} className="admin-check" />
                 Activo
               </label>
               <button type="submit" className="admin-btn admin-btn--outline" style={{marginTop: 12}}>
@@ -1049,6 +1056,7 @@ export default function AdminProveedores() {
               <input type="hidden" name="intent" value="sync" />
               <input type="hidden" name="supplierId" value={id} />
               <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+                {isBusy && busyIntent === 'sync' && busySupplierId === id && <span className="admin-spinner" aria-hidden="true" />}
                 {isBusy && busyIntent === 'sync' && busySupplierId === id ? 'Comparando…' : 'Sincronizar ahora'}
               </button>
             </Form>
@@ -1210,7 +1218,8 @@ export default function AdminProveedores() {
                     <input type="hidden" name="intent" value="apply" />
                     <input type="hidden" name="supplierId" value={id} />
                     <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
-                      {isBusy && busyIntent === 'apply' ? 'Aplicando…' : `Confirmar y aplicar ${changedRows.length} cambios`}
+                      {isBusy && busyIntent === 'apply' && <span className="admin-spinner" aria-hidden="true" />}
+            {isBusy && busyIntent === 'apply' ? 'Aplicando…' : `Confirmar y aplicar ${changedRows.length} cambios`}
                     </button>
                   </Form>
                   {applySingleError && <p className="admin-msg--error">{applySingleError.error}</p>}
@@ -1323,7 +1332,7 @@ export default function AdminProveedores() {
             <label>Contraseña</label>
             <input type="password" name="feedPassword" />
             <label style={{display: 'flex', alignItems: 'center', gap: 6, marginTop: 10}}>
-              <input type="checkbox" name="active" defaultChecked style={{width: 'auto'}} />
+              <input type="checkbox" name="active" defaultChecked className="admin-check" />
               Activo
             </label>
             <p className="admin-hint">

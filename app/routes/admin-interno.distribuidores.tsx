@@ -417,7 +417,8 @@ function ProductCard({
             );
           }}
         >
-          {isDrafting ? '…' : 'Pasar a borrador'}
+          {isDrafting && <span className="admin-spinner" aria-hidden="true" />}
+          {isDrafting ? 'Pasando a borrador…' : 'Pasar a borrador'}
         </button>
       )}
       {draftDone && <p className="admin-hint" style={{margin: '4px 12px'}}>Pasado a borrador.</p>}

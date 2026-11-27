@@ -63,7 +63,7 @@ export default function AdminInstagram() {
             type="checkbox"
             checked={captioned}
             onChange={(e) => setCaptioned(e.target.checked)}
-            style={{width: 'auto'}}
+            className="admin-check"
           />
           Incluir pie de foto / descripción debajo
         </label>

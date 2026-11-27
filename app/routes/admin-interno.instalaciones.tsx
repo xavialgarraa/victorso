@@ -198,6 +198,7 @@ export default function AdminInstalaciones() {
                 </div>
               </div>
               <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
+                {isBusy && <span className="admin-spinner" aria-hidden="true" />}
                 {isBusy ? 'Subiendo…' : 'Añadir instalación'}
               </button>
             </Form>

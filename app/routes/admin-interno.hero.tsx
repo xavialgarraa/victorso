@@ -423,7 +423,7 @@ function SlideFields({
             name="external"
             checked={external}
             onChange={(e) => setExternal(e.target.checked)}
-            style={{width: 'auto'}}
+            className="admin-check"
           />
           Enlace externo
         </label>
@@ -434,7 +434,7 @@ function SlideFields({
             name="hideOverlay"
             checked={hideOverlay}
             onChange={(e) => setHideOverlay(e.target.checked)}
-            style={{width: 'auto'}}
+            className="admin-check"
           />
           Solo imagen (sin texto ni botón encima)
         </label>

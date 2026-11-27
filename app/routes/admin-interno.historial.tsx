@@ -57,7 +57,8 @@ function HistorialPriceActions({
             style={{padding: '4px 9px', fontSize: '.74rem'}}
             disabled={busy}
           >
-            {busy ? '…' : 'Actualizar precio'}
+            {busy && <span className="admin-spinner" aria-hidden="true" />}
+            {busy ? 'Aplicando…' : 'Actualizar precio'}
           </button>
         </fetcher.Form>
         {canOffer && (
@@ -73,7 +74,8 @@ function HistorialPriceActions({
               style={{padding: '4px 9px', fontSize: '.74rem'}}
               disabled={busy}
             >
-              {busy ? '…' : 'Actualizar como oferta'}
+              {busy && <span className="admin-spinner" aria-hidden="true" />}
+              {busy ? 'Aplicando…' : 'Actualizar como oferta'}
             </button>
           </fetcher.Form>
         )}

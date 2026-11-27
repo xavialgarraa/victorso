@@ -154,7 +154,7 @@ export default function AdminColecciones() {
                 <input type="hidden" name="existingBackgroundImage" value={c.banner?.backgroundImage ?? ''} />
 
                 <label style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                  <input type="checkbox" name="active" defaultChecked={c.banner?.active ?? false} />
+                  <input type="checkbox" name="active" defaultChecked={c.banner?.active ?? false} className="admin-check" />
                   Banner activo en esta colección
                 </label>
 
@@ -167,7 +167,7 @@ export default function AdminColecciones() {
                       style={{width: 220, height: 80, objectFit: 'cover', borderRadius: 8}}
                     />
                     <label style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem', marginTop: 4}}>
-                      <input type="checkbox" name="removeBackgroundImage" /> Quitar esta foto
+                      <input type="checkbox" name="removeBackgroundImage" className="admin-check" /> Quitar esta foto
                     </label>
                   </div>
                 )}
@@ -182,6 +182,7 @@ export default function AdminColecciones() {
                         name="logos"
                         value={b.logo}
                         defaultChecked={c.banner?.logos.includes(b.logo!) ?? false}
+                        className="admin-check"
                       />
                       {b.name}
                     </label>

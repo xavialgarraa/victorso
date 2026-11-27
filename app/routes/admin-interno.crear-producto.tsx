@@ -229,6 +229,7 @@ export default function AdminCrearProducto({loaderData}: Route.ComponentProps) {
             </div>
           </div>
           <button type="submit" className="admin-btn admin-btn--primary" style={{marginTop: 8}} disabled={isBusy}>
+            {isBusy && <span className="admin-spinner" aria-hidden="true" />}
             {isBusy ? 'Creando…' : 'Crear producto (borrador)'}
           </button>
         </Form>
