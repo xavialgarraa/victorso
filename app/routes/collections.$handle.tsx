@@ -23,6 +23,24 @@ import type {ProductsByCollectionQuery} from 'storefrontapi.generated';
 
 type GroupProduct = NonNullable<ProductsByCollectionQuery['collection']>['products']['nodes'][number];
 
+// "Alphatheta & Pioneer DJ" es la única de las 7 categorías principales
+// cuya colección de Shopify es la fuente real de productos (el menú la
+// enlaza a la colección de siempre, con sus 46 productos) — las otras 6
+// son "bare" a propósito: sus productos reales viven repartidos en sus
+// subcategorías. Antes se detectaba esto mirando si la colección propia
+// tenía 0 productos, pero el clasificador de IA de distribuidores (ver
+// distributorCategories.server.ts) solo conoce la categoría PRINCIPAL,
+// nunca la subcategoría exacta — así que un producto nuevo clasificado
+// como, p. ej., "Flightcases y bolsas" acaba asignado directamente a esa
+// colección "bare", que deja de tener 0 productos, y la página entera
+// cambiaba de modo: dejaba de agregar subcategorías y solo enseñaba esos
+// pocos productos sueltos, escondiendo el resto del catálogo real de esa
+// categoría. Ahora el modo se decide por esta lista fija, no por el
+// conteo, y los productos que caigan por error en la colección "bare" se
+// fusionan igualmente en el listado agregado (ver más abajo) en vez de
+// desaparecer de la vista.
+const GROUPS_WITH_REAL_OWN_COLLECTION = new Set(['pioneer-dj-alphatheta']);
+
 export const meta: Route.MetaFunction = ({data}) => {
   const collection = data?.collection;
   const title = collection?.title ?? '';
@@ -157,23 +175,24 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     groupLanding = {group: groupRef.title, tiles};
   }
 
-  // Las 6 colecciones "grupo" bare (0 productos propios — todo lo que
-  // tienen está repartido en sus subcategorías) muestran aquí el
-  // catálogo combinado de todas sus subcategorías con producto, igual
-  // que la de Alphatheta (que sí tiene productos propios y no necesita
-  // esto). Se paginan y ordenan en memoria porque no existe ninguna
+  // Las 6 colecciones "grupo" bare (todo lo que tienen de verdad está
+  // repartido en sus subcategorías) muestran aquí el catálogo combinado
+  // de todas sus subcategorías con producto — más los que la propia
+  // colección "bare" tenga por error (ver nota junto a
+  // GROUPS_WITH_REAL_OWN_COLLECTION), para que no desaparezcan de la
+  // vista. Se paginan y ordenan en memoria porque no existe ninguna
   // colección real de Shopify que las junte.
+  const groupHasRealOwnCollection = groupRef ? GROUPS_WITH_REAL_OWN_COLLECTION.has(groupRef.handle) : false;
   let groupProducts: GroupProduct[] | null = null;
   let groupResultCount = 0;
-  if (groupLanding && collection.products.nodes.length === 0 && groupLanding.tiles.length > 0) {
+  if (groupLanding && !groupHasRealOwnCollection && groupLanding.tiles.length > 0) {
     const perSubcategory = await Promise.all(
       groupLanding.tiles.map((tile) =>
         storefront.query(PRODUCTS_BY_COLLECTION_QUERY, {variables: {handle: tile.handle, first: 24}}),
       ),
     );
     const seen = new Set<string>();
-    const merged = perSubcategory
-      .flatMap((d) => d.collection?.products.nodes ?? [])
+    const merged = [...collection.products.nodes, ...perSubcategory.flatMap((d) => d.collection?.products.nodes ?? [])]
       .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
     groupResultCount = merged.length;
     const sorted = sortGroupProducts(merged, sortConfig.value);
@@ -181,7 +200,7 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     groupProducts = sorted.slice((page - 1) * perPage, page * perPage);
   }
 
-  return {collection, resultCount, banner, leaf, groupLanding, groupProducts, groupResultCount, perPage};
+  return {collection, resultCount, banner, leaf, groupLanding, groupHasRealOwnCollection, groupProducts, groupResultCount, perPage};
 }
 
 function sortGroupProducts(products: GroupProduct[], sort: string): GroupProduct[] {
@@ -201,7 +220,7 @@ function sortGroupProducts(products: GroupProduct[], sort: string): GroupProduct
 }
 
 export default function Collection() {
-  const {collection, resultCount, banner, leaf, groupLanding, groupProducts, groupResultCount, perPage} =
+  const {collection, resultCount, banner, leaf, groupLanding, groupHasRealOwnCollection, groupProducts, groupResultCount, perPage} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
   const [searchParams] = useSearchParams();
@@ -305,7 +324,7 @@ export default function Collection() {
           categoría a la colección real, no a una "bare") — ahí la
           cuadrícula de arriba sale además del listado normal, no en su
           lugar. */}
-      {(!groupLanding || resultCount > 0) && (
+      {(!groupLanding || groupHasRealOwnCollection) && (
         <>
           <div id="collection-products" />
           <ProductListing
@@ -322,7 +341,7 @@ export default function Collection() {
           sus subcategorías, juntados y paginados a mano en el loader
           (ver groupProducts/sortGroupProducts) porque no hay ninguna
           colección real que los contenga a todos. */}
-      {groupLanding && resultCount === 0 && groupProducts && groupProducts.length > 0 && (
+      {groupLanding && !groupHasRealOwnCollection && groupProducts && groupProducts.length > 0 && (
         <>
           <div id="collection-products" />
           <ProductListing
@@ -394,6 +413,7 @@ const COLLECTION_QUERY = `#graphql
         }
         nodes {
           ...ProductCard
+          createdAt
         }
         pageInfo {
           hasPreviousPage
