@@ -173,7 +173,7 @@ export async function action({request, context}: Route.ActionArgs) {
     const startedAt = new Date().toISOString();
     try {
       const products = await getDistributorProducts(context.env, id);
-      const summary = await buildDistributorSyncSummary(context.env, id, products);
+      const summary = await buildDistributorSyncSummary(context.env, id, products, {skipCategoryClassification: true});
       const increases = summary.toUpdatePrice.filter((r) => r.priceTo > r.priceFrom);
       const decreases = summary.toUpdatePrice.filter((r) => r.priceTo < r.priceFrom);
 

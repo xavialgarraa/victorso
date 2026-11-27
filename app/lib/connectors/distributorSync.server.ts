@@ -36,6 +36,12 @@ export async function buildDistributorSyncSummary(
   env: Env,
   supplierId: string,
   allProducts: DistributorProduct[],
+  // La vigilancia de precio automática (ver api.sync-trigger.tsx) solo
+  // necesita toUpdatePrice — pasar esto a true evita clasificar por IA los
+  // "toCreate" (coste y tiempo de más, dos veces al día, para una lista que
+  // esa llamada ni mira). El botón "Comparar con Shopify" del panel sí lo
+  // necesita, así que por defecto se sigue clasificando como siempre.
+  {skipCategoryClassification = false}: {skipCategoryClassification?: boolean} = {},
 ): Promise<DistributorSyncSummary> {
   const [selection, catalog] = await Promise.all([
     getSelection(env, supplierId),
@@ -77,7 +83,9 @@ export async function buildDistributorSyncSummary(
     if (!stockChanged && !priceChanged) unchanged++;
   }
 
-  const categories = await classifyDistributorProducts(env, toCreateRaw);
+  const categories = skipCategoryClassification
+    ? new Map<string, DistributorCategory>()
+    : await classifyDistributorProducts(env, toCreateRaw);
   const toCreate = toCreateRaw.map((product) => ({
     product,
     category: categories.get(product.ean) ?? 'Otros',
