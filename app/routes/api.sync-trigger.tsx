@@ -5,8 +5,20 @@ import {listSuppliers, logSyncRun, resolveFeedUrl} from '~/lib/connectors/suppli
 import {applyStockChanges, getPrimaryLocationId, getShopifyCatalogByBarcode} from '~/lib/shopifyProducts.server';
 import {applyStelOrderCreations, buildStelOrderSyncSummary} from '~/lib/connectors/stelorderSync.server';
 import {buildStelOrderSkuSyncSummary, skuSyncSummaryToRunDetails} from '~/lib/connectors/stelorderSkuSync.server';
+import {getDistributorProducts} from '~/lib/connectors/distributorFeed.server';
+import {buildDistributorSyncSummary} from '~/lib/connectors/distributorSync.server';
 import {safeCompare} from '~/lib/safeCompare.server';
-import {sendSyncFailureEmail, sendPriceChangesPendingEmail} from '~/lib/email.server';
+import {sendSyncFailureEmail, sendPriceChangesPendingEmail, sendDistributorPriceWatchEmail} from '~/lib/email.server';
+
+// Los dos distribuidores que solo hablan FTP (ver scripts/supplier-feeds/,
+// corren en el runner self-hosted con IP fija de Oracle) — a diferencia de
+// StelOrder/Walkasse arriba, aquí NUNCA se aplica nada solo, ni precio ni
+// stock: Víctor pidió explícitamente que esto sea solo un aviso, la
+// aplicación real sigue siendo siempre a mano desde /admin-interno/distribuidores.
+const DISTRIBUTOR_PRICE_WATCH_SUPPLIERS = [
+  {id: 'zentralmedia', name: 'Zentralmedia'},
+  {id: 'midwich', name: 'Midwich'},
+];
 
 /**
  * StelOrder no tiene "supplier" en Firestore (no es un feed por URL como
@@ -152,6 +164,74 @@ export async function action({request, context}: Route.ActionArgs) {
       results.push({id: 'stelorder-sku', ok: false, error: message});
       await sendSyncFailureEmail(context.env, {supplierName: 'StelOrder (por SKU)', error: message}).catch((e) =>
         console.error('[api/sync-trigger] stelorder-sku failure email', e),
+      );
+    }
+  }
+
+  const distributorAdminUrl = new URL('/admin-interno/distribuidores', request.url).toString();
+  for (const {id, name} of DISTRIBUTOR_PRICE_WATCH_SUPPLIERS) {
+    const startedAt = new Date().toISOString();
+    try {
+      const products = await getDistributorProducts(context.env, id);
+      const summary = await buildDistributorSyncSummary(context.env, id, products);
+      const increases = summary.toUpdatePrice.filter((r) => r.priceTo > r.priceFrom);
+      const decreases = summary.toUpdatePrice.filter((r) => r.priceTo < r.priceFrom);
+
+      await logSyncRun(context.env, {
+        supplierId: id,
+        supplierName: name,
+        type: 'price-watch',
+        triggeredBy: 'cron',
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totalFeedRows: summary.totalSelected,
+        matchedCount: summary.totalSelected - summary.toCreate.length,
+        changedCount: summary.toUpdatePrice.length,
+        unmatchedCount: 0,
+        stockApplied: 0,
+        priceApplied: 0,
+        pendingPriceChanges: summary.toUpdatePrice.length,
+        errors: [],
+        details: {
+          changed: summary.toUpdatePrice.map((r) => ({
+            ean: r.product.ean,
+            title: r.catalogVariant.title || r.product.title,
+            sku: r.product.sku,
+            supplierRef: r.product.sku,
+            stockFrom: null,
+            stockTo: null,
+            priceFrom: r.priceFrom,
+            priceTo: r.priceTo,
+          })),
+          unchanged: [],
+          unmatched: [],
+          priceWarnings: [],
+          orphaned: [],
+        },
+      });
+
+      results.push({
+        id,
+        ok: true,
+        watchOnly: true,
+        priceIncreases: increases.length,
+        priceDecreases: decreases.length,
+      });
+
+      if (summary.toUpdatePrice.length > 0) {
+        await sendDistributorPriceWatchEmail(context.env, {
+          supplierName: name,
+          increases: increases.map((r) => ({title: r.catalogVariant.title, priceFrom: r.priceFrom, priceTo: r.priceTo})),
+          decreases: decreases.map((r) => ({title: r.catalogVariant.title, priceFrom: r.priceFrom, priceTo: r.priceTo})),
+          adminUrl: distributorAdminUrl,
+        }).catch((e) => console.error('[api/sync-trigger]', id, 'price-watch email', e));
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error desconocido.';
+      console.error('[api/sync-trigger] price-watch', id, error);
+      results.push({id, ok: false, error: message});
+      await sendSyncFailureEmail(context.env, {supplierName: name, error: message}).catch((e) =>
+        console.error('[api/sync-trigger] price-watch failure email', id, e),
       );
     }
   }

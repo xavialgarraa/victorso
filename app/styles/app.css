@@ -2121,6 +2121,7 @@ aside li { margin-bottom: .125rem; }
 .admin-badge--apply { background: #e3f5e8; color: #16743a; }
 .admin-badge--dry { background: #eef0f4; color: #4a4a52; }
 .admin-badge--error { background: #fdeaea; color: var(--red); }
+.admin-badge--watch { background: #fdf1da; color: #7a5200; }
 
 .admin-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .admin-table th { text-align: left; padding: 8px 10px; color: #6b6b73; font-weight: 600; border-bottom: 1px solid #e4e4e8; }

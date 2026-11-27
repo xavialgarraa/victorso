@@ -720,7 +720,7 @@ export type AdminDescriptionProductsQuery = {
     nodes: Array<
       Pick<
         StorefrontAPI.Product,
-        'id' | 'handle' | 'title' | 'descriptionHtml'
+        'id' | 'handle' | 'title' | 'vendor' | 'productType' | 'descriptionHtml'
       > & {
         featuredImage?: StorefrontAPI.Maybe<
           Pick<StorefrontAPI.Image, 'url' | 'altText'>
@@ -1965,7 +1965,7 @@ interface GeneratedQueryTypes {
     return: AdminCollectionsForBannersQuery;
     variables: AdminCollectionsForBannersQueryVariables;
   };
-  '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        featuredImage { url altText }\n        descriptionHtml\n      }\n    }\n  }\n': {
+  '#graphql\n  query AdminDescriptionProducts {\n    products(first: 250, sortKey: TITLE) {\n      nodes {\n        id\n        handle\n        title\n        vendor\n        productType\n        featuredImage { url altText }\n        descriptionHtml\n      }\n    }\n  }\n': {
     return: AdminDescriptionProductsQuery;
     variables: AdminDescriptionProductsQueryVariables;
   };

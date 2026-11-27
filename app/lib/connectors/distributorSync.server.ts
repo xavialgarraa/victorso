@@ -1,5 +1,6 @@
 import {getSelection, type DistributorProduct} from '~/lib/connectors/distributorFeed.server';
 import {classifyDistributorProducts, type DistributorCategory} from '~/lib/connectors/distributorCategories.server';
+import {getAIProductDescription} from '~/lib/connectors/productDescriptionAI.server';
 import {normalizeVendorName} from '~/lib/brands';
 import {
   applyStockChanges,
@@ -124,9 +125,20 @@ export async function applyDistributorCreations(
       const collectionIds = category === 'Otros' ? [] : [await getOrCreateCollection(env, category, collectionCache)];
       const vendor = normalizeVendorName(product.brand || 'Victor So Professional');
 
+      // Antes se usaba el texto del distribuidor tal cual (a veces muy
+      // escueto, a veces en catalán/inglés) — ahora pasa por la misma IA
+      // que StelOrder (ver productDescriptionAI.server.ts), cacheada por
+      // EAN para no regenerarla si este lote falla a medias y se repite.
+      const {html: aiDescription} = await getAIProductDescription(env, product.ean, {
+        title: product.title,
+        vendor,
+        category,
+        originalText: product.description || null,
+      });
+
       const result = await createShopifyProduct(env, {
         title: product.title,
-        descriptionHtml: descriptionToHtml(product.description || product.title),
+        descriptionHtml: aiDescription || descriptionToHtml(product.description || product.title),
         vendor,
         barcode: product.ean,
         sku: product.sku,

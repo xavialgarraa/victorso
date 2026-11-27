@@ -88,6 +88,12 @@ function HistorialPriceActions({
   );
 }
 
+// Los distribuidores FTP no tienen conector de "aplicar un precio suelto"
+// en /admin-interno/proveedores (ese botón solo sabe de Walkasse/StelOrder,
+// ver HistorialPriceActions) — para estos se enlaza a Distribuidores, que
+// es donde de verdad se puede comparar y aplicar.
+const DISTRIBUTOR_WATCH_SUPPLIER_IDS = new Set(['zentralmedia', 'midwich']);
+
 function RunDetails({run}: {run: SyncRunLog}) {
   const details = run.details;
   if (!details) {
@@ -164,6 +170,10 @@ function RunDetails({run}: {run: SyncRunLog}) {
                       {row.priceFrom !== null && row.priceTo !== null ? (
                         <>
                           {row.priceFrom.toFixed(2)}€ → {row.priceTo.toFixed(2)}€
+                          {' '}
+                          <span style={{fontWeight: 600, color: row.priceTo > row.priceFrom ? '#b05a00' : '#16743a'}}>
+                            ({row.priceTo > row.priceFrom ? '↑ sube' : '↓ baja'})
+                          </span>
                           {run.supplierId === 'stelorder-sku' ? (
                             <HistorialPriceActions
                               intent="stelorder-sku-apply-single-price"
@@ -172,6 +182,16 @@ function RunDetails({run}: {run: SyncRunLog}) {
                               priceFrom={row.priceFrom}
                               priceTo={row.priceTo}
                             />
+                          ) : DISTRIBUTOR_WATCH_SUPPLIER_IDS.has(run.supplierId) ? (
+                            <div style={{marginTop: 6}}>
+                              <a
+                                className="admin-btn admin-btn--outline"
+                                style={{padding: '4px 9px', fontSize: '.74rem'}}
+                                href={`/admin-interno/distribuidores?supplier=${run.supplierId}`}
+                              >
+                                Revisar en Distribuidores →
+                              </a>
+                            </div>
                           ) : (
                             <HistorialPriceActions
                               intent="apply-single-price"

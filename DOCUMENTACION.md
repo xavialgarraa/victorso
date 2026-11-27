@@ -72,11 +72,17 @@ automatización vive en un **Cloudflare Worker separado**:
 - Nombre del Worker: `victorso-sync-cron`
 - Cuenta Cloudflare: `Victorsodev@gmail.com`
 - URL del Worker (para lanzarlo a mano): https://victorso-sync-cron.victorso.workers.dev
-- Horario: todos los días a las **6:00 UTC** (7:00 en invierno / 8:00 en
-  verano, hora España) — editable en `cron-worker/wrangler.toml`
+- Horario: dos veces al día, **6:00 y 14:00 UTC** (7-8h y 15-16h hora
+  España según horario de verano/invierno) — editable en
+  `cron-worker/wrangler.toml`
 - Llama a `POST https://victorso.es/api/sync-trigger` con
   `Authorization: Bearer <SYNC_TRIGGER_SECRET>`
-- Solo actualiza **stock**, nunca precio (igual que el resto del sistema)
+- StelOrder/Walkasse: solo actualiza **stock**, nunca precio (igual que el
+  resto del sistema). Zentralmedia/Midwich (FTP, ver sección de
+  distribuidores): no actualiza NADA, solo avisa por email y en
+  `/admin-interno/historial` si su precio ya no coincide con el de Shopify
+  ("vigilancia de precio") — aplicar sigue siendo siempre a mano desde
+  `/admin-interno/distribuidores`.
 - Para ver logs de una ejecución en directo:
   ```
   cd cron-worker

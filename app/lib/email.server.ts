@@ -274,3 +274,64 @@ export async function sendPriceChangesPendingEmail(
     console.error(`[sync] Error enviando aviso de precios pendientes:`, await response.text());
   }
 }
+
+/** Aviso de la "vigilancia de precio" automática de los distribuidores
+ * conectados por FTP (Zentralmedia, Midwich) — nunca aplica nada, solo
+ * avisa de que el precio del distribuidor y el de Shopify ya no
+ * coinciden, tanto si ha subido como si ha bajado, para que se revise y
+ * se aplique a mano desde /admin-interno/distribuidores si corresponde. */
+export async function sendDistributorPriceWatchEmail(
+  env: Env,
+  {
+    supplierName,
+    increases,
+    decreases,
+    adminUrl,
+  }: {
+    supplierName: string;
+    increases: Array<{title: string; priceFrom: number; priceTo: number}>;
+    decreases: Array<{title: string; priceFrom: number; priceTo: number}>;
+    adminUrl: string;
+  },
+): Promise<void> {
+  if (!env.RESEND_API_KEY) {
+    console.warn(`[sync] RESEND_API_KEY no configurado: se omite el aviso de vigilancia de precio de ${supplierName}.`);
+    return;
+  }
+
+  const from = env.RESEND_FROM_EMAIL || 'Victor So Professional <info@victorso.com>';
+  const to = env.SERVICE_REQUEST_TO_EMAIL || 'info@victorso.com';
+  const total = increases.length + decreases.length;
+
+  function rowsHtml(rows: Array<{title: string; priceFrom: number; priceTo: number}>): string {
+    return rows
+      .slice(0, 40)
+      .map((r) => `<li>${r.title}: ${r.priceFrom.toFixed(2)}€ → ${r.priceTo.toFixed(2)}€</li>`)
+      .join('');
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject: `💲 ${total} cambio${total === 1 ? '' : 's'} de precio detectado${total === 1 ? '' : 's'} — ${supplierName}`,
+      html: `
+        <p>La vigilancia automática de precios de <strong>${supplierName}</strong> ha detectado cambios respecto
+        al precio actual en Shopify. <strong>No se ha aplicado nada</strong> — es solo un aviso.</p>
+        ${increases.length > 0 ? `<p>📈 <strong>${increases.length} subida${increases.length === 1 ? '' : 's'}</strong> de precio:</p><ul>${rowsHtml(increases)}</ul>` : ''}
+        ${decreases.length > 0 ? `<p>📉 <strong>${decreases.length} bajada${decreases.length === 1 ? '' : 's'}</strong> de precio:</p><ul>${rowsHtml(decreases)}</ul>` : ''}
+        <p>Revísalo y aplica lo que corresponda a mano en el panel:</p>
+        <p><a href="${adminUrl}">Ir a Distribuidores</a></p>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error(`[sync] Error enviando aviso de vigilancia de precio:`, await response.text());
+  }
+}

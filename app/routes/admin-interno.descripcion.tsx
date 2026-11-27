@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {Fragment, useState} from 'react';
 import {Form, data, useActionData, useLoaderData, useNavigation} from 'react-router';
 import type {Route} from './+types/admin-interno.descripcion';
 import {requireAdminUser} from '~/lib/adminSession.server';
@@ -10,6 +10,8 @@ import {
   type DescriptionFeature,
   type DescriptionSpec,
 } from '~/lib/productDescriptionTemplate';
+import {getAIProductDescription} from '~/lib/connectors/productDescriptionAI.server';
+import {looksLikeMissingDescription} from '~/lib/productDescriptionGaps';
 
 export const meta: Route.MetaFunction = () => {
   return [{title: 'Descripción de producto — Panel interno'}];
@@ -21,12 +23,16 @@ type PickerProduct = {
   title: string;
   image: string;
   descriptionHtml: string;
+  vendor: string;
+  productType: string;
 };
 
 // Lista plana para el selector (mismo patrón que el buscador del hero) —
 // se trae entera de una vez para que el autocompletar vaya al instante.
 // Incluye descriptionHtml para poder precargar el formulario si el
-// producto ya tiene una descripción hecha con esta misma plantilla.
+// producto ya tiene una descripción hecha con esta misma plantilla, y
+// vendor/productType para poder pasárselos a la IA en el relleno
+// automático (ver "Rellenar huecos con IA" más abajo).
 const ADMIN_DESCRIPTION_PRODUCTS_QUERY = `#graphql
   query AdminDescriptionProducts {
     products(first: 250, sortKey: TITLE) {
@@ -34,6 +40,8 @@ const ADMIN_DESCRIPTION_PRODUCTS_QUERY = `#graphql
         id
         handle
         title
+        vendor
+        productType
         featuredImage { url altText }
         descriptionHtml
       }
@@ -51,14 +59,23 @@ export async function loader({request, context}: Route.LoaderArgs) {
     title: p.title,
     image: p.featuredImage?.url ?? '',
     descriptionHtml: p.descriptionHtml ?? '',
+    vendor: p.vendor ?? '',
+    productType: p.productType ?? '',
   }));
 
   return data({user, products}, {headers});
 }
 
+// Igual límite que el resto de lotes del panel (StelOrder, distribuidores)
+// — de uno en uno se pasaría de tiempo de request y de coste de IA de
+// golpe; de lote en lote se puede parar/revisar entre tandas.
+const BACKFILL_BATCH_SIZE = 10;
+
 type ActionResult =
-  | {ok: true; title: string; handle: string}
-  | {ok: false; error: string};
+  | {intent: 'save'; ok: true; title: string; handle: string}
+  | {intent: 'save'; ok: false; error: string}
+  | {intent: 'backfill-ai'; ok: true; processed: number; errors: string[]}
+  | {intent: 'backfill-ai'; ok: false; error: string};
 
 function parseJsonArray<T>(formData: FormData, key: string): T[] {
   try {
@@ -73,13 +90,59 @@ function parseJsonArray<T>(formData: FormData, key: string): T[] {
 export async function action({request, context}: Route.ActionArgs) {
   const {headers} = await requireAdminUser(request, context.env);
   const formData = await request.formData();
+  const intent = String(formData.get('intent') || 'save');
+
+  if (intent === 'backfill-ai') {
+    const ids = formData.getAll('productId').map(String);
+    const titles = formData.getAll('productTitle').map(String);
+    const vendors = formData.getAll('productVendor').map(String);
+    const categories = formData.getAll('productCategory').map(String);
+    const errors: string[] = [];
+    let processed = 0;
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        const {html} = await getAIProductDescription(context.env, ids[i], {
+          title: titles[i] || '',
+          vendor: vendors[i] || '',
+          category: categories[i] || '',
+          originalText: null,
+        });
+        if (!html) {
+          errors.push(`${titles[i]}: la IA no está disponible (falta ANTHROPIC_API_KEY) o no devolvió texto.`);
+          continue;
+        }
+        const result = await adminQuery<{
+          productUpdate: {product: {id: string} | null; userErrors: Array<{message: string}>};
+        }>(
+          context.env,
+          `
+            mutation BackfillProductDescription($input: ProductInput!) {
+              productUpdate(input: $input) {
+                product { id }
+                userErrors { field message }
+              }
+            }
+          `,
+          {input: {id: ids[i], descriptionHtml: html}},
+        );
+        if (result.productUpdate.userErrors.length > 0) {
+          errors.push(`${titles[i]}: ${result.productUpdate.userErrors.map((e) => e.message).join(', ')}`);
+          continue;
+        }
+        processed++;
+      } catch (error) {
+        errors.push(`${titles[i]}: ${error instanceof Error ? error.message : 'Error desconocido.'}`);
+      }
+    }
+    return data<ActionResult>({intent: 'backfill-ai', ok: true, processed, errors}, {headers});
+  }
 
   const productId = String(formData.get('productId') || '');
   const productHandle = String(formData.get('productHandle') || '');
   const productTitle = String(formData.get('productTitle') || '');
 
   if (!productId) {
-    return data<ActionResult>({ok: false, error: 'Elige un producto de la lista.'}, {headers});
+    return data<ActionResult>({intent: 'save', ok: false, error: 'Elige un producto de la lista.'}, {headers});
   }
 
   const intro = String(formData.get('intro') || '');
@@ -111,11 +174,11 @@ export async function action({request, context}: Route.ActionArgs) {
       throw new Error(result.productUpdate.userErrors.map((e) => e.message).join(', '));
     }
 
-    return data<ActionResult>({ok: true, title: productTitle, handle: productHandle}, {headers});
+    return data<ActionResult>({intent: 'save', ok: true, title: productTitle, handle: productHandle}, {headers});
   } catch (error) {
     console.error('[admin-interno/descripcion] update', error);
     return data<ActionResult>(
-      {ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
+      {intent: 'save', ok: false, error: error instanceof Error ? error.message : 'Error desconocido.'},
       {headers},
     );
   }
@@ -129,6 +192,15 @@ export default function AdminDescripcion() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isBusy = navigation.state !== 'idle';
+  const busyIntent = navigation.formData?.get('intent');
+  const saveResult = actionData?.intent === 'save' ? actionData : null;
+  const backfillResult = actionData?.intent === 'backfill-ai' ? actionData : null;
+  // "De verdad sin descripción" — vacíos o con un texto tan corto que es
+  // claramente un título pegado sin más (ver looksLikeMissingDescription).
+  // Nunca toca nada que ya tenga contenido real, aunque no venga de este
+  // formulario ni de la IA.
+  const missingDescription = products.filter((p) => looksLikeMissingDescription(p.descriptionHtml));
+  const nextBackfillBatch = missingDescription.slice(0, BACKFILL_BATCH_SIZE);
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PickerProduct | null>(null);
@@ -178,6 +250,59 @@ export default function AdminDescripcion() {
         colores, modo claro/oscuro) — no hace falta escribir HTML a mano ni usa ninguna IA, siempre es la
         misma plantilla. Al guardar, se sobrescribe la descripción actual del producto en Shopify.
       </p>
+
+      <div className="admin-card">
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10}}>
+          <div>
+            <strong>Rellenar huecos con IA</strong>
+            <p className="admin-hint" style={{marginTop: 4, maxWidth: 560}}>
+              Productos sin descripción de verdad (vacíos, o con un texto tan corto que es claramente un título
+              pegado sin más — esto pasa con los que se crean desde un distribuidor o StelOrder sin que nadie
+              escriba nada a mano). Esto nunca toca un producto que ya tenga contenido, lo escribiera quien lo
+              escribiera. Los productos nuevos de aquí en adelante ya se crean con esto aplicado solo — este
+              botón es solo para ponerse al día con los que ya existían.
+            </p>
+          </div>
+          {missingDescription.length > 0 && (
+            <span className="admin-badge admin-badge--dry">{missingDescription.length} sin descripción</span>
+          )}
+        </div>
+
+        {missingDescription.length === 0 ? (
+          <p className="admin-hint" style={{marginTop: 12}}>Todo al día — ningún producto sin descripción.</p>
+        ) : (
+          <Form method="post" style={{marginTop: 14}}>
+            <input type="hidden" name="intent" value="backfill-ai" />
+            {nextBackfillBatch.map((p) => (
+              <Fragment key={p.id}>
+                <input type="hidden" name="productId" value={p.id} />
+                <input type="hidden" name="productTitle" value={p.title} />
+                <input type="hidden" name="productVendor" value={p.vendor} />
+                <input type="hidden" name="productCategory" value={p.productType} />
+              </Fragment>
+            ))}
+            <button type="submit" className="admin-btn admin-btn--primary" disabled={isBusy}>
+              {isBusy && busyIntent === 'backfill-ai' && <span className="admin-spinner" aria-hidden="true" />}
+              {isBusy && busyIntent === 'backfill-ai'
+                ? 'Generando…'
+                : `Generar con IA para ${nextBackfillBatch.length} de ${missingDescription.length}`}
+            </button>
+          </Form>
+        )}
+
+        {backfillResult && (
+          backfillResult.ok ? (
+            <p className={backfillResult.errors.length > 0 ? 'admin-msg--error' : 'admin-msg--ok'} style={{marginTop: 12}}>
+              Generadas {backfillResult.processed} descripciones.
+              {backfillResult.errors.length > 0 && (
+                <> {backfillResult.errors.length} errores: {backfillResult.errors.slice(0, 5).join(' · ')}</>
+              )}
+            </p>
+          ) : (
+            <p className="admin-msg--error" style={{marginTop: 12}}>{backfillResult.error}</p>
+          )
+        )}
+      </div>
 
       <div className="admin-card" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32}}>
         <div>
@@ -405,11 +530,11 @@ export default function AdminDescripcion() {
             </button>
           </Form>
 
-          {actionData && !actionData.ok && <p className="admin-msg--error">{actionData.error}</p>}
-          {actionData?.ok && (
+          {saveResult && !saveResult.ok && <p className="admin-msg--error">{saveResult.error}</p>}
+          {saveResult?.ok && (
             <p className="admin-msg--ok">
-              Guardado en "{actionData.title}".{' '}
-              <a href={`https://www.victorso.es/products/${actionData.handle}`} target="_blank" rel="noreferrer">
+              Guardado en "{saveResult.title}".{' '}
+              <a href={`https://www.victorso.es/products/${saveResult.handle}`} target="_blank" rel="noreferrer">
                 Ver producto
               </a>
             </p>

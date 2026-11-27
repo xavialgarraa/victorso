@@ -50,8 +50,11 @@ export type SyncRunLog = {
   supplierId: string;
   supplierName: string;
   // 'auto-apply' = disparado por el cron externo: solo toca stock, el
-  // precio se deja siempre pendiente de revisión manual.
-  type: 'dry-run' | 'apply' | 'auto-apply';
+  // precio se deja siempre pendiente de revisión manual. 'price-watch' =
+  // también cron, pero no toca NADA (ni stock) — solo mira si el precio
+  // del distribuidor difiere del de Shopify y avisa (ver
+  // distribuidores conectados por FTP, api.sync-trigger.tsx).
+  type: 'dry-run' | 'apply' | 'auto-apply' | 'price-watch';
   triggeredBy: string;
   startedAt: string;
   finishedAt: string;
