@@ -1175,6 +1175,9 @@ export type CategoriesMenuQuery = {
 export type ProductsByCollectionQueryVariables = StorefrontAPI.Exact<{
   handle: StorefrontAPI.Scalars['String']['input'];
   first: StorefrontAPI.Scalars['Int']['input'];
+  filters?: StorefrontAPI.InputMaybe<
+    Array<StorefrontAPI.ProductFilter> | StorefrontAPI.ProductFilter
+  >;
   country?: StorefrontAPI.InputMaybe<StorefrontAPI.CountryCode>;
   language?: StorefrontAPI.InputMaybe<StorefrontAPI.LanguageCode>;
 }>;
@@ -1182,6 +1185,13 @@ export type ProductsByCollectionQueryVariables = StorefrontAPI.Exact<{
 export type ProductsByCollectionQuery = {
   collection?: StorefrontAPI.Maybe<{
     products: {
+      filters: Array<
+        Pick<StorefrontAPI.Filter, 'id' | 'label' | 'type'> & {
+          values: Array<
+            Pick<StorefrontAPI.FilterValue, 'id' | 'label' | 'count' | 'input'>
+          >;
+        }
+      >;
       nodes: Array<
         Pick<
           StorefrontAPI.Product,
@@ -2056,7 +2066,7 @@ interface GeneratedQueryTypes {
     return: CategoriesMenuQuery;
     variables: CategoriesMenuQueryVariables;
   };
-  '#graphql\n  #graphql\n  fragment ProductCardPrice on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    description(truncateAt: 110)\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n      id\n      availableForSale\n      quantityAvailable\n    }\n    reviewsMetafield: metafield(namespace: "reviews", key: "reviews") {\n      value\n    }\n  }\n\n  query ProductsByCollection($handle: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)\n    @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: $first) {\n        nodes {\n          ...ProductCard\n          createdAt\n        }\n      }\n    }\n  }\n': {
+  '#graphql\n  #graphql\n  fragment ProductCardPrice on MoneyV2 {\n    amount\n    currencyCode\n  }\n  fragment ProductCard on Product {\n    id\n    handle\n    title\n    vendor\n    description(truncateAt: 110)\n    featuredImage {\n      id\n      altText\n      url\n      width\n      height\n    }\n    priceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    compareAtPriceRange {\n      minVariantPrice {\n        ...ProductCardPrice\n      }\n    }\n    selectedOrFirstAvailableVariant(ignoreUnknownOptions: true, selectedOptions: []) {\n      id\n      availableForSale\n      quantityAvailable\n    }\n    reviewsMetafield: metafield(namespace: "reviews", key: "reviews") {\n      value\n    }\n  }\n\n  query ProductsByCollection(\n    $handle: String!\n    $first: Int!\n    $filters: [ProductFilter!]\n    $country: CountryCode\n    $language: LanguageCode\n  ) @inContext(country: $country, language: $language) {\n    collection(handle: $handle) {\n      products(first: $first, filters: $filters) {\n        filters {\n          id\n          label\n          type\n          values {\n            id\n            label\n            count\n            input\n          }\n        }\n        nodes {\n          ...ProductCard\n          createdAt\n        }\n      }\n    }\n  }\n': {
     return: ProductsByCollectionQuery;
     variables: ProductsByCollectionQueryVariables;
   };

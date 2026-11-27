@@ -185,10 +185,11 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
   const groupHasRealOwnCollection = groupRef ? GROUPS_WITH_REAL_OWN_COLLECTION.has(groupRef.handle) : false;
   let groupProducts: GroupProduct[] | null = null;
   let groupResultCount = 0;
+  let groupFilters: ListingFilter[] = [];
   if (groupLanding && !groupHasRealOwnCollection && groupLanding.tiles.length > 0) {
     const perSubcategory = await Promise.all(
       groupLanding.tiles.map((tile) =>
-        storefront.query(PRODUCTS_BY_COLLECTION_QUERY, {variables: {handle: tile.handle, first: 24}}),
+        storefront.query(PRODUCTS_BY_COLLECTION_QUERY, {variables: {handle: tile.handle, first: 24, filters}}),
       ),
     );
     const seen = new Set<string>();
@@ -198,9 +199,91 @@ async function loadCriticalData({context, params, request}: Route.LoaderArgs) {
     const sorted = sortGroupProducts(merged, sortConfig.value);
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     groupProducts = sorted.slice((page - 1) * perPage, page * perPage);
+    // No existe una sola colección de Shopify que agrupe estas
+    // subcategorías, así que tampoco hay un solo "filters" que valga —
+    // se fusionan los de cada subcategoría (sumando recuentos por
+    // valor, y el precio combinando el mínimo/máximo de todas) para que
+    // esta página pueda filtrar igual que una de hoja.
+    groupFilters = mergeGroupFilters(perSubcategory);
   }
 
-  return {collection, resultCount, banner, leaf, groupLanding, groupHasRealOwnCollection, groupProducts, groupResultCount, perPage};
+  return {
+    collection,
+    resultCount,
+    banner,
+    leaf,
+    groupLanding,
+    groupHasRealOwnCollection,
+    groupProducts,
+    groupResultCount,
+    groupFilters,
+    perPage,
+  };
+}
+
+function mergeGroupFilters(
+  perSubcategory: Array<{
+    collection?: {
+      products: {
+        filters: Array<{id: string; label: string; type: string; values: Array<{id: string; label: string; count: number; input: unknown}>}>;
+      };
+    } | null;
+  }>,
+): ListingFilter[] {
+  const byId = new Map<string, ListingFilter>();
+
+  for (const d of perSubcategory) {
+    for (const f of d.collection?.products.filters ?? []) {
+      if (f.type === 'PRICE_RANGE') {
+        const raw = f.values[0] ? String(f.values[0].input) : null;
+        let parsed: {price?: {min?: number; max?: number}} | null = null;
+        try {
+          parsed = raw ? (JSON.parse(raw) as {price?: {min?: number; max?: number}}) : null;
+        } catch {
+          parsed = null;
+        }
+        const min = parsed?.price?.min ?? 0;
+        const max = parsed?.price?.max ?? 0;
+        const existing = byId.get(f.id);
+        if (!existing) {
+          byId.set(f.id, {
+            id: f.id,
+            label: f.label,
+            type: f.type,
+            values: [{id: f.values[0]?.id ?? f.id, label: f.values[0]?.label ?? f.label, count: 0, input: JSON.stringify({price: {min, max}})}],
+          });
+        } else {
+          const value = existing.values[0];
+          let eParsed: {price?: {min?: number; max?: number}} = {};
+          try {
+            eParsed = JSON.parse(value.input) as {price?: {min?: number; max?: number}};
+          } catch {
+            eParsed = {};
+          }
+          value.input = JSON.stringify({
+            price: {
+              min: Math.min(eParsed.price?.min ?? min, min),
+              max: Math.max(eParsed.price?.max ?? max, max),
+            },
+          });
+        }
+        continue;
+      }
+
+      let group = byId.get(f.id);
+      if (!group) {
+        group = {id: f.id, label: f.label, type: f.type, values: []};
+        byId.set(f.id, group);
+      }
+      for (const v of f.values) {
+        const existingValue = group.values.find((gv) => gv.id === v.id);
+        if (existingValue) existingValue.count += v.count;
+        else group.values.push({id: v.id, label: v.label, count: v.count, input: String(v.input)});
+      }
+    }
+  }
+
+  return Array.from(byId.values()).filter((f) => f.values.length > 0);
 }
 
 function sortGroupProducts(products: GroupProduct[], sort: string): GroupProduct[] {
@@ -220,7 +303,7 @@ function sortGroupProducts(products: GroupProduct[], sort: string): GroupProduct
 }
 
 export default function Collection() {
-  const {collection, resultCount, banner, leaf, groupLanding, groupHasRealOwnCollection, groupProducts, groupResultCount, perPage} =
+  const {collection, resultCount, banner, leaf, groupLanding, groupHasRealOwnCollection, groupProducts, groupResultCount, groupFilters, perPage} =
     useLoaderData<typeof loader>();
   const {t} = useI18n();
   const [searchParams] = useSearchParams();
@@ -347,7 +430,7 @@ export default function Collection() {
           <ProductListing
             title={collection.title}
             products={groupProducts}
-            filters={[]}
+            filters={groupFilters}
             sortOptions={SORT_OPTIONS.map(({value, label}) => ({value, label}))}
             resultCount={groupResultCount}
             manualPagination={{
@@ -465,10 +548,26 @@ const CATEGORIES_MENU_QUERY = `#graphql
 // alias por grupo no lo sería), y se juntan y ordenan en sortGroupProducts.
 const PRODUCTS_BY_COLLECTION_QUERY = `#graphql
   ${PRODUCT_CARD_FRAGMENT}
-  query ProductsByCollection($handle: String!, $first: Int!, $country: CountryCode, $language: LanguageCode)
-    @inContext(country: $country, language: $language) {
+  query ProductsByCollection(
+    $handle: String!
+    $first: Int!
+    $filters: [ProductFilter!]
+    $country: CountryCode
+    $language: LanguageCode
+  ) @inContext(country: $country, language: $language) {
     collection(handle: $handle) {
-      products(first: $first) {
+      products(first: $first, filters: $filters) {
+        filters {
+          id
+          label
+          type
+          values {
+            id
+            label
+            count
+            input
+          }
+        }
         nodes {
           ...ProductCard
           createdAt
