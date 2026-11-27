@@ -185,7 +185,7 @@ export async function action({request, context}: Route.ActionArgs) {
   if (intent === 'compare') {
     try {
       const products = await getDistributorProducts(context.env, supplierId);
-      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       return data<ActionResult>({intent: 'compare', ok: true, supplierId, summary}, {headers});
     } catch (error) {
       return data<ActionResult>(
@@ -198,11 +198,11 @@ export async function action({request, context}: Route.ActionArgs) {
   if (intent === 'create-batch') {
     try {
       const products = await getDistributorProducts(context.env, supplierId);
-      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       const result = await applyDistributorCreations(context.env, summary.toCreate);
       // Se recalcula tras crear para que la tabla de la pantalla refleje lo
       // que queda de verdad (y no obligue a pulsar "Comparar" otra vez).
-      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       return data<ActionResult>(
         {
           intent: 'create-batch',
@@ -226,14 +226,14 @@ export async function action({request, context}: Route.ActionArgs) {
   if (intent === 'apply-stock') {
     try {
       const products = await getDistributorProducts(context.env, supplierId);
-      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       const locationId = await getPrimaryLocationId(context.env);
       const changes = summary.toUpdateStock.map((r) => ({
         inventoryItemId: r.catalogVariant.inventoryItemId,
         quantity: r.stockTo,
       }));
       const result = await applyStockChanges(context.env, locationId, changes);
-      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       return data<ActionResult>(
         {intent: 'apply-stock', ok: true, supplierId, applied: result.applied, errors: result.errors, summary: freshSummary},
         {headers},
@@ -249,14 +249,14 @@ export async function action({request, context}: Route.ActionArgs) {
   if (intent === 'apply-price') {
     try {
       const products = await getDistributorProducts(context.env, supplierId);
-      const summary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const summary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       const changes = summary.toUpdatePrice.map((r) => ({
         productId: r.catalogVariant.productId,
         variantId: r.catalogVariant.variantId,
         price: r.priceTo,
       }));
       const result = await applyPriceChanges(context.env, changes);
-      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products);
+      const freshSummary = await buildDistributorSyncSummary(context.env, supplierId, products, context.storefront);
       return data<ActionResult>(
         {intent: 'apply-price', ok: true, supplierId, applied: result.applied, errors: result.errors, summary: freshSummary},
         {headers},

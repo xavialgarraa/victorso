@@ -21,22 +21,27 @@ páginas de categoría) cuando cambia el catálogo en Shopify. Escrito el
 
 ## Necesita un cambio de código (un aviso rápido, no un rediseño)
 
-- **El ancho y el alto del panel del mega-menú de escritorio están
-  fijos en píxeles** (260px de ancho del listado de categorías, 296px
-  de alto), calculados para el catálogo de ahora mismo. Si una
-  categoría llega a tener más de 8 subcategorías con producto (pasaría
-  a necesitar 3 filas de iconos en vez de 2) o si se añade una
-  categoría con un nombre más largo que "Alphatheta & Pioneer DJ", hay
-  que subir esos dos números a mano — está señalado en los comentarios
-  junto a `.mega-menu__tiles-wrap` y `.mega-menu__rail` en
-  `app/styles/app.css`.
+- **(Actualizado 2026-11-27 — el mega-menú ya no es el de la nota
+  anterior.)** El panel del mega-menú de escritorio es ahora una
+  cuadrícula de 4 columnas dentro de un panel de ancho acotado
+  (500-780px, ver `.mega-menu__tiles-wrap`/`.mega-menu__tiles` en
+  `app/styles/app.css`) con **scroll propio pasados 460px de alto** —
+  una categoría con muchas subcategorías simplemente scrollea dentro de
+  su panel, no hace falta tocar nada en código cuando crece.
 - **Añadir una categoría principal nueva de verdad** (no una
-  subcategoría dentro de una que ya existe, sino un 8º grupo al nivel
-  de "Zona DJ" o "Cables"): hay que darla de alta en
-  `app/lib/connectors/categoryTaxonomy.server.ts` (`CATEGORY_GROUPS` y
-  `GROUP_HANDLES`) y crear su colección "bare" en Shopify, igual que
-  las 7 actuales — es una decisión de estructura, no algo que Shopify
-  pueda reflejar solo.
+  subcategoría dentro de una que ya existe, sino un grupo nuevo al
+  nivel de "Zona DJ" o "Cables"): sigue haciendo falta crear su
+  colección "bare" en Shopify y darla de alta como hijo de "Categorías"
+  en el menú de Navegación — eso es una decisión de estructura, no algo
+  que Shopify pueda inventarse solo. Lo que **ya NO hace falta** es
+  tocar código aparte: la lista de categorías que usa la IA para
+  clasificar productos nuevos de distribuidores
+  (`distributorCategories.server.ts`) se lee del propio menú
+  "Categorías" en cada sincronización, no de una lista duplicada a
+  mano — editar el menú en Shopify Admin es ahora el único paso.
+  (La lista de StelOrder, `stelorderCategories.server.ts`, es un
+  sistema aparte — categoriza por TIPO de producto, no por grupo
+  principal, y sigue siendo una lista propia en código a propósito.)
 
 ## Por qué algunas categorías no muestran productos todavía
 

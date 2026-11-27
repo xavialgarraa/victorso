@@ -1,48 +1,62 @@
+import type {HydrogenContext} from '@shopify/hydrogen';
 import {getDoc, setDoc} from '~/lib/firestore.server';
 import type {DistributorProduct} from '~/lib/connectors/distributorFeed.server';
+import {MENU_FRAGMENT} from '~/lib/fragments';
+import {findCategoriesMenuItem, categoryGroups} from '~/lib/categoryMenu';
 
 /**
- * Categorías reales de la web (las que Víctor pasó en su Excel para el
- * menú "Categorías" — ver app/lib/categoryIcons.ts / memoria
- * project-megamenu-categorias). "Outlet" se deja fuera: en el Excel es un
- * filtro transversal sobre las demás, no un tipo de producto propio.
+ * Categorías reales de la web para clasificar productos de distribuidores
+ * por IA. Antes era una lista fija aquí (duplicada a mano respecto al menú
+ * "Categorías" de Shopify Admin > Contenido > Navegación) — ahora se lee
+ * del propio menú, así que una categoría principal nueva (o renombrada)
+ * solo hay que darla de alta ahí, no aquí también. "Otros" es la única
+ * que no viene del menú: es el cajón de desastre cuando no encaja
+ * claramente en ninguna categoría real.
  */
-export const DISTRIBUTOR_CATEGORIES = [
-  'Alphatheta & Pioneer DJ',
-  'Zona DJ',
-  'Material de estudio',
-  'Sonido / PA',
-  'Cables',
-  'Flightcases y bolsas',
-  'Iluminación',
-  'Otros',
-] as const;
+export type DistributorCategory = string;
+export const FALLBACK_CATEGORY: DistributorCategory = 'Otros';
 
-export type DistributorCategory = (typeof DISTRIBUTOR_CATEGORIES)[number];
+const CATEGORIES_MENU_QUERY = `#graphql
+  ${MENU_FRAGMENT}
+  query DistributorCategoriesMenu {
+    menu(handle: "main-menu") {
+      ...Menu
+    }
+  }
+` as const;
+
+/** Las categorías principales (los hijos directos de "Categorías" en el
+ * menú de Shopify) + "Otros" al final. Se pide fresca cada vez que se usa
+ * (no vale la pena cachearla en Firestore: es una llamada barata y así
+ * un cambio en el menú se nota en la siguiente sincronización, no hace
+ * falta esperar a que caduque nada). */
+export async function getDistributorCategories(
+  storefront: HydrogenContext['storefront'],
+): Promise<DistributorCategory[]> {
+  const {menu} = await storefront.query(CATEGORIES_MENU_QUERY);
+  const categoriesItem = findCategoriesMenuItem(menu);
+  const groups = categoryGroups(categoriesItem).map((g) => g.title);
+  return [...groups, FALLBACK_CATEGORY];
+}
 
 const COLLECTION = 'distributor_categories';
 const BATCH_SIZE = 50;
 
 type CategoryDoc = {category: DistributorCategory; classifiedAt: string};
 
-function buildPrompt(batch: DistributorProduct[]): string {
+function buildPrompt(batch: DistributorProduct[], categories: DistributorCategory[]): string {
   const list = batch
     .map((p, i) => `${i + 1}. ${[p.title, p.brand, p.category].filter(Boolean).join(' — ')}`)
     .join('\n');
   return `Eres un catalogador experto de una tienda de equipamiento profesional de DJ, sonido, instrumentos, iluminación y AV. Clasifica cada producto (nombre, marca, categoría tal cual la da el distribuidor) en UNA sola categoría de esta lista fija:
 
-${DISTRIBUTOR_CATEGORIES.map((c, i) => `${i + 1}) ${c}`).join('\n')}
+${categories.map((c, i) => `${i + 1}) ${c}`).join('\n')}
 
 Reglas:
-- "Alphatheta & Pioneer DJ" = SOLO productos de esas dos marcas (son la misma empresa).
-- "Zona DJ" = equipo DJ (controladoras, mixers, giradiscos, reproductores, auriculares DJ) de OTRAS marcas.
-- "Material de estudio" = instrumentos, teclados/controladores MIDI, tarjetas de sonido, monitores de estudio, micrófonos de estudio.
-- "Sonido / PA" = altavoces activos/pasivos, subwoofers, mezcladores de directo, amplificadores, procesadores de señal, microfonía en directo.
-- "Cables" = cualquier cable, conector o adaptador de audio.
-- "Flightcases y bolsas" = flightcases, racks, bolsas de transporte, fundas, muebles.
-- "Iluminación" = iluminación de cualquier tipo (estática, cabezas móviles, flashes, láseres, máquinas de humo, control DMX).
-- "Otros" = cualquier cosa que no encaje claramente (instrumentos acústicos sin amplificar como guitarras clásicas, accesorios genéricos, software...).
-- Responde SOLO con un JSON array de strings (una categoría exacta de la lista por cada producto, en el mismo orden), sin explicaciones. Ejemplo: ["Sonido / PA","Cables",...]
+- Si alguna categoría de la lista es claramente de una o varias marcas concretas (p. ej. "Alphatheta & Pioneer DJ"), úsala SOLO para productos de esas marcas.
+- El resto de categorías son por tipo de producto — usa la que mejor describa qué es el producto, no de qué marca es.
+- "${FALLBACK_CATEGORY}" = cualquier cosa que no encaje claramente en ninguna otra categoría de la lista.
+- Responde SOLO con un JSON array de strings (una categoría exacta de la lista por cada producto, en el mismo orden), sin explicaciones. Ejemplo: ["${categories[0] ?? FALLBACK_CATEGORY}","${FALLBACK_CATEGORY}",...]
 
 Productos:
 ${list}`;
@@ -51,6 +65,7 @@ ${list}`;
 async function classifyBatchWithAI(
   apiKey: string,
   batch: DistributorProduct[],
+  categories: DistributorCategory[],
   attempt = 1,
 ): Promise<DistributorCategory[]> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -63,7 +78,7 @@ async function classifyBatchWithAI(
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4000,
-      messages: [{role: 'user', content: buildPrompt(batch)}],
+      messages: [{role: 'user', content: buildPrompt(batch, categories)}],
     }),
   });
 
@@ -78,28 +93,33 @@ async function classifyBatchWithAI(
 
   const parsed = JSON.parse(match[0]) as string[];
   if (parsed.length !== batch.length) {
-    if (attempt <= 2) return classifyBatchWithAI(apiKey, batch, attempt + 1);
+    if (attempt <= 2) return classifyBatchWithAI(apiKey, batch, categories, attempt + 1);
     throw new Error(`Desajuste de tamaño persistente clasificando lote (${parsed.length} vs ${batch.length}).`);
   }
 
-  return parsed.map((c) =>
-    (DISTRIBUTOR_CATEGORIES as readonly string[]).includes(c) ? (c as DistributorCategory) : 'Otros',
-  );
+  return parsed.map((c) => (categories.includes(c) ? c : FALLBACK_CATEGORY));
 }
 
 /** Igual que classifyStelOrderProducts pero cacheado por EAN en vez de por
  * id numérico (estos productos no tienen id propio, el EAN es la única
- * clave estable entre el feed y Shopify). */
+ * clave estable entre el feed y Shopify). "categories" es la lista que
+ * devuelve getDistributorCategories — se pide una vez por llamada y se
+ * pasa aquí, en vez de que esta función vuelva a consultar el menú ella
+ * misma por cada producto. */
 export async function classifyDistributorProducts(
   env: Env,
   products: DistributorProduct[],
+  categories: DistributorCategory[],
 ): Promise<Map<string, DistributorCategory>> {
   const result = new Map<string, DistributorCategory>();
   const toClassify: DistributorProduct[] = [];
 
   for (const p of products) {
     const cached = await getDoc<CategoryDoc>(env, COLLECTION, p.ean);
-    if (cached) {
+    // Si la categoría cacheada ya no existe en el menú actual (se renombró
+    // o se borró desde entonces), se reclasifica en vez de arrastrar una
+    // categoría muerta para siempre.
+    if (cached && categories.includes(cached.category)) {
       result.set(p.ean, cached.category);
     } else {
       toClassify.push(p);
@@ -108,23 +128,23 @@ export async function classifyDistributorProducts(
 
   if (toClassify.length === 0) return result;
   if (!env.ANTHROPIC_API_KEY) {
-    for (const p of toClassify) result.set(p.ean, 'Otros');
+    for (const p of toClassify) result.set(p.ean, FALLBACK_CATEGORY);
     return result;
   }
 
   for (let i = 0; i < toClassify.length; i += BATCH_SIZE) {
     const batch = toClassify.slice(i, i + BATCH_SIZE);
-    let categories: DistributorCategory[];
+    let classified: DistributorCategory[];
     try {
-      categories = await classifyBatchWithAI(env.ANTHROPIC_API_KEY, batch);
+      classified = await classifyBatchWithAI(env.ANTHROPIC_API_KEY, batch, categories);
     } catch (error) {
       console.error('[distributorCategories] batch failed', error);
-      categories = batch.map(() => 'Otros');
+      classified = batch.map(() => FALLBACK_CATEGORY);
     }
 
     await Promise.all(
       batch.map((p, j) => {
-        const category = categories[j];
+        const category = classified[j];
         result.set(p.ean, category);
         return setDoc(env, COLLECTION, p.ean, {
           category,

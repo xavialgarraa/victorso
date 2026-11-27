@@ -1,5 +1,10 @@
+import type {HydrogenContext} from '@shopify/hydrogen';
 import {getSelection, type DistributorProduct} from '~/lib/connectors/distributorFeed.server';
-import {classifyDistributorProducts, type DistributorCategory} from '~/lib/connectors/distributorCategories.server';
+import {
+  classifyDistributorProducts,
+  getDistributorCategories,
+  type DistributorCategory,
+} from '~/lib/connectors/distributorCategories.server';
 import {getAIProductDescription} from '~/lib/connectors/productDescriptionAI.server';
 import {normalizeVendorName} from '~/lib/brands';
 import {
@@ -36,6 +41,10 @@ export async function buildDistributorSyncSummary(
   env: Env,
   supplierId: string,
   allProducts: DistributorProduct[],
+  // Necesario para clasificar por categoría (lee el menú "Categorías" de
+  // Shopify — ver getDistributorCategories). Puede omitirse solo cuando
+  // skipCategoryClassification es true.
+  storefront: HydrogenContext['storefront'] | null,
   // La vigilancia de precio automática (ver api.sync-trigger.tsx) solo
   // necesita toUpdatePrice — pasar esto a true evita clasificar por IA los
   // "toCreate" (coste y tiempo de más, dos veces al día, para una lista que
@@ -83,12 +92,15 @@ export async function buildDistributorSyncSummary(
     if (!stockChanged && !priceChanged) unchanged++;
   }
 
-  const categories = skipCategoryClassification
-    ? new Map<string, DistributorCategory>()
-    : await classifyDistributorProducts(env, toCreateRaw);
+  let categorized = new Map<string, DistributorCategory>();
+  if (!skipCategoryClassification && toCreateRaw.length > 0) {
+    if (!storefront) throw new Error('Falta "storefront" para clasificar por categoría.');
+    const categories = await getDistributorCategories(storefront);
+    categorized = await classifyDistributorProducts(env, toCreateRaw, categories);
+  }
   const toCreate = toCreateRaw.map((product) => ({
     product,
-    category: categories.get(product.ean) ?? 'Otros',
+    category: categorized.get(product.ean) ?? 'Otros',
   }));
 
   return {supplierId, totalSelected: selected.length, toCreate, toUpdateStock, toUpdatePrice, unchanged};
