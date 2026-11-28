@@ -13,6 +13,14 @@ const GREETING: ChatMessage = {
 
 const QUICK_REPLIES = ['¿Cuál es vuestro horario?', '¿Tenéis envío gratis?', 'Busco un flight case'];
 
+// Aviso en forma de globo que invita a abrir el chat la primera vez que
+// alguien entra a la web — una sola vez por navegador (localStorage), no
+// cada visita. Se guarda en cuanto se decide mostrarlo (no cuando se
+// cierra), para que no vuelva a salir aunque la persona navegue a otra
+// página antes de interactuar con él.
+const GREETING_BUBBLE_SEEN_KEY = 'vsp_chat_greeting_seen';
+const GREETING_BUBBLE_TEXT = '¿Tienes alguna duda? ¡Pregúntame! 👋';
+
 function Avatar() {
   return (
     <span className="chat-avatar" aria-hidden="true">
@@ -23,6 +31,7 @@ function Avatar() {
 
 export function ChatAssistant() {
   const [open, setOpen] = useState(false);
+  const [showGreetingBubble, setShowGreetingBubble] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState('');
   const fetcher = useFetcher<ChatResponse>();
@@ -49,6 +58,51 @@ export function ChatAssistant() {
     if (open && typeof window !== 'undefined' && window.matchMedia('(min-width: 481px)').matches) {
       inputRef.current?.focus();
     }
+  }, [open]);
+
+  // Espera a que se cierre el aviso de cookies (misma esquina, se
+  // solaparían) antes de mostrar el globo — con un tope de 15s por si
+  // alguien lo deja abierto sin tocarlo, para que el aviso no se quede
+  // esperando para siempre. Si ya se vio una vez, no hace nada.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let alreadySeen = false;
+    try {
+      alreadySeen = Boolean(window.localStorage.getItem(GREETING_BUBBLE_SEEN_KEY));
+    } catch {
+      alreadySeen = false;
+    }
+    if (alreadySeen) return;
+
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const cookieBannerVisible = Boolean(document.querySelector('.cookie-consent'));
+      if (elapsed < 2000) return;
+      if (cookieBannerVisible && elapsed < 15000) return;
+      clearInterval(interval);
+      setShowGreetingBubble(true);
+      try {
+        window.localStorage.setItem(GREETING_BUBBLE_SEEN_KEY, '1');
+      } catch {
+        // Si localStorage no está disponible (modo privado...), no pasa
+        // nada grave — el aviso saldrá de nuevo en la próxima visita.
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // El aviso se cierra solo si nadie lo toca, y siempre que se abra el
+  // chat por cualquier otro camino (botón, "Modo IA"...).
+  useEffect(() => {
+    if (!showGreetingBubble) return;
+    const timer = setTimeout(() => setShowGreetingBubble(false), 10000);
+    return () => clearTimeout(timer);
+  }, [showGreetingBubble]);
+
+  useEffect(() => {
+    if (open) setShowGreetingBubble(false);
   }, [open]);
 
   // Permite abrir el chat desde otros sitios de la web (ej. "sin
@@ -105,6 +159,37 @@ export function ChatAssistant() {
 
   return (
     <>
+      {showGreetingBubble && !open && (
+        <div
+          className="chat-greeting"
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            setOpen(true);
+            setShowGreetingBubble(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              setOpen(true);
+              setShowGreetingBubble(false);
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="chat-greeting__close"
+            aria-label="Cerrar aviso"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowGreetingBubble(false);
+            }}
+          >
+            <Icon name="close" />
+          </button>
+          <span>{GREETING_BUBBLE_TEXT}</span>
+        </div>
+      )}
+
       <button
         type="button"
         className={`chat-float${open ? ' open' : ''}`}

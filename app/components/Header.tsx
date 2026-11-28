@@ -749,7 +749,7 @@ function HeaderSearch() {
                     <input
                       name="q"
                       type="search"
-                      placeholder={t('searchPlaceholder')}
+                      placeholder={t('searchPlaceholderShort')}
                       aria-label="Buscar"
                       autoComplete="off"
                       autoFocus
