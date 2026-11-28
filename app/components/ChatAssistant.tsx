@@ -19,7 +19,8 @@ const QUICK_REPLIES = ['¿Cuál es vuestro horario?', '¿Tenéis envío gratis?'
 // cierra), para que no vuelva a salir aunque la persona navegue a otra
 // página antes de interactuar con él.
 const GREETING_BUBBLE_SEEN_KEY = 'vsp_chat_greeting_seen';
-const GREETING_BUBBLE_TEXT = '¿Tienes alguna duda? ¡Pregúntame! 👋';
+const GREETING_BUBBLE_TITLE = '¡Hola! ¿En qué puedo ayudarte?';
+const GREETING_BUBBLE_SUBTITLE = 'Pregunta sobre productos, envíos o tu pedido.';
 
 function Avatar() {
   return (
@@ -186,7 +187,11 @@ export function ChatAssistant() {
           >
             <Icon name="close" />
           </button>
-          <span>{GREETING_BUBBLE_TEXT}</span>
+          <img className="chat-greeting__avatar" src="/assets/chat-mascot.png" alt="" aria-hidden="true" />
+          <div className="chat-greeting__text">
+            <strong>{GREETING_BUBBLE_TITLE}</strong>
+            <span>{GREETING_BUBBLE_SUBTITLE}</span>
+          </div>
         </div>
       )}
 
@@ -196,6 +201,7 @@ export function ChatAssistant() {
         aria-label={open ? 'Cerrar asistente' : 'Abrir asistente'}
         onClick={() => setOpen((o) => !o)}
       >
+        {showGreetingBubble && <span className="chat-float__ping" aria-hidden="true" />}
         <Icon name={open ? 'close' : 'chat'} />
       </button>
 
