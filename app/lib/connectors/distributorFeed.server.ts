@@ -163,7 +163,11 @@ export async function getDistributorProducts(env: Env, supplierId: string): Prom
     const products = await fetchWalkasseFeed(resolveFeedUrl(config));
     const mapped = products.map(walkasseToDistributorProduct);
 
-    setCachedLiveFeed(env, supplierId, mapped).catch((error) =>
+    // Esperada a propósito (no "fire and forget"): sin await, el runtime
+    // de Oxygen puede cortar esta escritura a medio terminar en cuanto se
+    // manda la respuesta — es justo lo que pasaba antes, por lo que la
+    // caché nunca llegaba a guardarse pese a no haber ningún error.
+    await setCachedLiveFeed(env, supplierId, mapped).catch((error) =>
       console.error('[distributorFeed] live feed cache write', error),
     );
 

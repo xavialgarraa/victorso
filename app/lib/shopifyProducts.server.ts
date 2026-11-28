@@ -117,11 +117,14 @@ export async function getShopifyCatalogByBarcode(env: Env): Promise<Map<string, 
     cursor = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
   } while (cursor);
 
-  // Guardar la caché nunca debe tirar abajo la página que ya tiene sus
-  // datos correctos — si falla (p. ej. el catálogo ha crecido tanto que
-  // ya no cabe en un documento de Firestore), simplemente se recorrerá
-  // entero otra vez la próxima carga, como se hacía siempre.
-  setDoc(env, CATALOG_CACHE_COLLECTION, CATALOG_CACHE_DOC, {
+  // Esperada a propósito: sin await, Oxygen puede cortar esta escritura a
+  // medio terminar en cuanto se manda la respuesta y la caché nunca
+  // llegaría a guardarse de verdad (pasó exactamente esto con la caché del
+  // feed de Walkasse, ver distributorFeed.server.ts). Si aun así falla
+  // (p. ej. el catálogo ha crecido tanto que ya no cabe en un documento de
+  // Firestore), no tira abajo la página — solo se recorrerá entero otra
+  // vez la próxima carga, como se hacía siempre.
+  await setDoc(env, CATALOG_CACHE_COLLECTION, CATALOG_CACHE_DOC, {
     variants: Array.from(map.values()),
     cachedAt: new Date().toISOString(),
   } satisfies CatalogCacheDoc).catch((error) => console.error('[shopifyProducts] catalog cache write', error));
