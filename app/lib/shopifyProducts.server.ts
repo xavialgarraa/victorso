@@ -1,4 +1,5 @@
 import {adminQuery} from '~/lib/shopifyAdmin.server';
+import {getDoc, setDoc} from '~/lib/firestore.server';
 
 export type CatalogVariant = {
   productId: string;
@@ -61,6 +62,21 @@ const CATALOG_QUERY = `
   }
 `;
 
+// Recorrer TODO el catálogo paginando de 100 en 100 contra la Admin API
+// es caro (varias idas y vueltas secuenciales) y antes se repetía en cada
+// carga de /admin-interno/distribuidores, /proveedores, etc. — era la
+// causa principal de que esas páginas tardaran varios segundos en
+// cargar, sin ningún indicio de que estaban "trabajando" de verdad. Se
+// cachea en Firestore un ratito (CATALOG_CACHE_TTL_MS): bastante corto
+// para que un cambio de stock/precio hecho a mano en Shopify se note casi
+// al momento, bastante largo para que entrar y salir del panel varias
+// veces seguidas no repita el recorrido completo cada vez.
+const CATALOG_CACHE_COLLECTION = 'shopify_catalog_cache';
+const CATALOG_CACHE_DOC = 'by_barcode';
+const CATALOG_CACHE_TTL_MS = 2 * 60 * 1000;
+
+type CatalogCacheDoc = {variants: CatalogVariant[]; cachedAt: string};
+
 /**
  * Trae TODO el catálogo (todas las marcas, no solo una) indexado por EAN.
  * El cruce con cualquier proveedor se hace siempre así — el proveedor y la
@@ -68,6 +84,11 @@ const CATALOG_QUERY = `
  * marca puede venir de cualquier proveedor.
  */
 export async function getShopifyCatalogByBarcode(env: Env): Promise<Map<string, CatalogVariant>> {
+  const cached = await getDoc<CatalogCacheDoc>(env, CATALOG_CACHE_COLLECTION, CATALOG_CACHE_DOC);
+  if (cached && Date.now() - new Date(cached.cachedAt).getTime() < CATALOG_CACHE_TTL_MS) {
+    return new Map(cached.variants.map((v) => [v.barcode, v]));
+  }
+
   const map = new Map<string, CatalogVariant>();
   let cursor: string | null = null;
 
@@ -95,6 +116,15 @@ export async function getShopifyCatalogByBarcode(env: Env): Promise<Map<string, 
 
     cursor = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
   } while (cursor);
+
+  // Guardar la caché nunca debe tirar abajo la página que ya tiene sus
+  // datos correctos — si falla (p. ej. el catálogo ha crecido tanto que
+  // ya no cabe en un documento de Firestore), simplemente se recorrerá
+  // entero otra vez la próxima carga, como se hacía siempre.
+  setDoc(env, CATALOG_CACHE_COLLECTION, CATALOG_CACHE_DOC, {
+    variants: Array.from(map.values()),
+    cachedAt: new Date().toISOString(),
+  } satisfies CatalogCacheDoc).catch((error) => console.error('[shopifyProducts] catalog cache write', error));
 
   return map;
 }

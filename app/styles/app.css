@@ -2085,6 +2085,26 @@ aside li { margin-bottom: .125rem; }
    la tienda publica. Paleta oscura fija (no sigue el tema claro/oscuro del
    sitio) para que se note a simple vista que es una herramienta interna.
    ========================================================================== */
+/* Barra de carga de cualquier navegación dentro del panel — ver el
+   comentario junto a useNavigation en AdminShell.tsx. */
+.admin-loadbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 200;
+  background: rgba(227,6,19,.18); overflow: hidden;
+}
+.admin-loadbar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -30%; width: 30%;
+  background: var(--red); border-radius: 3px;
+  animation: admin-loadbar-slide 1s ease-in-out infinite;
+}
+@keyframes admin-loadbar-slide {
+  0% { left: -30%; }
+  60% { left: 100%; }
+  100% { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-loadbar::after { animation: none; left: 0; width: 100%; }
+}
+
 .admin-shell {
   display: flex;
   min-height: 100vh;

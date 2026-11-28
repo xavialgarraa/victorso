@@ -1,4 +1,4 @@
-import {Form, NavLink} from 'react-router';
+import {Form, NavLink, useNavigation} from 'react-router';
 
 const NAV_GROUPS: Array<{label: string | null; items: Array<{to: string; label: string; end: boolean}>}> = [
   {
@@ -49,8 +49,20 @@ export function AdminShell({
   wide?: boolean;
   children: React.ReactNode;
 }) {
+  // Antes, entrar a una página lenta del panel (Distribuidores, que
+  // recorre todo el catálogo de Shopify) no daba ninguna señal de que
+  // algo estaba pasando — la pantalla anterior se quedaba quieta varios
+  // segundos sin más, como si se hubiera colgado. Esta barra se ve en
+  // CUALQUIER navegación dentro del panel que tarde lo bastante como
+  // para notarse (no solo esta página en concreto). En la primera carga
+  // de una pestaña nueva (URL escrita a mano, recargar) no puede
+  // aparecer — ahí no hay ninguna página anterior sobre la que pintarla.
+  const navigation = useNavigation();
+  const isNavigating = navigation.state !== 'idle';
+
   return (
     <div className="admin-shell">
+      {isNavigating && <div className="admin-loadbar" aria-hidden="true" />}
       <aside className="admin-shell__sidebar">
         <div className="admin-shell__brand">
           <span className="admin-shell__brand-name">Victor So</span>
