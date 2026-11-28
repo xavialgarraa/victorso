@@ -987,10 +987,20 @@ section:has(.prodgrid--home) .section__head { margin-bottom: 16px; }
    añadir al carrito (flex-shrink:0, ver .pcard__addbtn) y la tarjeta
    (overflow:hidden) lo recortaba por el borde derecho. */
 .pcard__price { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.pcard__price .now { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); }
+.pcard__price .now { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); overflow-wrap: break-word; }
 .pcard__price .was { text-decoration: line-through; color: var(--text-soft); font-size: .76rem; }
 .pcard__pricebadge { display: none; }
 .pcard__addbtn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--red); color: #fff; font-size: 1.1rem; transition: transform .18s var(--ease), background .18s ease, box-shadow .18s ease; }
+/* En móvil la cuadrícula es de 2 columnas (ver .prodgrid más abajo), así
+   que cada tarjeta tiene muy poco ancho — un precio de 3 cifras
+   ("349,00 €") y el botón redondo de 40px quedaban a 1-2px de pisarse.
+   Botón un poco más pequeño + algo menos de padding en vez de recortar
+   el precio: da el margen justo sin que se note el cambio de tamaño. */
+@media (max-width: 480px) {
+  .pcard__addbtn { width: 34px; height: 34px; font-size: 1rem; }
+  .pcard__footer { gap: 6px; padding: 4px 10px 12px; }
+  .pcard__price .now { font-size: 1.05rem; }
+}
 .pcard__addbtn:hover { background: var(--red-dark); transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 18px rgba(227,6,19,.35); }
 .pcard__addbtn:active { transform: scale(.94); }
 
