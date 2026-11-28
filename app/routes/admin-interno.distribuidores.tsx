@@ -165,6 +165,11 @@ export async function loader({request, context}: Route.LoaderArgs) {
       connectedProductIds: Object.fromEntries(
         pageItems.filter((p) => connectedEans.has(p.ean)).map((p) => [p.ean, catalog.get(p.ean)!.productId]),
       ),
+      // El Server-Timing de la cabecera no llega entero al navegador (algo
+      // en el proxy de Oxygen/Cloudflare se queda solo con sus propias
+      // marcas) — se manda también aquí, en el propio JSON, que eso no lo
+      // toca nadie por el camino.
+      debugTiming: [...marks, {name: 'total', ms: Date.now() - loaderStart}],
     },
     {
       headers: {
@@ -470,6 +475,7 @@ export default function AdminDistribuidores() {
     selectedEans,
     connectedEans,
     connectedProductIds,
+    debugTiming,
   } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const navigation = useNavigation();
@@ -505,6 +511,22 @@ export default function AdminDistribuidores() {
 
   return (
     <AdminShell user={user} wide>
+      {debugTiming && (
+        <div
+          style={{
+            position: 'fixed', top: 8, right: 8, zIndex: 999, background: '#111', color: '#0f0',
+            fontFamily: 'monospace', fontSize: 12, padding: '10px 14px', borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,.4)', lineHeight: 1.6,
+          }}
+        >
+          <strong style={{color: '#fff'}}>⏱ debugTiming</strong>
+          {debugTiming.map((m) => (
+            <div key={m.name}>
+              {m.name}: {m.ms}ms
+            </div>
+          ))}
+        </div>
+      )}
       <h1>Distribuidores</h1>
       <p className="admin-hint" style={{maxWidth: 680}}>
         Marca qué productos de cada distribuidor quieres que existan en la web — solo esos se crean/actualizan, el
