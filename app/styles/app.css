@@ -1854,9 +1854,10 @@ body.nav-open .whatsapp-float { display: none; }
 
 .chat-avatar {
   flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--red); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-size: .75rem;
+  display: flex; align-items: center; justify-content: center; font-size: .75rem; overflow: hidden;
 }
-.chat-panel__head-info .chat-avatar { background: rgba(255,255,255,.22); }
+.chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.chat-panel__head-info .chat-avatar { background: rgba(255,255,255,.22); width: 34px; height: 34px; }
 
 .chat-panel__body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; }
 .chat-msg-row { display: flex; align-items: flex-end; gap: 6px; max-width: 90%; animation: chat-item-in .22s var(--ease) both; }

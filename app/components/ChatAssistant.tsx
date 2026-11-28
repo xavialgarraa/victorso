@@ -30,7 +30,7 @@ const GREETING_BUBBLE_EXIT_MS = 220;
 function Avatar() {
   return (
     <span className="chat-avatar" aria-hidden="true">
-      <Icon name="chat" />
+      <img src="/assets/chat-mascot.png" alt="" />
     </span>
   );
 }
