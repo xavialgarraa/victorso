@@ -39,7 +39,22 @@ const SUPPLIERS = [
 
 const PAGE_SIZE = 60;
 
+// Instrumentación temporal de tiempos (ver Server-Timing en la respuesta,
+// visible en el panel Red del navegador o con performance.getEntriesByType
+// ('navigation')[0].serverTiming) — para encontrar qué parte en concreto
+// es la lenta de verdad, en vez de adivinarlo. Quitar cuando ya no haga falta.
+async function timed<T>(marks: Array<{name: string; ms: number}>, name: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    return await fn();
+  } finally {
+    marks.push({name, ms: Date.now() - start});
+  }
+}
+
 export async function loader({request, context}: Route.LoaderArgs) {
+  const marks: Array<{name: string; ms: number}> = [];
+  const loaderStart = Date.now();
   const {user, headers} = await requireAdminUser(request, context.env);
   const url = new URL(request.url);
   const supplierId = url.searchParams.get('supplier') || SUPPLIERS[0].id;
@@ -53,18 +68,20 @@ export async function loader({request, context}: Route.LoaderArgs) {
     // El historial completo (14 ejecuciones) solo hace falta del
     // proveedor que se está viendo — de los demás basta la última, para
     // el punto de estado de la fila de arriba ("conectado"/"falló").
-    Promise.all(
-      ftpSuppliers.map(async (s) => {
-        const [meta, history] = await Promise.all([
-          getDistributorFeedMeta(context.env, s.id),
-          listDistributorSyncHistory(context.env, s.id, s.id === supplierId ? 14 : 1),
-        ]);
-        return {id: s.id, meta, history};
-      }),
+    timed(marks, 'ftpMetas', () =>
+      Promise.all(
+        ftpSuppliers.map(async (s) => {
+          const [meta, history] = await Promise.all([
+            getDistributorFeedMeta(context.env, s.id),
+            listDistributorSyncHistory(context.env, s.id, s.id === supplierId ? 14 : 1),
+          ]);
+          return {id: s.id, meta, history};
+        }),
+      ),
     ),
-    getDistributorProducts(context.env, supplierId),
-    getSelection(context.env, supplierId),
-    getShopifyCatalogByBarcode(context.env),
+    timed(marks, 'activeSupplierProducts', () => getDistributorProducts(context.env, supplierId)),
+    timed(marks, 'selection', () => getSelection(context.env, supplierId)),
+    timed(marks, 'shopifyCatalog', () => getShopifyCatalogByBarcode(context.env)),
   ]);
 
   const savedEans = new Set(selection?.selectedEans ?? []);
@@ -89,19 +106,21 @@ export async function loader({request, context}: Route.LoaderArgs) {
   // de sus productos ya están de verdad en la tienda, reutilizando el
   // mismo catálogo de Shopify que ya se ha pedido para éste proveedor,
   // no una selección guardada que para Walkasse nunca se rellena.
-  const overviewSelection = await Promise.all(
-    SUPPLIERS.map(async (s) => {
-      if (s.mode === 'live') {
-        if (s.id === supplierId) {
-          return {id: s.id, selectedCount: connectedEans.size};
+  const overviewSelection = await timed(marks, 'overviewSelection', () =>
+    Promise.all(
+      SUPPLIERS.map(async (s) => {
+        if (s.mode === 'live') {
+          if (s.id === supplierId) {
+            return {id: s.id, selectedCount: connectedEans.size};
+          }
+          const products = await getDistributorProducts(context.env, s.id);
+          return {id: s.id, selectedCount: products.filter((p) => catalog.has(p.ean)).length};
         }
-        const products = await getDistributorProducts(context.env, s.id);
-        return {id: s.id, selectedCount: products.filter((p) => catalog.has(p.ean)).length};
-      }
-      if (s.id === supplierId) return {id: s.id, selectedCount: selectedEans.size};
-      const sel = await getSelection(context.env, s.id);
-      return {id: s.id, selectedCount: sel?.selectedEans.length ?? 0};
-    }),
+        if (s.id === supplierId) return {id: s.id, selectedCount: selectedEans.size};
+        const sel = await getSelection(context.env, s.id);
+        return {id: s.id, selectedCount: sel?.selectedEans.length ?? 0};
+      }),
+    ),
   );
 
   let filtered = allProducts;
@@ -147,7 +166,14 @@ export async function loader({request, context}: Route.LoaderArgs) {
         pageItems.filter((p) => connectedEans.has(p.ean)).map((p) => [p.ean, catalog.get(p.ean)!.productId]),
       ),
     },
-    {headers},
+    {
+      headers: {
+        ...(headers as Record<string, string> | undefined),
+        'Server-Timing': [...marks, {name: 'total', ms: Date.now() - loaderStart}]
+          .map((m) => `${m.name};dur=${m.ms}`)
+          .join(', '),
+      },
+    },
   );
 }
 
