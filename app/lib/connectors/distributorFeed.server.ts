@@ -109,33 +109,63 @@ function walkasseToDistributorProduct(p: WalkasseProduct): DistributorProduct {
 // resumen de arriba ("X marcados") de las tres pestañas lo necesita
 // siempre — y eso añadía varios segundos de carga.
 export const LIVE_SUPPLIER_IDS = new Set(['walkasse']);
-const LIVE_FEED_CACHE_COLLECTION = 'distributor_live_feed_cache';
+const LIVE_FEED_CACHE_META_COLLECTION = 'distributor_live_feed_cache_meta';
+const LIVE_FEED_CACHE_CHUNK_COLLECTION = 'distributor_live_feed_cache_chunks';
 const LIVE_FEED_CACHE_TTL_MS = 3 * 60 * 1000;
+// Mismo tamaño de trozo que CHUNK_COLLECTION (ver más abajo) — el feed de
+// Walkasse completo (no solo lo marcado para la web) es demasiado grande
+// para un único documento de Firestore (1 MiB), que es justo por lo que la
+// primera versión de esta caché nunca llegaba a guardarse (fallaba en
+// silencio en cada carga, sin que se notara desde fuera) y por lo que
+// /admin-interno/distribuidores seguía tardando ~10s en cualquier pestaña.
+const LIVE_FEED_CHUNK_SIZE = 80;
 
-type LiveFeedCacheDoc = {products: DistributorProduct[]; cachedAt: string};
+type LiveFeedCacheMeta = {cachedAt: string; chunkCount: number};
+type LiveFeedCacheChunk = {supplierId: string; chunkIndex: number; items: DistributorProduct[]};
+
+async function getCachedLiveFeed(env: Env, supplierId: string): Promise<DistributorProduct[] | null> {
+  const meta = await getDoc<LiveFeedCacheMeta>(env, LIVE_FEED_CACHE_META_COLLECTION, supplierId);
+  if (!meta || Date.now() - new Date(meta.cachedAt).getTime() >= LIVE_FEED_CACHE_TTL_MS) return null;
+  const chunks = await listDocs<LiveFeedCacheChunk>(env, LIVE_FEED_CACHE_CHUNK_COLLECTION);
+  return chunks
+    .filter((c) => c.data.supplierId === supplierId)
+    .sort((a, b) => a.data.chunkIndex - b.data.chunkIndex)
+    .flatMap((c) => c.data.items ?? []);
+}
+
+async function setCachedLiveFeed(env: Env, supplierId: string, products: DistributorProduct[]): Promise<void> {
+  const chunkCount = Math.max(1, Math.ceil(products.length / LIVE_FEED_CHUNK_SIZE));
+  await Promise.all(
+    Array.from({length: chunkCount}, (_, i) =>
+      setDoc(env, LIVE_FEED_CACHE_CHUNK_COLLECTION, `${supplierId}_${i}`, {
+        supplierId,
+        chunkIndex: i,
+        items: products.slice(i * LIVE_FEED_CHUNK_SIZE, (i + 1) * LIVE_FEED_CHUNK_SIZE),
+      } satisfies LiveFeedCacheChunk),
+    ),
+  );
+  await setDoc(env, LIVE_FEED_CACHE_META_COLLECTION, supplierId, {
+    cachedAt: new Date().toISOString(),
+    chunkCount,
+  } satisfies LiveFeedCacheMeta);
+}
 
 /** Punto único de entrada para el panel: decide solo si el catálogo de un
  * proveedor se lee en vivo (HTTP, con caché corta) o desde la caché de
  * Firestore de siempre (FTP). */
 export async function getDistributorProducts(env: Env, supplierId: string): Promise<DistributorProduct[]> {
   if (LIVE_SUPPLIER_IDS.has(supplierId)) {
-    const cached = await getDoc<LiveFeedCacheDoc>(env, LIVE_FEED_CACHE_COLLECTION, supplierId);
-    if (cached && Date.now() - new Date(cached.cachedAt).getTime() < LIVE_FEED_CACHE_TTL_MS) {
-      return cached.products;
-    }
+    const cached = await getCachedLiveFeed(env, supplierId);
+    if (cached) return cached;
 
     const config = await getSupplier(env, supplierId);
     if (!config) return [];
     const products = await fetchWalkasseFeed(resolveFeedUrl(config));
     const mapped = products.map(walkasseToDistributorProduct);
 
-    // Igual que con el catálogo de Shopify: si el feed ha crecido tanto
-    // que ya no cabe en un documento de Firestore, que falle en
-    // silencio — la próxima carga simplemente lo vuelve a descargar.
-    setDoc(env, LIVE_FEED_CACHE_COLLECTION, supplierId, {
-      products: mapped,
-      cachedAt: new Date().toISOString(),
-    } satisfies LiveFeedCacheDoc).catch((error) => console.error('[distributorFeed] live feed cache write', error));
+    setCachedLiveFeed(env, supplierId, mapped).catch((error) =>
+      console.error('[distributorFeed] live feed cache write', error),
+    );
 
     return mapped;
   }
