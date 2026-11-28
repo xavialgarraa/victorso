@@ -21,6 +21,11 @@ const QUICK_REPLIES = ['¿Cuál es vuestro horario?', '¿Tenéis envío gratis?'
 const GREETING_BUBBLE_SEEN_KEY = 'vsp_chat_greeting_seen';
 const GREETING_BUBBLE_TITLE = '¡Hola! ¿En qué puedo ayudarte?';
 const GREETING_BUBBLE_SUBTITLE = 'Pregunta sobre productos, envíos o tu pedido.';
+// Tiene que ser la misma duración que la animación CSS "chat-greeting-out"
+// (ver app.css) — el componente se queda montado este rato de más para
+// que la animación de salida le dé tiempo a terminar antes de desaparecer
+// de golpe.
+const GREETING_BUBBLE_EXIT_MS = 220;
 
 function Avatar() {
   return (
@@ -33,6 +38,7 @@ function Avatar() {
 export function ChatAssistant() {
   const [open, setOpen] = useState(false);
   const [showGreetingBubble, setShowGreetingBubble] = useState(false);
+  const [greetingClosing, setGreetingClosing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [input, setInput] = useState('');
   const fetcher = useFetcher<ChatResponse>();
@@ -94,16 +100,29 @@ export function ChatAssistant() {
     return () => clearInterval(interval);
   }, []);
 
+  // Reproduce la animación de salida (chat-greeting-out, ver app.css)
+  // antes de desmontar el globo del todo, en vez de que desaparezca de
+  // golpe a mitad de frame.
+  function dismissGreeting() {
+    setGreetingClosing(true);
+    setTimeout(() => {
+      setShowGreetingBubble(false);
+      setGreetingClosing(false);
+    }, GREETING_BUBBLE_EXIT_MS);
+  }
+
   // El aviso se cierra solo si nadie lo toca, y siempre que se abra el
   // chat por cualquier otro camino (botón, "Modo IA"...).
   useEffect(() => {
     if (!showGreetingBubble) return;
-    const timer = setTimeout(() => setShowGreetingBubble(false), 10000);
+    const timer = setTimeout(dismissGreeting, 10000);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showGreetingBubble]);
 
   useEffect(() => {
-    if (open) setShowGreetingBubble(false);
+    if (open) dismissGreeting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Permite abrir el chat desde otros sitios de la web (ej. "sin
@@ -162,18 +181,12 @@ export function ChatAssistant() {
     <>
       {showGreetingBubble && !open && (
         <div
-          className="chat-greeting"
+          className={`chat-greeting${greetingClosing ? ' chat-greeting--closing' : ''}`}
           role="button"
           tabIndex={0}
-          onClick={() => {
-            setOpen(true);
-            setShowGreetingBubble(false);
-          }}
+          onClick={() => setOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              setOpen(true);
-              setShowGreetingBubble(false);
-            }
+            if (e.key === 'Enter' || e.key === ' ') setOpen(true);
           }}
         >
           <button
@@ -182,7 +195,7 @@ export function ChatAssistant() {
             aria-label="Cerrar aviso"
             onClick={(e) => {
               e.stopPropagation();
-              setShowGreetingBubble(false);
+              dismissGreeting();
             }}
           >
             <Icon name="close" />
@@ -201,7 +214,9 @@ export function ChatAssistant() {
         aria-label={open ? 'Cerrar asistente' : 'Abrir asistente'}
         onClick={() => setOpen((o) => !o)}
       >
-        {showGreetingBubble && <span className="chat-float__ping" aria-hidden="true" />}
+        {showGreetingBubble && (
+          <span className={`chat-float__ping${greetingClosing ? ' chat-float__ping--closing' : ''}`} aria-hidden="true" />
+        )}
         <Icon name={open ? 'close' : 'chat'} />
       </button>
 

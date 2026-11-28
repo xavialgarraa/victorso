@@ -1772,7 +1772,15 @@ body.nav-open .whatsapp-float { display: none; }
   color: var(--text-soft); font-size: .85rem; padding: 4px; line-height: 1;
 }
 .chat-greeting__close:hover { color: var(--text); }
-@media (prefers-reduced-motion: reduce) { .chat-greeting { animation: none; } }
+/* Duración (220ms) sincronizada a propósito con GREETING_BUBBLE_EXIT_MS
+   en ChatAssistant.tsx, que mantiene el componente montado ese rato de
+   más para darle tiempo a terminar antes de desaparecer de golpe. */
+.chat-greeting--closing { animation: chat-greeting-out .22s var(--ease) both; }
+@keyframes chat-greeting-out { to { opacity: 0; transform: scale(.94) translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-greeting { animation: none; }
+  .chat-greeting--closing { animation: none; opacity: 0; }
+}
 @media (max-width: 760px) {
   .chat-greeting { bottom: calc(148px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -1781,9 +1789,11 @@ body.nav-open .whatsapp-float { display: none; }
    mismo lenguaje visual que un badge de notificación. */
 .chat-float__ping {
   position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--red); border: 2px solid var(--surface);
+  background: var(--red); border: 2px solid var(--surface); opacity: 1;
   animation: chat-ping-pulse 1.6s ease-out infinite;
+  transition: opacity .2s ease, transform .2s ease;
 }
+.chat-float__ping--closing { opacity: 0; transform: scale(.5); animation: none; }
 @keyframes chat-ping-pulse {
   0% { box-shadow: 0 0 0 0 rgba(227,6,19,.55); }
   70% { box-shadow: 0 0 0 7px rgba(227,6,19,0); }
